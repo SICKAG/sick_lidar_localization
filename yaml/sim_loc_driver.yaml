@@ -1,0 +1,17 @@
+# Configuration of ros driver for sick localization.
+sick_lidar_localization:
+
+  # Driver configuration
+  driver:
+    localization_controller_default_ip_adress: "192.168.0.1"                   # Default IP adress "192.168.0.1" of the localization controller (if not otherwise set by parameter "localization_controller_ip_adress")
+    result_telegrams_tcp_port: 2201                                            # TCP port number of the localization controller sending localization results
+    tcp_connection_retry_delay: 1.0                                            # Delay in seconds to retry to connect to the localization controller, default 1 second
+    result_telegrams_topic: "/sick_lidar_localization/driver/result_telegrams" # ros topic to publish result port telegram messages (type SickLocResultPortTelegramMsg)
+    result_telegrams_frame_id: "sick_lidar_localization"                       # ros frame id of result port telegram messages (type SickLocResultPortTelegramMsg)
+    diagnostic_topic: "/sick_lidar_localization/driver/diagnostic"             # ros topic to publish diagnostic messages (type SickLocDiagnosticMsg)
+    diagnostic_frame_id: "sick_lidar_localization"                             # ros frame id of diagnostic messages (type SickLocDiagnosticMsg)
+    monitoring_rate: 1.0                                                       # frequency to monitor driver messages, once per second by default
+    monitoring_message_timeout: 1.0                                            # timeout for driver messages, shutdown tcp-sockets and reconnect after message timeout, 1 second by default
+    point_cloud_topic: "/cloud"                                                # ros topic to publish PointCloud2 data
+    point_cloud_frame_id: "sick_lidar_localization"                            # ros frame id of PointCloud2 messages
+

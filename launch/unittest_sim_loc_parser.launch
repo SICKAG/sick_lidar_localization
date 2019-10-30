@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<launch>
+
+  <!-- Launch unittest_sim_loc_parser -->
+  <node name="unittest_sim_loc_parser" pkg="sick_lidar_localization" type="unittest_sim_loc_parser" output="screen">
+    <param name="number_result_port_testcases" value="100" /> <!-- number of random based result port testcases, default: 100 testcases --> 
+  </node>
+
+</launch>
+

@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<launch>
+
+  <!-- Launch sim_loc_driver -->
+  <arg name="localization_controller_ip_adress" default=""/> <!-- IP adress of the localization controller, overwrites default ip address "192.168.0.1" in sim_loc_driver.yaml-->
+  <rosparam command="load" file="$(find sick_lidar_localization)/yaml/sim_loc_driver.yaml" />
+  <node name="sim_loc_driver" pkg="sick_lidar_localization" type="sim_loc_driver" output="screen">
+    <param name="localization_controller_ip_adress" value="$(arg localization_controller_ip_adress)" /> <!-- IP adress of the localization controller, f.e. "192.168.0.1" (default) -->
+  </node>
+
+  <!-- Launch sim_loc_driver_check to monitor sim_loc_driver -->
+  <arg name="sim_loc_driver_check_cfg" default="message_check_default.yaml"/>
+  <rosparam command="load" file="$(find sick_lidar_localization)/yaml/$(arg sim_loc_driver_check_cfg)" />
+  <node name="sim_loc_driver_check" pkg="sick_lidar_localization" type="sim_loc_driver_check" output="screen">
+  </node>
+
+  <!-- Launch pointcloud_converter to convert and publish PointCloud2 messages -->
+  <node name="pointcloud_converter" pkg="sick_lidar_localization" type="pointcloud_converter" output="screen">
+  </node>
+
+</launch>
+

@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<launch>
+
+  <!-- Launch sim_loc_driver_check -->
+  <arg name="sim_loc_driver_check_cfg" default="message_check_default.yaml"/>
+  <rosparam command="load" file="$(find sick_lidar_localization)/yaml/$(arg sim_loc_driver_check_cfg)" />
+  <node name="sim_loc_driver_check" pkg="sick_lidar_localization" type="sim_loc_driver_check" output="screen">
+  </node>
+
+</launch>
+

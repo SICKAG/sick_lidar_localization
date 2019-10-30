@@ -1,0 +1,80 @@
+# Default configuration of sim_loc_driver_check
+#
+# sim_loc_driver_check subscribes to sim_loc_driver messages and checks the telegram data
+# against min and max values configured in this yaml-file.
+# Using different yaml configuration files, scene specific plausibility checks
+# of sim_loc_driver messages can be performed by running automated tests against
+# localization controllers like SIM1000FXA. 
+# sim_loc_driver_check will log a warning in case of failures or values out of range.
+#
+sick_lidar_localization:
+
+  # sim_loc_driver_check configuration
+  sim_loc_driver_check:
+    result_telegrams_topic:  "/sick_lidar_localization/driver/result_telegrams" # ros topic to publish result port telegram messages (type SickLocResultPortTelegramMsg)
+    message_check_frequency: 100                                          # frequency to check sim_loc_driver messages
+    result_telegram_min_values:                  # configuration of min allowed values in a result port telegram
+      header:                                    # ros header with sequence id, timestamp and frame id
+        seq:              0.0                    # sequence ID, consecutively increasing ID, uint32, size:= 4 byte
+        stamp:            0.0                    # time stamp
+        frame_id:         "sick_lidar_localization"    # frame id of ros header
+      telegram_header:                           # 52 byte header of a result port telegram
+        MagicWord:        0x5349434B             # Magic word SICK (0x53 0x49 0x43 0x4B). uint32, size:= 4 × UInt8 = 4 byte
+        Length:           106                    # Length of telegram incl. header, payload, and trailer. uint32, size:= UInt32 = 4 byte
+        PayloadType:      0x0642                 # Payload type, 0x06c2 = Little Endian, 0x0642 = Big Endian. uint16, size:= UInt16 = 2 byte
+        PayloadVersion:   1                      # Version of PayloadType structure. uint16, size:= UInt16 = 2 byte
+        OrderNumber:      0.0                    # Order number of the localization controller. uint32, size:= UInt32 = 4 byte
+        SerialNumber:     0.0                    # Serial number of the localization controller. uint32, size:= UInt32 = 4 byte
+        FW_Version:       [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] # Software version of the localization controller. uint8[], size:= 20 × UInt8 = 20 byte
+        TelegramCounter:  0.0                    # Telegram counter since last start-up. uint32, size:= UInt32 = 4 byte
+        SystemTime:       0.0                    # Not used. uint64, size:= NTP = 8 byte
+      telegram_payload:                          # 52 byte payload of a result port telegram
+        ErrorCode:        0                      # ErrorCode 0:= OK, ErrorCode 1:= UNKNOWNERROR. uint16, size:= UInt16 = 2 byte
+        ScanCounter:      0.0                    # Counter of related scan data. uint32, size:= UInt32 = 4 byte
+        Timestamp:        0.0                    # Time stamp of the pose [ms]. The time stamp indicates the time at which the pose is calculated. uint32, size:= UInt32 = 4 byte
+        PoseX:            -2147483648            # Position X of the vehicle on the map in cartesian global coordinates [mm]. int32, size:= Int32 = 4 byte
+        PoseY:            -2147483648            # Position Y of the vehicle on the map in cartesian global coordinates [mm]. int32, size:= Int32 = 4 byte
+        PoseYaw:          -360000                # Orientation (yaw) of the vehicle on the map [mdeg]. int32, size:= Int32 = 4 byte
+        Reserved1:        0.0                    # Reserved. uint32, size:= UInt32 = 4 byte
+        Reserved2:        -2147483648            # Reserved. int32, size:= Int32 = 4 byte
+        Quality:          1                      # Quality of pose [1 … 100], 1 = bad pose quality, 100 = good pose quality. uint8, size:= UInt8 = 1 byte
+        OutliersRatio:    0                      # Ratio of beams that cannot be assigned to the current reference map [%]. uint8, size:= UInt8 = 1 byte
+        CovarianceX:      0                      # Covariance c1 of the pose X [mm^2]. int32, size:= Int32 = 4 byte
+        CovarianceY:      0                      # Covariance c5 of the pose Y [mm^2]. int32, size:= Int32 = 4 byte
+        CovarianceYaw:    0                      # Covariance c9 of the pose Yaw [mdeg^2]. int32, size:= Int32 = 4 byte
+        Reserved3:        0.0                    # Reserved. uint64, size:= UInt64 = 8 byte
+      telegram_trailer:                          # 2 byte trailer of a result port telegram
+        Checksum:         0                      # CRC16-CCITT checksum. uint16, size:= UInt16 = 2 byte
+    result_telegram_max_values:                  # configuration of max allowed values in a result port telegram
+      header:                                    # ros header with sequence id, timestamp and frame id
+        seq:              4294967296.0           # 4294967296 = 0xFFFFFFFF # sequence ID, consecutively increasing ID, uint32, size:= 4 byte
+        stamp:            2147483648.2147483648  # time stamp (max. 2 int values, each 2^31 = 2147483648)
+        frame_id:         "sick_lidar_localization"    # frame id of ros header
+      telegram_header:                           # 52 byte header of a result port telegram
+        MagicWord:        0x5349434B             # Magic word SICK (0x53 0x49 0x43 0x4B). uint32, size:= 4 × UInt8 = 4 byte
+        Length:           106                    # Length of telegram incl. header, payload, and trailer. uint32, size:= UInt32 = 4 byte
+        PayloadType:      0x06c2                 # Payload type, 0x06c2 = Little Endian, 0x0642 = Big Endian. uint16, size:= UInt16 = 2 byte
+        PayloadVersion:   0xFFFF                 # Version of PayloadType structure. uint16, size:= UInt16 = 2 byte
+        OrderNumber:      4294967296.0           # 4294967296 = 0xFFFFFFFF # Order number of the localization controller. uint32, size:= UInt32 = 4 byte
+        SerialNumber:     4294967296.0           # 4294967296 = 0xFFFFFFFF # Serial number of the localization controller. uint32, size:= UInt32 = 4 byte
+        FW_Version:       [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF] # Software version of the localization controller. uint8[], size:= 20 × UInt8 = 20 byte
+        TelegramCounter:  4294967296.0           # 4294967296 = 0xFFFFFFFF # Telegram counter since last start-up. uint32, size:= UInt32 = 4 byte
+        SystemTime:       18446744073709551616.0 # 18446744073709551616 = 0xFFFFFFFFFFFFFFFF # Not used. uint64, size:= NTP = 8 byte
+      telegram_payload:                          # 52 byte payload of a result port telegram
+        ErrorCode:        0xFFFF                 # ErrorCode 0:= OK, ErrorCode 1:= UNKNOWNERROR. uint16, size:= UInt16 = 2 byte
+        ScanCounter:      4294967296.0           # 4294967296 = 0xFFFFFFFF # Counter of related scan data. uint32, size:= UInt32 = 4 byte
+        Timestamp:        4294967296.0           # 4294967296 = 0xFFFFFFFF # Time stamp of the pose [ms]. The time stamp indicates the time at which the pose is calculated. uint32, size:= UInt32 = 4 byte
+        PoseX:            2147483647             # Position X of the vehicle on the map in cartesian global coordinates [mm]. int32, size:= Int32 = 4 byte
+        PoseY:            2147483647             # Position Y of the vehicle on the map in cartesian global coordinates [mm]. int32, size:= Int32 = 4 byte
+        PoseYaw:          360000                 # Orientation (yaw) of the vehicle on the map [mdeg]. int32, size:= Int32 = 4 byte
+        Reserved1:        4294967296.0           # 4294967296 = 0xFFFFFFFF          # Reserved. uint32, size:= UInt32 = 4 byte
+        Reserved2:        2147483647             # Reserved. int32, size:= Int32 = 4 byte
+        Quality:          100                    # Quality of pose [1 … 100], 1 = bad pose quality, 100 = good pose quality. uint8, size:= UInt8 = 1 byte
+        OutliersRatio:    100                    # Ratio of beams that cannot be assigned to the current reference map [%]. uint8, size:= UInt8 = 1 byte
+        CovarianceX:      2147483647             # Covariance c1 of the pose X [mm^2]. int32, size:= Int32 = 4 byte
+        CovarianceY:      2147483647             # Covariance c5 of the pose Y [mm^2]. int32, size:= Int32 = 4 byte
+        CovarianceYaw:    2147483647             # Covariance c9 of the pose Yaw [mdeg^2]. int32, size:= Int32 = 4 byte
+        Reserved3:        18446744073709551616.0 # 18446744073709551616 = 0xFFFFFFFFFFFFFFFF # Reserved. uint64, size:= UInt64 = 8 byte
+      telegram_trailer:                          # 2 byte trailer of a result port telegram
+        Checksum:         0xFFFF                 # CRC16-CCITT checksum. uint16, size:= UInt16 = 2 byte
+

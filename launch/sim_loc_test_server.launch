@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<launch>
+
+  <!-- Launch sim_loc_test_server -->
+  <arg name="demo_circles" default="false"/>
+  <arg name="error_simulation" default="false"/>
+  <rosparam command="load" file="$(find sick_lidar_localization)/yaml/sim_loc_test_server.yaml" />
+  <node name="sim_loc_test_server" pkg="sick_lidar_localization" type="sim_loc_test_server" output="screen">
+    <param name="demo_circles" value="$(arg demo_circles)" />          <!-- true: simulate a sensor moving in circles, false (default): create random based result port telegrams -->
+    <param name="error_simulation" value="$(arg error_simulation)" />  <!-- default: false (no error simulation), if true, test server simulates errors and communication failures -->
+  </node>
+
+</launch>
+

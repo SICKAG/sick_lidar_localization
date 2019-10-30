@@ -1,0 +1,12 @@
+# Configuration of sim_loc_test_server
+# sim_loc_test_server implements a simple tcp server, simulating a localization controller for unittests.
+# It implements a simple tcp server, accepting tcp connections from clients and generating telegrams to test the ros driver for sim localization.
+sick_lidar_localization:
+
+  # Server configuration
+  test_server:
+    result_telegrams_tcp_port: 2201  # Default tcp port for sim_loc_test_server is 2201 (ip port number of the localization controller sending localization results)
+    result_telegrams_rate:       10  # Rate to generate and send result port telegrams
+    result_testcases_topic:    "/sick_lidar_localization/test_server/result_testcases"  # ROS topic to publish testcases with result port telegrams (type SickLocResultPortTestcaseMsg)
+    result_testcases_frame_id: "result_testcases"                                 # ROS frame id of testcase messages (type SickLocResultPortTestcaseMsg)
+

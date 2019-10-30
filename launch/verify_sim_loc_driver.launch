@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+
+  <!-- Launch verify_sim_loc_driver -->
+  <node name="verify_sim_loc_driver" pkg="sick_lidar_localization" type="verify_sim_loc_driver" output="screen">
+  </node>
+
+</launch>
+
