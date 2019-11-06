@@ -57,7 +57,7 @@
 #include <ros/ros.h>
 
 #include "crc16ccitt_false.h"
-#include "sick_lidar_localization/sim_loc_result_port_parser.h"
+#include "sick_lidar_localization/result_port_parser.h"
 
 /** assert macro to verify result telegrams, throws an std::invalid_argument exception in case of assertion failures */
 #define PARSE_ASSERT(assertion,info) sick_lidar_localization::ResultPortParser::parseAssert((assertion),(#assertion),info,__FILE__,__LINE__)
@@ -263,9 +263,9 @@ size_t sick_lidar_localization::ResultPortParser::decodeResultPortPayload(const 
   // Decode Reserved2: Reserved. Size: Int32 = 4 byte
   bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_payload.Reserved2, "Payload.Reserved2", m_little_endian_payload);
   
-  // Decode Quality: Quality of pose [1 … 100], 1 = bad pose quality, 100 = good pose quality. Size: UInt8 = 1 byte
+  // Decode Quality: Quality of pose [0 … 100], 1 = bad pose quality, 100 = good pose quality. Size: UInt8 = 1 byte
   bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_payload.Quality, "Payload.Quality", m_little_endian_payload);
-  PARSE_ASSERT(telegram_payload.Quality >= 1 && telegram_payload.Quality <= 100, std::string("ResultPortParser::decodeResultPortPayload(): invalid Payload.Quality ") + std::to_string(telegram_payload.Quality));
+  PARSE_ASSERT(telegram_payload.Quality >= 0 && telegram_payload.Quality <= 100, std::string("ResultPortParser::decodeResultPortPayload(): invalid Payload.Quality ") + std::to_string(telegram_payload.Quality));
   
   // Decode OutliersRatio: Ratio of beams that cannot be assigned to the current reference map [%]. Size: UInt8 = 1 byte
   bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_payload.OutliersRatio, "Payload.OutliersRatio", m_little_endian_payload);

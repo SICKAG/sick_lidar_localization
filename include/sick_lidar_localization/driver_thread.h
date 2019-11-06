@@ -72,7 +72,7 @@
 #include <boost/thread/recursive_mutex.hpp>
 #include <list>
 
-#include "sick_lidar_localization/sim_loc_fifo.h"
+#include "sick_lidar_localization/fifo_buffer.h"
 
 namespace sick_lidar_localization
 {

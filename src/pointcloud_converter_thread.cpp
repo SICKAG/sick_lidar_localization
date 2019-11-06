@@ -2,6 +2,9 @@
  * @brief sim_loc_pointcloud_converts sim_loc_driver messages (type sick_lidar_localization::SickLocResultPortTelegramMsg),
  * to PointCloud2 messages and publishes PointCloud2 messages on topic "/cloud".
  *
+ * The vehicle poses (PoseX, PoseY, PoseYaw of result port telegrams) are transformed and published
+ * by tf-messages with configurable parent and child frame id.
+ *
  * It also serves as an usage example for sick_lidar_localization and shows how to use sick_lidar_localization
  * in a custumized application.
  *
@@ -58,8 +61,8 @@
  */
 #include <math.h>
 
-#include "sick_lidar_localization/sim_loc_utils.h"
-#include "sick_lidar_localization/sim_loc_pointcloud_converter.h"
+#include "sick_lidar_localization/utils.h"
+#include "sick_lidar_localization/pointcloud_converter.h"
 
 /*!
  * Constructor
@@ -73,6 +76,8 @@ sick_lidar_localization::PointCloudConverter::PointCloudConverter(ros::NodeHandl
     std::string point_cloud_topic = "/cloud"; // default topic to publish result port telegram messages (type SickLocResultPortTelegramMsg)
     ros::param::param<std::string>("/sick_lidar_localization/driver/point_cloud_topic", point_cloud_topic, point_cloud_topic);
     ros::param::param<std::string>("/sick_lidar_localization/driver/point_cloud_frame_id", m_point_cloud_frame_id, m_point_cloud_frame_id);
+    ros::param::param<std::string>("/sick_lidar_localization/driver/tf_parent_frame_id", m_tf_parent_frame_id, m_tf_parent_frame_id);
+    ros::param::param<std::string>("/sick_lidar_localization/driver/tf_child_frame_id", m_tf_child_frame_id, m_tf_child_frame_id);
     m_point_cloud_publisher = nh->advertise<sensor_msgs::PointCloud2>(point_cloud_topic, 1);
   }
 }
@@ -105,6 +110,8 @@ bool sick_lidar_localization::PointCloudConverter::stop(void)
   m_converter_thread_running = false;
   if(m_converter_thread)
   {
+    sick_lidar_localization::SickLocResultPortTelegramMsg empty_msg;
+    m_result_port_telegram_fifo.push(empty_msg); // push empty telegram to interrupt converter thread waiting for notification
     m_converter_thread->join();
     delete(m_converter_thread);
     m_converter_thread = 0;
@@ -157,11 +164,12 @@ std::vector<geometry_msgs::Point> sick_lidar_localization::PointCloudConverter::
 }
 
 /*!
- * Converts a telegram from type SickLocResultPortTelegramMsg to PointCloud2
+ * Converts the vehicle position from a result port telegram to PointCloud2 message with 4 points
+ * (centerpoint plus 3 demo corner points showing a triangle).
  * @param[in] msg result telegram message (SickLocResultPortTelegramMsg)
  * @return PointCloud2 message
  */
-sensor_msgs::PointCloud2 sick_lidar_localization::PointCloudConverter::convert(const sick_lidar_localization::SickLocResultPortTelegramMsg & msg)
+sensor_msgs::PointCloud2 sick_lidar_localization::PointCloudConverter::convertToPointCloud(const sick_lidar_localization::SickLocResultPortTelegramMsg & msg)
 {
   sensor_msgs::PointCloud2 pointcloud_msg;
   // Create center point (PoseX,PoseY) and 3 corner points of a triangle showing the orientation (PoseYaw)
@@ -209,13 +217,40 @@ sensor_msgs::PointCloud2 sick_lidar_localization::PointCloudConverter::convert(c
 }
 
 /*!
+ * Converts the vehicle pose from a result port telegram to a tf transform.
+ * @param[in] msg result telegram message (SickLocResultPortTelegramMsg)
+ * @return tf transform
+ */
+geometry_msgs::TransformStamped sick_lidar_localization::PointCloudConverter::convertToTransform(const sick_lidar_localization::SickLocResultPortTelegramMsg & msg)
+{
+  double posx = 1.0e-3 * msg.telegram_payload.PoseX; // x-position in meter
+  double posy = 1.0e-3 * msg.telegram_payload.PoseY; // y-position in meter
+  double yaw  = 1.0e-3 * msg.telegram_payload.PoseYaw * M_PI / 180.0; // yaw angle in radians
+  geometry_msgs::TransformStamped vehicle_transform;
+  vehicle_transform.header.stamp = ros::Time::now();
+  vehicle_transform.header.frame_id = m_tf_parent_frame_id;
+  vehicle_transform.child_frame_id = m_tf_child_frame_id;
+  vehicle_transform.transform.translation.x = posx;
+  vehicle_transform.transform.translation.y = posy;
+  vehicle_transform.transform.translation.z = 0.0;
+  tf2::Quaternion q;
+  q.setRPY(0, 0, yaw);
+  vehicle_transform.transform.rotation.x = q.x();
+  vehicle_transform.transform.rotation.y = q.y();
+  vehicle_transform.transform.rotation.z = q.z();
+  vehicle_transform.transform.rotation.w = q.w();
+  return vehicle_transform;
+}
+
+/*!
  * Thread callback, pops received telegrams from the fifo buffer m_result_port_telegram_fifo,
  * converts the telegrams from type SickLocResultPortTelegramMsg to PointCloud2 and publishes
- * PointCloud2 messages.
+ * PointCloud2 messages. The vehicle pose is converted to a tf transform and broadcasted.
  */
 void sick_lidar_localization::PointCloudConverter::runPointCloudConverterThreadCb(void)
 {
   ROS_INFO_STREAM("PointCloudConverter: converter thread for sim_loc_driver messages started");
+  tf2_ros::TransformBroadcaster tf_broadcaster;
   while(ros::ok() && m_converter_thread_running)
   {
     // Wait for next telegram
@@ -224,11 +259,16 @@ void sick_lidar_localization::PointCloudConverter::runPointCloudConverterThreadC
       ros::Duration(0.0001).sleep();
       m_result_port_telegram_fifo.waitForElement();
     }
-    sick_lidar_localization::SickLocResultPortTelegramMsg telegram = m_result_port_telegram_fifo.pop();
-    // Convert telegram to PointCloud2
-    sensor_msgs::PointCloud2 pointcloud_msg = convert(telegram);
-    // Publish PointCloud2 data
-    m_point_cloud_publisher.publish(pointcloud_msg);
+    if(ros::ok() && m_converter_thread_running && !m_result_port_telegram_fifo.empty())
+    {
+      sick_lidar_localization::SickLocResultPortTelegramMsg telegram = m_result_port_telegram_fifo.pop();
+      // Convert vehicle position from result telegram to PointCloud2
+      sensor_msgs::PointCloud2 pointcloud_msg = convertToPointCloud(telegram);
+      m_point_cloud_publisher.publish(pointcloud_msg);
+      // Convert vehicle pose from result telegram to tf transform
+      geometry_msgs::TransformStamped tf2_vehicle_transform = convertToTransform(telegram);
+      tf_broadcaster.sendTransform(tf2_vehicle_transform);
+    }
   }
   ROS_INFO_STREAM("PointCloudConverter: converter thread for sim_loc_driver messages finished");
 }

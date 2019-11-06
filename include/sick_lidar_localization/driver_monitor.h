@@ -56,8 +56,9 @@
 #ifndef __SIM_LOC_DRIVER_MONITOR_H_INCLUDED
 #define __SIM_LOC_DRIVER_MONITOR_H_INCLUDED
 
-#include "sick_lidar_localization/sim_loc_driver_thread.h"
-#include "sick_lidar_localization/sim_loc_utils.h"
+#include "sick_lidar_localization/cola_transmitter.h"
+#include "sick_lidar_localization/driver_thread.h"
+#include "sick_lidar_localization/utils.h"
 
 namespace sick_lidar_localization
 {
@@ -71,11 +72,21 @@ namespace sick_lidar_localization
     
     /*!
      * Constructor. The driver monitor does not start automatically, call start() and stop() to start and stop.
+     *
+     * Default tcp ports: see Operation-Instruction-v1.1.0.241R.pdf, page 51, "IP port number and protocol":
+     * For requests and to transmit settings to the localization controller:
+     * - IP port number 2111 and 2112 to send telegrams and to request data.
+     * - SOPAS CoLa-A or CoLa-B protocols.
+     * To transmit the localization results to the vehicle controller, the localization controller uses:
+     * - IP port number 2201 to send localization results in a single direction to the external vehicle controller.
+     * - Binary result port protocol TCP/IP.
+     *
      * @param[in] nh ros node handle
      * @param[in] server_adress ip adress of the localization controller, default: 192.168.0.1
-     * @param[in] tcp_port tcp port of the localization controller, default: The localization controller uses IP port number 2201 to send localization results
+     * @param[in] ip_port_results ip port for result telegrams, default: 2201
+     * @param[in] ip_port_cola ip port for command requests and responses, default: 2111
      */
-    DriverMonitor(ros::NodeHandle * nh = 0, const std::string & server_adress = "192.168.0.1", int tcp_port = 2201);
+    DriverMonitor(ros::NodeHandle * nh = 0, const std::string & server_adress = "192.168.0.1", int ip_port_results = 2201, int ip_port_cola = 2111);
     
     /*!
      * Destructor. Stops the driver thread and monitor and closes all tcp connections.
@@ -99,8 +110,30 @@ namespace sick_lidar_localization
      * @param[in] msg result telegram message (SickLocResultPortTelegramMsg)
      */
     virtual void messageCbResultPortTelegrams(const sick_lidar_localization::SickLocResultPortTelegramMsg & msg);
+  
+    /*!
+     * Callback for service messages (SickLocColaTelegramSrv). Handles Cola requests and responses, sends and receives Cola-ASCII telegrams to resp. from
+     * the localization controller
+     * @param[in] cola_request Cola command request, will be encoded and send to the localization controller
+     * @param[out] cola_response Cola command response from localization controller
+     */
+    virtual bool serviceCbColaTelegram(sick_lidar_localization::SickLocColaTelegramSrv::Request & cola_request, sick_lidar_localization::SickLocColaTelegramSrv::Response & cola_response);
 
   protected:
+
+    /*!
+     * Initializes cola sender and receiver for cola requests and responses
+     * @param[in] server_adress ip adress of the localization controller, default: 192.168.0.1
+     * @param[in] ip_port_cola ip port for command requests and responses, default: 2111
+     * @param[in] receive_timeout timeout in seconds for receive functions
+     */
+    bool initColaTransmitter(const std::string & server_adress, int ip_port_cola, double receive_timeout);
+    
+    /*!
+     * Stops cola sender and receiver for cola requests and responses
+     * (if started by a cola service request "SickLocColaTelegram")
+     */
+    void stopColaTransmitter(void);
     
     /*!
      * Thread callback, implements the monitoring and restarts a DriverThread in case of tcp-errors.
@@ -114,13 +147,17 @@ namespace sick_lidar_localization
     bool m_initialized;                      ///< true after successfull configuration, otherwise false
     ros::NodeHandle* m_nh;                   ///< ros node handle
     std::string m_server_adress;             ///< ip adress of the localization controller, default: 192.168.0.1
-    int m_tcp_port;                          ///< tcp port of the localization controller, default: The localization controller uses IP port number 2201 to send localization results
+    int m_ip_port_results;                   ///< ip port for result telegrams, default: The localization controller uses IP port number 2201 to send localization results
+    int m_ip_port_cola;                      ///< ip port for for command requests and responses, default: The localization controller uses IP port number 2111 and 2112 to send telegrams and to request data
+    bool m_cola_binary;                      ///< false: send Cola-ASCII (default), true: send Cola-Binary
     bool m_monitoring_thread_running;        ///< true: m_monitoring_thread is running, otherwise false
     boost::thread* m_monitoring_thread;      ///< thread to monitor tcp-connection, restarts DriverThread in case of tcp-errors.
     sick_lidar_localization::SetGet<ros::Time> m_driver_message_recv_timestamp; ///< time of the last received driver message (threadsafe)
     double m_monitoring_rate;                ///< frequency to monitor driver messages, default: once per second
     double m_receive_telegrams_timeout;      ///< timeout for driver messages, shutdown tcp-sockets and reconnect after message timeout, default: 1 second
-    
+    sick_lidar_localization::ColaTransmitter* m_cola_transmitter; ///< transmitter for cola commands (send requests, receive responses)
+    boost::mutex m_service_cb_mutex;          ///< mutex to protect serviceCbColaTelegram (one service request at a time)
+  
   }; // class DriverMonitor
   
 } // namespace sick_lidar_localization

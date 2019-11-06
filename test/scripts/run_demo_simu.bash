@@ -44,10 +44,14 @@ roslaunch sick_lidar_localization sim_loc_driver.launch localization_controller_
 #      -> Style: Points
 #      -> Size (Pixels): 5
 #
+# Visualize TF messages by rviz:
+#
+# rviz -> Global options: Fixed Frame -> tf_demo_map
+#      -> Add by display type TF
+#
 
-rosrun tf static_transform_publisher 0 0 0 0 0 0 map sick_lidar_localization 10 &
+rosrun tf static_transform_publisher 0 0 0 0 0 0 map pointcloud_sick_lidar_localization 10 &
 rosrun rviz rviz &
-# rostopic echo "/cloud" &
 
 #
 # Run test server and driver for some time and exit

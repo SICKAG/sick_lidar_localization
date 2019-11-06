@@ -6,7 +6,7 @@ if [ -f ../../../../devel/setup.bash   ] ; then source ../../../../devel/setup.b
 if [ -f ../../../../install/setup.bash ] ; then source ../../../../install/setup.bash ; fi
 
 # start edit resource-files
-gedit ./run_simu.bash run_demo_simu.bash ./run_error_simu.bash ./run.bash ../../yaml/sim_loc_driver.yaml ../../yaml/sim_loc_test_server.yaml ../../yaml/message_check_default.yaml ../../yaml/message_check_demo.yaml &
+gedit ./run_simu.bash run_demo_simu.bash ./run_error_simu.bash ./run.bash &
 
 # start clion
 echo -e "Starting clion...\nNote in case of clion/cmake errors:"

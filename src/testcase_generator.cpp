@@ -55,11 +55,12 @@
  */
 #include <ros/ros.h>
 
-#include "sick_lidar_localization/sim_loc_random.h"
-#include "sick_lidar_localization/sim_loc_testcase_generator.h"
-#include "sick_lidar_localization/sim_loc_utils.h"
+#include "sick_lidar_localization/cola_parser.h"
+#include "sick_lidar_localization/random_generator.h"
+#include "sick_lidar_localization/testcase_generator.h"
+#include "sick_lidar_localization/utils.h"
 
-/*
+/*!
  * Creates and returns a deterministic default testcase for result port telegrams (binary telegrams and SickLocResultPortTelegramMsg)
  * @return SickLocResultPortTestcaseMsg with the binary telegram and SickLocResultPortTelegramMsg
  */
@@ -96,7 +97,7 @@ sick_lidar_localization::SickLocResultPortTestcaseMsg sick_lidar_localization::T
   return testcase;
 }
 
-/*
+/*!
  * Creates and returns a random testcase for result port telegrams (binary telegrams and SickLocResultPortTelegramMsg)
  * @return SickLocResultPortTestcaseMsg with the binary telegram and SickLocResultPortTelegramMsg
  */
@@ -107,7 +108,7 @@ sick_lidar_localization::SickLocResultPortTestcaseMsg sick_lidar_localization::T
   static sick_lidar_localization::UniformRandomInteger random8_generator(0, 255);
   static sick_lidar_localization::UniformRandomInteger random32_generator(-INT32_MAX, INT32_MAX);
   static sick_lidar_localization::UniformRandomInteger random_yaw_generator(-180000, 180000);
-  static sick_lidar_localization::UniformRandomInteger random_quality_generator(1, 100);
+  static sick_lidar_localization::UniformRandomInteger random_quality_generator(0, 100);
   static sick_lidar_localization::UniformRandomInteger random_covariance_generator(0, INT32_MAX);
   
   // Create default SickLocResultPortTelegramMsg
@@ -127,7 +128,7 @@ sick_lidar_localization::SickLocResultPortTestcaseMsg sick_lidar_localization::T
   telegram_msg.telegram_payload.PoseYaw = random_yaw_generator.generate();                           // Orientation (yaw) of the vehicle on the map [mdeg], range -180 to +180 deg assumed. Size: Int32 = 4 byte
   telegram_msg.telegram_payload.Reserved1 = (uint32_t)random32_generator.generate();                 // Reserved. Size: UInt32 = 4 byte
   telegram_msg.telegram_payload.Reserved2 = random32_generator.generate();                           // Reserved. Size: Int32 = 4 byte
-  telegram_msg.telegram_payload.Quality = (uint8_t)random_quality_generator.generate();              // Quality of pose [1 … 100], 1 = bad pose quality, 100 = good pose quality. Size: UInt8 = 1 byte
+  telegram_msg.telegram_payload.Quality = (uint8_t)random_quality_generator.generate();              // Quality of pose [0 … 100], 1 = bad pose quality, 100 = good pose quality. Size: UInt8 = 1 byte
   telegram_msg.telegram_payload.OutliersRatio = (uint8_t)random_quality_generator.generate();        // Ratio of beams that cannot be assigned to the current reference map [%]. Size: UInt8 = 1 byte
   telegram_msg.telegram_payload.CovarianceX = random_covariance_generator.generate();                // Covariance c1 of the pose X [mm^2]. Size: Int32 = 4 byte
   telegram_msg.telegram_payload.CovarianceY = random_covariance_generator.generate();                // Covariance c5 of the pose Y [mm^2]. Size: Int32 = 4 byte
@@ -178,8 +179,8 @@ sick_lidar_localization::SickLocResultPortTestcaseMsg sick_lidar_localization::T
   
   // Update telegram timestamps
   double delta_time_seconds = (ros::Time::now() - start_time).toSec();
-  telegram_msg.telegram_payload.Timestamp += (uint32_t)(1000.0 * delta_time_seconds); // Time stamp of the pose [ms]. The time stamp indicates the time at which the pose is calculated. Size: UInt32 = 4 byte
-  telegram_msg.telegram_header.SystemTime += (uint64_t)(delta_time_seconds);          // SystemTime not used. Size: NTP = 8 byte
+  telegram_msg.telegram_payload.Timestamp = createTimestampTicksMilliSec();             // Time stamp of the pose [ms]. The time stamp indicates the time at which the pose is calculated. Size: UInt32 = 4 byte
+  telegram_msg.telegram_header.SystemTime += (uint64_t)(delta_time_seconds);  // SystemTime not used. Size: NTP = 8 byte
   
   // Re-encode the modified result port telegram (SickLocResultPortTelegramMsg)
   sick_lidar_localization::ResultPortParser result_port_parser(testcase.header.frame_id);
@@ -194,4 +195,56 @@ sick_lidar_localization::SickLocResultPortTestcaseMsg sick_lidar_localization::T
   // Update testcase timestamp
   testcase.header.stamp = ros::Time::now();
   return testcase;
+}
+
+/*!
+ * Creates and returns a synthetical cola response to a cola command request.
+ * Note: Just a few cola responses are implemented for test purposes, f.e. responses to "LocRequestTimestamp".
+ * By default, a response: "sAN <command_name>" without any parameter is returned (sAN: Response to sMN)
+ * @param[in] cola_request Cola request from client
+ * @return Synthetical cola response from server
+ */
+sick_lidar_localization::SickLocColaTelegramMsg sick_lidar_localization::TestcaseGenerator::createColaResponse(const sick_lidar_localization::SickLocColaTelegramMsg & cola_request)
+{
+  // Generate a synthetical response to LocMapState requests: "sRA LocMapState 1"
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sRN && cola_request.command_name == "LocMapState")
+  {
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sRA, cola_request.command_name, {"1"});
+  }
+  
+  // Generate a synthetical response to LocRequestTimestamp requests: "sAN LocRequestTimestamp <timestamp>" with uint32_t timestamp in hex and ms
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "LocRequestTimestamp")
+  {
+    static sick_lidar_localization::UniformRandomInteger time_jitter_network_ms(0, 2);
+    // Simulate some network latency
+    ros::Duration(0.001 * time_jitter_network_ms.generate()).sleep();
+    // Create current timestamp in ticks
+    uint32_t ticks_ms = createTimestampTicksMilliSec();
+    // Simulate some network latency
+    ros::Duration(0.001 * time_jitter_network_ms.generate()).sleep();
+    std::stringstream timestamp_hex;
+    timestamp_hex << std::hex << std::uppercase << ticks_ms;
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {timestamp_hex.str()});
+  }
+  
+  // Default response: "sAN <command_name>" without parameter (sAN: Response to sMN)
+  return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name);
+}
+
+/*!
+ * Creates and returns a timestamp in milliseconds ticks.
+ * To simulate time jitter, network latency and time drift,
+ * a random value of +/- 2 milliseconds is added.
+ * @return timestamp in milliseconds ticks
+ */
+uint32_t sick_lidar_localization::TestcaseGenerator::createTimestampTicksMilliSec(void)
+{
+  static ros::Time start = ros::Time::now();
+  static sick_lidar_localization::UniformRandomInteger time_jitter_ticks_ms(-2, +2);
+  // Create current timestamp in ticks
+  ros::Duration timestamp = (ros::Time::now() - start);
+  uint32_t ticks_ms = (((uint64_t)timestamp.sec * 1000 + (uint64_t)timestamp.nsec/1000000 + 1000) & 0xFFFFFFFF);
+  // Create some jitter, simulation network latency and time drift
+  ticks_ms += time_jitter_ticks_ms.generate();
+  return ticks_ms;
 }

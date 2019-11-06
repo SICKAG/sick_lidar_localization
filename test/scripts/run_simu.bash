@@ -55,19 +55,42 @@ roslaunch sick_lidar_localization verify_sim_loc_driver.launch 2>&1 | unbuffer -
 # Run test server and driver for some time and verify results
 #
 
-sleep 60
+sleep 120
 ./src/sick_lidar_localization/test/scripts/killall.bash
-killall roslaunch
+sleep 1 ; killall roslaunch ; sleep 1
 
 #
 # Run standalone unittests for sim_loc_parser
 #
 
-roslaunch sick_lidar_localization unittest_sim_loc_parser.launch 2>&1 | tee -a ~/.ros/log/unittest_sim_loc_parser.log
-./src/sick_lidar_localization/test/scripts/killall.bash
+roslaunch sick_lidar_localization unittest_sim_loc_parser.launch 2>&1 | tee -a ~/.ros/log/unittest_sim_loc_parser.log &
+sleep 10 ; ./src/sick_lidar_localization/test/scripts/killall.bash ; sleep 1 ; killall roslaunch
 cat ~/.ros/log/sim_loc_driver_diagnostic_messages.log
 grep "WARN" ~/.ros/log/*.log ; grep "ERR" ~/.ros/log/*.log
-sleep 15
+sleep 20
+
+#
+# Start sim_loc_driver, start test server and send and receive cola commands
+# Note: debug only - time synchronization is started by sim_loc_driver.launch and by default running in background.
+#
+# source ./devel/setup.bash
+# ps -elf
+# roslaunch sick_lidar_localization sim_loc_test_server.launch 2>&1 | unbuffer -p tee -a ~/.ros/log/sim_loc_test_server.log &
+# sleep 1
+# roslaunch sick_lidar_localization sim_loc_driver.launch localization_controller_ip_adress:=127.0.0.1 2>&1 | unbuffer -p tee -a ~/.ros/log/sim_loc_driver.log &
+# sleep 1
+# rossrv show SickLocColaTelegramSrv
+# rosservice info SickLocColaTelegram
+# rossrv show SickLocRequestTimestampSrv
+# rosservice info SickLocRequestTimestamp
+# for ((n=0;n<=10;n++)) ; do 
+#   sleep 1 ; rosservice call SickLocColaTelegram "{cola_ascii_request: 'sRN LocMapState', wait_response_timeout: 1}"          # expected reponse: cola_ascii_response="sRA LocMapState 1"
+#   sleep 1 ; rosservice call SickLocColaTelegram "{cola_ascii_request: 'sMN LocRequestTimestamp', wait_response_timeout: 1}"  # expected reponse: cola_ascii_response="sAN LocRequestTimestamp <uint32>"
+#   sleep 1 ; rosservice call SickLocRequestTimestamp "{}" # expected reponse: "timestamp_lidar_ms: <uint32>, mean_time_vehicle_ms: <uint64>, delta_time_ms: <uint64>, ..."
+# done
+# sleep 1 ; ./src/sick_lidar_localization/test/scripts/killall.bash
+# sleep 1 ; killall roslaunch ; sleep 20
+# ps -elf
 
 #
 # Cleanup and exit
@@ -78,10 +101,12 @@ rm -rf ./log
 mkdir  ./log
 cp -rf ~/.ros/log/*.log ./log
 rm -f ./log/rostopic_*.log
+rm -f ./log/rosservice_*.log
 echo -e "\nsick_lidar_localization finished. Warnings and errors:"
 grep "WARN" ./log/*.log
 grep "ERR" ./log/*.log
 echo -e "\nsim_loc_driver check and verification summary:"
-grep -i "check messages thread summary" ./log/*.log 
-grep -i "verification thread summary"   ./log/*.log 
+grep -i "unittest_sim_loc_parser finished" ./log/*.log
+grep -i "check messages thread summary"    ./log/*.log 
+grep -i "verification thread summary"      ./log/*.log 
 

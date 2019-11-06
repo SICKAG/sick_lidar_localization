@@ -61,11 +61,13 @@
 #include <vector>
 #include <boost/thread.hpp>
 
+#include "sick_lidar_localization/SickLocColaTelegramSrv.h"
 #include "sick_lidar_localization/SickLocResultPortHeaderMsg.h"
 #include "sick_lidar_localization/SickLocResultPortPayloadMsg.h"
 #include "sick_lidar_localization/SickLocResultPortCrcMsg.h"
 #include "sick_lidar_localization/SickLocResultPortTelegramMsg.h"
 #include "sick_lidar_localization/SickLocResultPortTestcaseMsg.h"
+#include "sick_lidar_localization/SickLocRequestTimestampSrv.h"
 
 namespace sick_lidar_localization
 {

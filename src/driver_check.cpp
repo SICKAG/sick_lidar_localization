@@ -1,10 +1,11 @@
 /*
- * @brief sim_loc_test_server implements a simple tcp server,
- * simulating a localization controller for unittests.
+ * @brief sim_loc_driver_check subscribes to sim_loc_driver messages
+ * and checks the telegram data against configured min and max values.
  *
- * Note: sim_loc_test_server does not implement the functions of localization controller,
- * it just implements a simple tcp server, accepting tcp connections from clients
- * and generating telegrams to test the ros driver for sim localization.
+ * This way a scene specific plausibility check of sim_loc_driver messages
+ * can be performed when running automated tests against localization controllers
+ * like SIM1000FXA. A warning will be logged in case of failures or values out of
+ * range.
  *
  * Copyright (C) 2019 Ing.-Buero Dr. Michael Lehning, Hildesheim
  * Copyright (C) 2019 SICK AG, Waldkirch
@@ -58,40 +59,35 @@
  *
  */
 #include <ros/ros.h>
-#include <string>
-#include <vector>
 
-#include "sick_lidar_localization/sim_loc_test_server_thread.h"
-#include "sick_lidar_localization/sim_loc_utils.h"
+#include "sick_lidar_localization/driver_check_thread.h"
 
 int main(int argc, char** argv)
 {
   // Ros configuration and initialization
-  ros::init(argc, argv, "sim_loc_test_server");
+  ros::init(argc, argv, "sim_loc_driver_check");
   ros::NodeHandle nh;
-  ROS_INFO_STREAM("sim_loc_test_server started.");
+  ROS_INFO_STREAM("sim_loc_driver_check started.");
   
-  // Create a server to simulate a localization controller, incl. a listener thread to accept tcp connections
-  int tcp_port = 2201; // Default: The localization controller uses IP port number 2201 to send localization results
-  ros::param::param<int>("/sick_lidar_localization/test_server/result_telegrams_tcp_port", tcp_port, tcp_port);
-  sick_lidar_localization::TestServerThread test_server_thread(&nh, tcp_port);
+  std::string result_telegrams_topic = "/sick_lidar_localization/driver/result_telegrams"; // default topic to publish result port telegram messages (type SickLocResultPortTelegramMsg)
+  ros::param::param<std::string>("/sick_lidar_localization/sim_loc_driver_check/result_telegrams_topic", result_telegrams_topic, result_telegrams_topic);
   
-  // Subscribe to sim_loc_driver messages to monitor sim_loc_driver in error simulation mode
-  std::string result_telegrams_topic = "/sick_lidar_localization/driver/result_telegrams";      // default topic to publish result port telegram messages (type SickLocResultPortTelegramMsg)
-  ros::param::param<std::string>("/sick_lidar_localization/driver/result_telegrams_topic", result_telegrams_topic, result_telegrams_topic);
-  ros::Subscriber result_telegram_subscriber = nh.subscribe(result_telegrams_topic, 1, &sick_lidar_localization::TestServerThread::messageCbResultPortTelegrams, &test_server_thread);
+  // Init thread to check sim_loc_driver messages against configured min and max values
+  sick_lidar_localization::MessageCheckThread check_thread;
   
-  // Start simulation of a localization controller
-  test_server_thread.start();
-
+  // Subscribe to sim_loc_driver messages
+  ros::Subscriber result_telegram_subscriber = nh.subscribe(result_telegrams_topic, 1, &sick_lidar_localization::MessageCheckThread::messageCbResultPortTelegrams, &check_thread);
+  
+  // Start checking thread
+  check_thread.start();
+  
   // Run ros event loop
   ros::spin();
   
-  // Cleanup and exit
-  std::cout << "sim_loc_test_server finished." << std::endl;
-  ROS_INFO_STREAM("sim_loc_test_server finished.");
-  test_server_thread.stop();
-  std::cout << "sim_loc_test_server exits." << std::endl;
-  ROS_INFO_STREAM("sim_loc_test_server exits.");
+  std::cout << "sim_loc_driver_check finished." << std::endl;
+  ROS_INFO_STREAM("sim_loc_driver_check finished.");
+  check_thread.stop();
+  std::cout << "sim_loc_driver_check exits." << std::endl;
+  ROS_INFO_STREAM("sim_loc_driver_check exits.");
   return 0;
 }

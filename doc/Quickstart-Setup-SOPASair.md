@@ -1,7 +1,7 @@
 # Quickstart: LiDAR-LOC with SOPASair
 
 SOPASair is used to setup and configure SICK LiDAR Localization. The following quickstart gives a brief overview
-about setup and configuration. See the operation manuals published on https://www.sick.com/de/en/search?text=NAV-LOC 
+about setup and configuration. See the operation manuals published on https://supportportal.sick.com/Product_notes/lidar-loc-operation-instruction/ 
 for details and further information.
 
 ## LiDAR-LOC brief setup and configuration with SOPASair

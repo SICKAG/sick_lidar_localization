@@ -59,7 +59,7 @@
 #include <boost/algorithm/hex.hpp>
 #include <boost/algorithm/string.hpp>
 
-#include "sick_lidar_localization/sim_loc_utils.h"
+#include "sick_lidar_localization/utils.h"
 
 /*
  * Converts and returns binary data to hex string

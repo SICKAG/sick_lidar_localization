@@ -2,6 +2,9 @@
  * @brief sim_loc_pointcloud_converts sim_loc_driver messages (type sick_lidar_localization::SickLocResultPortTelegramMsg),
  * to PointCloud2 messages and publishes PointCloud2 messages on topic "/cloud".
  *
+ * The vehicle poses (PoseX, PoseY, PoseYaw of result port telegrams) are transformed and published
+ * by tf-messages with configurable parent and child frame id.
+ *
  * It also serves as an usage example for sick_lidar_localization and shows how to use sick_lidar_localization
  * in a custumized application.
  *
@@ -65,9 +68,12 @@
 #include <ros/ros.h>
 #include <geometry_msgs/Point.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2_ros/transform_broadcaster.h>
+#include <geometry_msgs/TransformStamped.h>
 
-#include "sick_lidar_localization/sim_loc_fifo.h"
-#include "sick_lidar_localization/sim_loc_result_port_parser.h"
+#include "sick_lidar_localization/fifo_buffer.h"
+#include "sick_lidar_localization/result_port_parser.h"
 
 namespace sick_lidar_localization
 {
@@ -126,16 +132,24 @@ namespace sick_lidar_localization
     std::vector<geometry_msgs::Point> poseToDemoPoints(double posx, double posy, double yaw, double triangle_height);
     
     /*!
-     * Converts a telegram from type SickLocResultPortTelegramMsg to PointCloud2
+     * Converts the vehicle position from a result port telegram to PointCloud2 message with 4 points
+     * (centerpoint plus 3 demo corner points showing a triangle).
      * @param[in] msg result telegram message (SickLocResultPortTelegramMsg)
      * @return PointCloud2 message
      */
-    sensor_msgs::PointCloud2 convert(const sick_lidar_localization::SickLocResultPortTelegramMsg & msg);
+    sensor_msgs::PointCloud2 convertToPointCloud(const sick_lidar_localization::SickLocResultPortTelegramMsg & msg);
+
+    /*!
+     * Converts the vehicle pose from a result port telegram to a tf transform.
+     * @param[in] msg result telegram message (SickLocResultPortTelegramMsg)
+     * @return tf transform
+     */
+    geometry_msgs::TransformStamped convertToTransform(const sick_lidar_localization::SickLocResultPortTelegramMsg & msg);
     
     /*!
      * Thread callback, pops received telegrams from the fifo buffer m_result_port_telegram_fifo,
      * converts the telegrams from type SickLocResultPortTelegramMsg to PointCloud2 and publishes
-     * PointCloud2 messages.
+     * PointCloud2 messages. The vehicle pose is converted to a tf transform and broadcasted.
      */
     virtual void runPointCloudConverterThreadCb(void);
 
@@ -145,6 +159,8 @@ namespace sick_lidar_localization
 
     sick_lidar_localization::FifoBuffer<sick_lidar_localization::SickLocResultPortTelegramMsg, boost::mutex> m_result_port_telegram_fifo; ///< fifo buffer for result port telegrams from sim_loc_driver
     std::string m_point_cloud_frame_id;      ///< ros frame id of PointCloud2 messages, default: "sick_lidar_localization"
+    std::string m_tf_parent_frame_id;        ///< parent frame of tf messages of of vehicles pose (typically frame of the loaded map)
+    std::string m_tf_child_frame_id;         ///< child frame of tf messages of of vehicles pose
     ros::Publisher m_point_cloud_publisher;  ///< ros publisher for PointCloud2 messages
     bool m_converter_thread_running;         ///< true: m_verification_thread is running, otherwise false
     boost::thread* m_converter_thread;       ///< thread to verify sim_loc_driver

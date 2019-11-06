@@ -75,7 +75,10 @@ namespace sick_lidar_localization
     /*!
      * Destructor
      */
-    ~FifoBuffer() {}
+    ~FifoBuffer()
+    {
+      notify(); // interrupt a possible wait in waitForNotify()
+    }
   
     /*!
      * Returns true, if the fifo buffer is empty.
@@ -129,6 +132,25 @@ namespace sick_lidar_localization
       {
         waitForNotify();
       }
+    }
+  
+    /*!
+     * Waits until there's at least one element in the fifo buffer, or a notification has been signalled.
+     */
+    void waitOnceForElement()
+    {
+      if (ros::ok() && empty())
+      {
+        waitForNotify();
+      }
+    }
+
+    /*!
+     * Signal a notification to interrupt a waiting waitForElement() call
+     */
+    void notify(void)
+    {
+      notifyAll();
     }
     
     /*!

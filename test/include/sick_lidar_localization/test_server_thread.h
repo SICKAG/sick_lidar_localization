@@ -68,7 +68,8 @@
 #include <boost/thread/recursive_mutex.hpp>
 #include <list>
 
-#include "sick_lidar_localization/sim_loc_utils.h"
+#include "sick_lidar_localization/fifo_buffer.h"
+#include "sick_lidar_localization/utils.h"
 
 namespace sick_lidar_localization
 {
@@ -83,9 +84,10 @@ namespace sick_lidar_localization
     /*!
      * Constructor. The server thread does not start automatically, call start() and stop() to start and stop the server.
      * @param[in] nh ros node handle
-     * @param[in] tcp_port tcp server port, default: The localization controller uses IP port number 2201 to send localization results
+     * @param[in] ip_port_results ip port for result telegrams, default: 2201
+     * @param[in] ip_port_cola ip port for command requests and responses, default: 2111
      */
-    TestServerThread(ros::NodeHandle* nh = 0, int tcp_port = 2201);
+    TestServerThread(ros::NodeHandle* nh = 0, int ip_port_results = 2201, int ip_port_cola = 2111);
   
     /*!
      * Destructor. Stops the server thread and closes all tcp connections.
@@ -112,6 +114,20 @@ namespace sick_lidar_localization
     void messageCbResultPortTelegrams(const sick_lidar_localization::SickLocResultPortTelegramMsg & msg);
     
   protected:
+  
+    /*!
+     * class ServerColaRequest: utility container for a received telegram (telegram data plus flag for Cola-Ascii or Cola-Binary)
+     */
+    class ServerColaRequest
+    {
+    public:
+      ServerColaRequest(const std::vector<uint8_t> & data = std::vector<uint8_t>(), bool ascii = false) : telegram_data(data), telegram_is_ascii(ascii) {} ///< Constructor
+      bool telegram_is_ascii;             ///< true: received telegram_data is Cola-Ascii encoded, false: received telegram_data is Cola-Binary encoded
+      std::vector<uint8_t> telegram_data; ///< received telegram_data (Cola-Ascii or Cola-Binary)
+    };
+  
+    typedef boost::thread* thread_ptr;                ///< shortcut for pointer to boost::thread
+    typedef boost::asio::ip::tcp::socket* socket_ptr; ///< shortcut for pointer to boost::asio::ip::tcp::socket
     
     /*!
      * Closes all tcp connections
@@ -119,22 +135,48 @@ namespace sick_lidar_localization
     virtual void closeTcpConnections(void);
 
     /*!
+     * Closes a socket.
+     * @param[in,out] p_socket socket to be closed
+     */
+    void closeSocket(socket_ptr & p_socket);
+    
+    /*!
      * Stops all worker threads
      */
     void closeWorkerThreads(void);
     
     /*!
-     * Thread callback, listens and accept tcp connections from clients.
+     * Thread callback, listens and accept tcp connections from clients for result telegrams.
      * Starts a new worker thread to generate result port telegrams for each tcp client.
      */
-    virtual void runConnectionThreadCb(void);
+    virtual void runConnectionThreadResultCb(void);
   
     /*!
-     * Worker thread callback, generates and sends telegrams to a tcp client.
-     * There's one worker thread for each tcp client.
-     * @param[in] p_socket socket to send telegrams to the tcp client
+     * Thread callback, listens and accept tcp connections from clients for cola telegrams.
+     * Starts a new worker thread to receive command requests for each tcp client.
      */
-    virtual void runWorkerThreadCb(boost::asio::ip::tcp::socket* p_socket);
+    virtual void runConnectionThreadColaCb(void);
+  
+    /*!
+     * Generic thread callback, listens and accept tcp connections from clients.
+     * Starts a worker thread running thread_function_cb for each tcp client.
+     */
+    template<typename Callable> void runConnectionThreadGenericCb(boost::asio::ip::tcp::acceptor & tcp_acceptor_results, int ip_port_results, Callable thread_function_cb);
+  
+    /*!
+     * Worker thread callback, generates and sends result telegrams to a tcp client.
+     * There's one result worker thread for each tcp client.
+     * @param[in] p_socket socket to send result telegrams to the tcp client
+     */
+    virtual void runWorkerThreadResultCb(boost::asio::ip::tcp::socket* p_socket);
+  
+    /*!
+     * Worker thread callback, receives command requests from a tcp client
+     * and sends a synthetical command response.
+     * There's one request worker thread for each tcp client.
+     * @param[in] p_socket socket to receive command requests from the tcp client
+     */
+    virtual void runWorkerThreadColaCb(boost::asio::ip::tcp::socket* p_socket);
   
     /*!
      * Thread callback, runs an error simulation and switches m_error_simulation_flag through the error test cases.
@@ -159,14 +201,17 @@ namespace sick_lidar_localization
      * member data
      */
 
-    int m_tcp_port;                                          ///< tcp server port, default: The localization controller uses IP port number 2201 to send localization results
+    int m_ip_port_results;                                   ///< ip port for result telegrams, default: The localization controller uses IP port number 2201 to send localization results
+    int m_ip_port_cola;                                      ///< ip port for for command requests and responses, default: The localization controller uses IP port number 2111 and 2112 to send telegrams and to request data
     double m_result_telegram_rate;                           ///< frequency to generate and send result port telegrams, default: 10 Hz
-    boost::thread* m_tcp_connection_thread;                  ///< thread to accept tcp clients
+    thread_ptr m_tcp_connection_thread_results;              ///< thread to accept tcp clients for result port telegrams
+    thread_ptr m_tcp_connection_thread_cola;                 ///< thread to accept tcp clients for command requests and responses
     bool m_tcp_connection_thread_running;                    ///< true: m_tcp_connection_thread is running, otherwise false
     boost::asio::io_service m_ioservice;                     ///< boost io service for tcp connections
-    boost::asio::ip::tcp::acceptor m_tcp_acceptor;           ///< boost acceptor for tcp clients
+    boost::asio::ip::tcp::acceptor m_tcp_acceptor_results;   ///< boost acceptor for tcp clients for result telegrams
+    boost::asio::ip::tcp::acceptor m_tcp_acceptor_cola;      ///< boost acceptor for tcp clients for command requests and responses
     std::list<boost::asio::ip::tcp::socket*> m_tcp_sockets;  ///< list of tcp sockets (one socket for each tcp client)
-    std::list<boost::thread*> m_tcp_worker_threads;          ///< list of tcp worker thread (one thread for each tcp client, generating telegrams)
+    std::list<thread_ptr> m_tcp_worker_threads;              ///< list of tcp worker thread (one thread for each tcp client, generating telegrams)
     boost::mutex m_tcp_worker_threads_mutex;                 ///< mutex to protect m_tcp_worker_threads
     bool m_worker_thread_running;                            ///< true: worker threads started, otherwise false
     ros::Publisher m_result_testcases_publisher;             ///< ros publisher for testcases with result port telegrams (type SickLocResultPortTestcaseMsg)
@@ -189,7 +234,7 @@ namespace sick_lidar_localization
   
     sick_lidar_localization::SetGet<ERROR_SIMULATION_FLAG> m_error_simulation_flag; ///< current error simulation flag, default: NO_ERROR
     bool m_error_simulation_enabled;                         ///< default: false (no error simulation), if true, test server simulates errors and communication failures of type ERROR_SIMULATION_FLAG
-    boost::thread* m_error_simulation_thread;                ///< thread to run error simulation, switches m_error_simulation_flag through the error test cases
+    thread_ptr m_error_simulation_thread;                    ///< thread to run error simulation, switches m_error_simulation_flag through the error test cases
     bool m_error_simulation_thread_running;                  ///< true: m_error_simulation_thread is running, otherwise false
     sick_lidar_localization::SetGet<sick_lidar_localization::SickLocResultPortTelegramMsg> m_last_telegram_received; ///< last telegram message received from sick_lidar_localization driver
     

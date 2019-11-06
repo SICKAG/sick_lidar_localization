@@ -9,9 +9,10 @@ To install and build ROS support for SICK LiDAR Localization, run the following 
 
 ```console
 cd ~/catkin_ws/src
-# sudo apt-get install expect                                        # install unbuffer for logging console output, development only
-# git clone https://github.com/madler/crcany.git                     # get crc implementation, development only
-git clone https://github.com/michael1309/sick_lidar_localization.git # get ros driver sources for sick localization
+# sudo apt-get install expect                                      # install unbuffer for logging console output, development only
+# git clone https://github.com/madler/crcany.git                   # get crc implementation, development only
+# git clone https://github.com/michael1309/sick_lidar_localization_pretest.git # sick_lidar_localization development
+git clone https://github.com/SICKAG/sick_lidar_localization.git    # sick_lidar_localization release version
 cd ..
 source /opt/ros/melodic/setup.bash
 catkin_make
@@ -25,7 +26,7 @@ To run SICK LiDAR Localization under ROS, install the SICK localization controll
 
 1. Install and run the SICK localization controller. See [doc/Quickstart-Setup-SOPASair.md](doc/Quickstart-Setup-SOPASair.md)
 for a quickstart. Find detailed information in the operation manuals published on 
-https://www.sick.com/de/en/search?text=NAV-LOC.
+https://supportportal.sick.com/Product_notes/lidar-loc-operation-instruction/.
 
 2. Start the sick_lidar_localization driver:
 
@@ -50,7 +51,7 @@ rostopic echo "/sick_lidar_localization/driver/result_telegrams"
 
 ## Result port telegrams
 
-Result port telegrams are continously received and published to inform about a sensors pose (position and orientation).
+Result port telegrams are continously received and published to inform about a vehicles pose (position and orientation).
 ROS result telegram messages have the datatype [msg/SickLocResultPortTelegramMsg.msg](msg/SickLocResultPortTelegramMsg.msg),
 containing 4 sub-elements:
 
@@ -85,7 +86,7 @@ int32 | telegram_payload.PoseY | Position Y of the vehicle on the map in cartesi
 int32 | telegram_payload.PoseYaw | Orientation (yaw) of the vehicle on the map [mdeg]
 uint32 | telegram_payload.Reserved1 | Reserved
 int32 | telegram_payload.Reserved2 | Reserved
-uint8 | telegram_payload.Quality | Quality of pose [1 … 100], 1 = bad pose quality, 100 = good pose quality
+uint8 | telegram_payload.Quality | Quality of pose [0 … 100], 1 = bad pose quality, 100 = good pose quality
 uint8 | telegram_payload.OutliersRatio | Ratio of beams that cannot be assigned to the current reference map [%]
 int32 | telegram_payload.CovarianceX | Covariance c1 of the pose X [mm^2]
 int32 | telegram_payload.CovarianceY | Covariance c5 of the pose Y [mm^2]
@@ -161,7 +162,7 @@ message: "sim_loc_driver: status okay, receiving and publishing result telegrams
 ```
 
 Note: In case of errors (f.e. connection lost, parse errors or invalid telegrams), diagnostic messages with an error code
-are published. Error codes defined in [include/sick_lidar_localization/sim_loc_driver_thread.h](include/sick_lidar_localization/sim_loc_driver_thread.h) are:
+are published. Error codes defined in [include/sick_lidar_localization/driver_thread.h](include/sick_lidar_localization/driver_thread.h) are:
 
 Error code | Value | Description
 --- | --- | ---
@@ -304,7 +305,7 @@ After switching to normal mode, sim_loc_test_server checks for telegram messages
 error, if the driver isn't reconnecting or isn't publishing telegrams. 
 
 Currently, the following errors are simulated and tested by sim_loc_test_server (enumerated in 
-[include/sick_lidar_localization/sim_loc_test_server_thread.h](include/sick_lidar_localization/sim_loc_test_server_thread.h):
+[include/sick_lidar_localization/test_server_thread.h](include/sick_lidar_localization/test_server_thread.h):
 
 Error testcase | Description
 --- | ---
@@ -334,50 +335,66 @@ TestServerThread: error simulation summary: 6 of 6 testcases passed, 0 failures.
 MessageCheckThread: check messages thread summary: 1153 messages checked, 0 failures.
 ```
  
-## Usage example: pointcloud_convert
+## Visualization and usage example: pointcloud_convert
 
 pointcloud_convert in file [src/pointcloud_converter.cpp](src/pointcloud_converter.cpp) implements a subscriber to 
-sim_loc_driver messages and converts them to PointCloud2 messages, which are published on topic "/cloud".
-They can be viewed by rviz:
+sim_loc_driver messages. The driver messages are converted to both PointCloud2 on topic "/cloud" and and TF messages,
+which can be viewed by rviz.
+
+To run and visualize an example with a simulated vehicle moving in circles, run the following commands: 
 
 ```console
-rosrun tf static_transform_publisher 0 0 0 0 0 0 map sick_lidar_localization 10 &
+cd ~/catkin_ws
+source ./devel/setup.bash
+# Run test server, simulate localization controller with a vehicle moving in circles.
+roslaunch sick_lidar_localization sim_loc_test_server.launch demo_circles:=true &
+sleep 3 # make sure ros core and sim_loc_test_server are up and running 
+# Run ros driver, connect to localization controller, receive, convert and publish report telegrams
+roslaunch sick_lidar_localization sim_loc_driver.launch localization_controller_ip_adress:=127.0.0.1 &
+# Visualize PointCloud2 and TF messages by rviz:
+rosrun tf static_transform_publisher 0 0 0 0 0 0 map pointcloud_sick_lidar_localization 10 &
 rosrun rviz rviz &
 ```
 
-Example output:
+To view vehicles poses by TF messages, add a display with type TF and select frame tf_demo_map in global options:
+
+![doc/screenshot-rviz-simu2.png](doc/screenshot-rviz-simu2.png)
+
+To view pointcloud messages, add a display with topic /cloud/PointCloud2 and select frame map in global options:
 
 ![doc/screenshot-rviz-simu1.png](doc/screenshot-rviz-simu1.png)
+
+Both visualizations view the poses of the same simulated vehicle.
 
 pointcloud_convert is an usage example for sick_lidar_localization, too, and shows how to subscribe and use the
 sick_lidar_localization messages published by the driver. Feel free to use this example as a starting point for
 customization. pointcloud_convert in file [src/pointcloud_converter.cpp](src/pointcloud_converter.cpp) 
 is just the main entry point. Conversion and message handling is implemented in class 
-sick_lidar_localization::PointCloudConverter in file [src/sim_loc_pointcloud_converter.cpp](src/sim_loc_pointcloud_converter.cpp). 
+sick_lidar_localization::PointCloudConverter in file [src/pointcloud_converter.cpp](src/pointcloud_converter_thread.cpp). 
 
 ## Source code, doxygen
 
-The main entry point of the ros driver is implemented in file [src/sim_loc_driver.cpp](src/sim_loc_driver.cpp).
-It creates an instance of class sick_lidar_localization::DriverMonitor implemented in [src/sim_loc_driver_monitor.cpp](src/sim_loc_driver_monitor.cpp).
+The main entry point of the ros driver is implemented in file [src/driver.cpp](src/driver.cpp).
+It creates an instance of class sick_lidar_localization::DriverMonitor implemented in [src/driver_monitor.cpp](src/driver_monitor.cpp).
 
 sick_lidar_localization::DriverMonitor creates and monitors an instance of class sick_lidar_localization::DriverThread implemented in
-[src/sim_loc_driver_thread.cpp](src/sim_loc_driver_thread.cpp), which runs all driver functions, including the
+[src/driver_thread.cpp](src/driver_thread.cpp), which runs all driver functions, including the
 telegram parser implemented by class sick_lidar_localization::ResultPortParser. 
 
 After successful initialization, the driver runs 3 threads:
 
 - The receiver thread implemented by sick_lidar_localization::DriverThread::runReceiverThreadCb in file 
-[src/sim_loc_driver_thread.cpp](src/sim_loc_driver_thread.cpp). The receiver thread connects to the localization 
+[src/driver_thread.cpp](src/driver_thread.cpp). The receiver thread connects to the localization 
 controller, receives binary result telegram and buffers them in a fifo (first-in, first-out)
 
 - The converter thread implemented by sick_lidar_localization::DriverThread::runConverterThreadCb in file 
-[src/sim_loc_driver_thread.cpp](src/sim_loc_driver_thread.cpp). The converter thread pops binary telegrams from the
+[src/driver_thread.cpp](src/driver_thread.cpp). The converter thread pops binary telegrams from the
 fifo, decodes and parses result port telegrams and publishes telegram messages on ros topic 
 "/sick_lidar_localization/driver/result_telegrams". Telegram decoding is implemented by sick_lidar_localization::ResultPortParser::decode
-in file [src/sim_loc_result_port_parser.cpp](src/sim_loc_result_port_parser.cpp).
+in file [src/result_port_parser.cpp](src/result_port_parser.cpp).
 
 - The monitoring thread implemented by sick_lidar_localization::DriverMonitor::runMonitorThreadCb in file 
-[src/sim_loc_driver_monitor.cpp](src/sim_loc_driver_monitor.cpp). It subscribes and monitors the telegram messages from
+[src/driver_monitor.cpp](src/driver_monitor.cpp). It subscribes and monitors the telegram messages from
 sick_lidar_localization::DriverThread. In case of errors or missing telegram messages, the tcp connection to the 
 localization controller is closed and re-established.
 
@@ -410,4 +427,4 @@ Quickstart, tutorials and manuals:
 
 * Quickstart Setup LiDAR-LOC: [doc/Quickstart-Setup-SOPASair.md](doc/Quickstart-Setup-SOPASair.md)
 
-* Operation manuals: https://www.sick.com/de/en/search?text=NAV-LOC
+* Operation manuals: https://supportportal.sick.com/Product_notes/lidar-loc-operation-instruction/

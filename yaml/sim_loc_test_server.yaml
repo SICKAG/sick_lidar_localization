@@ -3,10 +3,11 @@
 # It implements a simple tcp server, accepting tcp connections from clients and generating telegrams to test the ros driver for sim localization.
 sick_lidar_localization:
 
-  # Server configuration
+  # Server configuration. See Operation-Instruction-v1.1.0.241R.pdf, page 51, "IP port number and protocol" for default tcp ports.
   test_server:
-    result_telegrams_tcp_port: 2201  # Default tcp port for sim_loc_test_server is 2201 (ip port number of the localization controller sending localization results)
-    result_telegrams_rate:       10  # Rate to generate and send result port telegrams
-    result_testcases_topic:    "/sick_lidar_localization/test_server/result_testcases"  # ROS topic to publish testcases with result port telegrams (type SickLocResultPortTestcaseMsg)
-    result_testcases_frame_id: "result_testcases"                                 # ROS frame id of testcase messages (type SickLocResultPortTestcaseMsg)
+    result_telegrams_tcp_port:       2201  # Default tcp port for sim_loc_test_server is 2201 (ip port number of the localization controller sending localization results)
+    cola_telegrams_tcp_port:         2111  # For requests and to transmit settings to the localization controller: IP port number 2111 and 2112 to send telegrams and to request data, SOPAS CoLa-A or CoLa-B protocols
+    result_telegrams_rate:             10  # Rate to generate and send result port telegrams
+    result_testcases_topic:          "/sick_lidar_localization/test_server/result_testcases"  # ROS topic to publish testcases with result port telegrams (type SickLocResultPortTestcaseMsg)
+    result_testcases_frame_id:       "result_testcases" # ROS frame id of testcase messages (type SickLocResultPortTestcaseMsg)
 

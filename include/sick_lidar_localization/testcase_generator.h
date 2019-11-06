@@ -56,7 +56,8 @@
 #ifndef __SIM_LOC_TESTCASE_GENERATOR_H_INCLUDED
 #define __SIM_LOC_TESTCASE_GENERATOR_H_INCLUDED
 
-#include "sick_lidar_localization/sim_loc_result_port_parser.h"
+#include "sick_lidar_localization/result_port_parser.h"
+#include "sick_lidar_localization/SickLocColaTelegramMsg.h"
 #include "sick_lidar_localization/SickLocResultPortTestcaseMsg.h"
 
 namespace sick_lidar_localization
@@ -90,7 +91,25 @@ namespace sick_lidar_localization
      * @return SickLocResultPortTestcaseMsg with the binary telegram and SickLocResultPortTelegramMsg
      */
     static sick_lidar_localization::SickLocResultPortTestcaseMsg createResultPortCircles(double circle_radius, double circle_yaw);
+  
+    /*!
+     * Creates and returns a synthetical cola response to a cola command request.
+     * Note: Just a few cola responses are implemented for test purposes, f.e. responses to "LocRequestTimestamp".
+     * By default, a response: "sAN <command_name>" without any parameter is returned (sAN: Response to sMN)
+     * @param[in] cola_request Cola request from client
+     * @return Synthetical cola response from server
+     */
+    static sick_lidar_localization::SickLocColaTelegramMsg createColaResponse(const sick_lidar_localization::SickLocColaTelegramMsg & cola_request);
     
+  protected:
+
+    /*!
+     * Creates and returns a timestamp in milliseconds ticks.
+     * To simulate time jitter, network latency and time drift,
+     * a random value of +/- 2 milliseconds is added.
+     * @return timestamp in milliseconds ticks
+     */
+    static uint32_t createTimestampTicksMilliSec(void);
   
   }; // class TestcaseGenerator
   

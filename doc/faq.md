@@ -6,7 +6,7 @@
 
 :white_check_mark: To setup and configure LiDAR-LOC with SOPASair, use of Chrome-browser under Windows is highly recommended.
 See [Quickstart-Setup-SOPASair.md](Quickstart-Setup-SOPASair.md) for a quickstart. 
-Find detailed information in the operation manuals published on https://www.sick.com/de/en/search?text=NAV-LOC. 
+Find detailed information in the operation manuals published on https://supportportal.sick.com/Product_notes/lidar-loc-operation-instruction/. 
 
 ## Reconnect after network error
 

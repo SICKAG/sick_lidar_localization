@@ -24,6 +24,9 @@ rm -rf ~/.ros/*
 rosclean purge -y
 if [ ! -d ~/.ros/log ] ; then mkdir -p ~/.ros/log ; fi
 
+# upload demo_map:
+# => file "/Z5....smap
+
 #
 # Run sim_loc_driver_check for a plausibility check of messages and telegrams published by the sick_lidar_localization ros driver
 #

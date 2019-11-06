@@ -58,7 +58,7 @@
  */
 #include <ros/ros.h>
 
-#include "sick_lidar_localization/sim_loc_pointcloud_converter.h"
+#include "sick_lidar_localization/pointcloud_converter.h"
 
 int main(int argc, char** argv)
 {

@@ -1,5 +1,5 @@
 /*
- * @brief verify_sim_loc_driver verifies the sim_loc_driver messages
+ * @brief sim_loc_verifier_thread implements a thread to verify sim_loc_driver messages
  * against testcases published by sim_loc_test_server.
  *
  * To verify sim_loc_driver, sim_loc_driver runs against sim_loc_test_server.
@@ -8,7 +8,7 @@
  * result port telegrams from the server via TCP, decodes the telegrams
  * and publishes SickLocResultPortTelegramMsg messages.
  *
- * verify_sim_loc_driver subscribes to both sim_loc_driver messages and
+ * sim_loc_verifier_thread subscribes to both sim_loc_driver messages and
  * sim_loc_test_server messages and compares their content. A warning will
  * be logged in case of failures or mismatches.
  *
@@ -63,41 +63,80 @@
  *  Copyright 2019 Ing.-Buero Dr. Michael Lehning
  *
  */
-#include <ros/ros.h>
+#ifndef __SIM_LOC_VERIFIER_THREAD_H_INCLUDED
+#define __SIM_LOC_VERIFIER_THREAD_H_INCLUDED
 
-#include "sick_lidar_localization/sim_loc_verifier_thread.h"
+#include <list>
+#include <string>
 
-int main(int argc, char** argv)
+#include "sick_lidar_localization/fifo_buffer.h"
+#include "sick_lidar_localization/testcase_generator.h"
+
+namespace sick_lidar_localization
 {
-  // Ros configuration and initialization
-  ros::init(argc, argv, "verify_sim_loc_driver");
-  ros::NodeHandle nh;
-  ROS_INFO_STREAM("verify_sim_loc_driver started.");
+  /*!
+   * class VerifierThread implements a thread to verify sim_loc_driver messages
+   * against testcases published by sim_loc_test_server. It subscribes to both
+   * sim_loc_driver messages and sim_loc_test_server messages and compares their
+   * content. A warning will be logged in case of failures or mismatches.
+   */
+  class VerifierThread
+  {
+  public:
+    
+    /*!
+     * Constructor
+     */
+    VerifierThread();
+    
+    /*!
+     * Destructor
+     */
+    virtual ~VerifierThread();
+    
+    /*!
+     * Starts the verification thread, matches sim_loc_driver and sim_loc_test_server messages.
+     * @return true on success, false on failure.
+     */
+    virtual bool start(void);
+    
+    /*!
+     * Stops the verification thread.
+     * @return true on success, false on failure.
+     */
+    virtual bool stop(void);
   
-  std::string result_telegrams_topic = "/sick_lidar_localization/driver/result_telegrams";      // default topic to publish result port telegram messages (type SickLocResultPortTelegramMsg)
-  std::string result_testcases_topic = "/sick_lidar_localization/test_server/result_testcases"; // default topic to publish testcases with result port telegrams (type SickLocResultPortTestcaseMsg)
-  ros::param::param<std::string>("/sick_lidar_localization/driver/result_telegrams_topic", result_telegrams_topic, result_telegrams_topic);
-  ros::param::param<std::string>("/sick_lidar_localization/test_server/result_testcases_topic", result_testcases_topic, result_testcases_topic);
+    /*!
+     * Callback for result telegram messages (SickLocResultPortTelegramMsg) from sim_loc_driver.
+     * @param[in] msg result telegram message (SickLocResultPortTelegramMsg)
+     */
+    virtual void messageCbResultPortTelegrams(const sick_lidar_localization::SickLocResultPortTelegramMsg & msg);
   
-  // Init verifier to compare and check sim_loc_driver and sim_loc_test_server messages
-  sick_lidar_localization::VerifierThread verifier;
+    /*!
+     * Callback for testcase messages (SickLocResultPortTestcaseMsg) from sim_loc_test_server.
+     * @param[in] msg testcase message (SickLocResultPortTestcaseMsg)
+     */
+    virtual void messageCbResultPortTestcases(const sick_lidar_localization::SickLocResultPortTestcaseMsg & msg);
+    
+  protected:
   
-  // Subscribe to sim_loc_driver messages
-  ros::Subscriber result_telegram_subscriber = nh.subscribe(result_telegrams_topic, 1, &sick_lidar_localization::VerifierThread::messageCbResultPortTelegrams, &verifier);
+    /*!
+     * Thread callback, verifies sim_loc_driver messages in m_result_port_telegram_fifo
+     * against sim_loc_test_server messages in m_result_port_testcase_fifo.
+     */
+    virtual void runVerificationThreadCb(void);
+
+    /*
+     * member data
+     */
+
+    sick_lidar_localization::FifoBuffer<sick_lidar_localization::SickLocResultPortTelegramMsg, boost::mutex> m_result_port_telegram_fifo; ///< fifo buffer for result port telegrams from sim_loc_driver
+    sick_lidar_localization::FifoBuffer<sick_lidar_localization::SickLocResultPortTestcaseMsg, boost::mutex> m_result_port_testcase_fifo; ///< fifo buffer for testcase messages from sim_loc_test_server
+    bool m_verification_thread_running;                    ///< true: m_verification_thread is running, otherwise false
+    boost::thread* m_verification_thread;                  ///< thread to verify sim_loc_driver
+    double m_result_telegram_rate;                         ///< frequency or result port telegrams
+    
+  };
   
-  // Subscribe to sim_loc_test_server messages
-  ros::Subscriber testcase_subscriber = nh.subscribe(result_testcases_topic, 1, &sick_lidar_localization::VerifierThread::messageCbResultPortTestcases, &verifier);
-  
-  // Start verification thread
-  verifier.start();
-  
-  // Run ros event loop
-  ros::spin();
-  
-  std::cout << "verify_sim_loc_driver finished." << std::endl;
-  ROS_INFO_STREAM("verify_sim_loc_driver finished.");
-  verifier.stop();
-  std::cout << "verify_sim_loc_driver exits." << std::endl;
-  ROS_INFO_STREAM("verify_sim_loc_driver exits.");
-  return 0;
-}
+} // namespace sick_lidar_localization
+#endif // __SIM_LOC_VERIFIER_THREAD_H_INCLUDED

@@ -64,7 +64,7 @@ if true ; then
     echo -e "sick_lidar_localization error simulation: running $testcnt. testcase ..." 2>&1 | tee -a ~/.ros/log/error_simu/error_simu.log
     echo -e "sick_lidar_localization error simulation: killing test server ..." 2>&1 | tee -a ~/.ros/log/error_simu/error_simu.log
     if [ $testcnt -eq 1 ] ; then
-      rosnode kill /sim_loc_test_server
+      rosnode kill /sim_loc_test_server ; sleep 10 ; killall -9 sim_loc_test_server
     elif [ $testcnt -eq 2 ] ; then
       killall -9 sim_loc_test_server
     else

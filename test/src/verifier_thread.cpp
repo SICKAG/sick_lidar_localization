@@ -65,8 +65,8 @@
  */
 #include <ros/ros.h>
 
-#include "sick_lidar_localization/sim_loc_utils.h"
-#include "sick_lidar_localization/sim_loc_verifier_thread.h"
+#include "sick_lidar_localization/utils.h"
+#include "sick_lidar_localization/verifier_thread.h"
 
 /*
  * Constructor

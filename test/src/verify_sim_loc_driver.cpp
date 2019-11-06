@@ -1,5 +1,16 @@
 /*
- * @brief sim_loc_random implements random number generators.
+ * @brief verify_sim_loc_driver verifies the sim_loc_driver messages
+ * against testcases published by sim_loc_test_server.
+ *
+ * To verify sim_loc_driver, sim_loc_driver runs against sim_loc_test_server.
+ * sim_loc_test_server generates and publishes testcases with deterministic
+ * and randomly generated result port telegrams. sim_loc_driver receives
+ * result port telegrams from the server via TCP, decodes the telegrams
+ * and publishes SickLocResultPortTelegramMsg messages.
+ *
+ * verify_sim_loc_driver subscribes to both sim_loc_driver messages and
+ * sim_loc_test_server messages and compares their content. A warning will
+ * be logged in case of failures or mismatches.
  *
  * Copyright (C) 2019 Ing.-Buero Dr. Michael Lehning, Hildesheim
  * Copyright (C) 2019 SICK AG, Waldkirch
@@ -52,39 +63,41 @@
  *  Copyright 2019 Ing.-Buero Dr. Michael Lehning
  *
  */
-#include <time.h>
+#include <ros/ros.h>
 
-#include "sick_lidar_localization/sim_loc_random.h"
+#include "sick_lidar_localization/verifier_thread.h"
 
-/*
- * Constructor
- * @param[in] lower_bound min. value of random distribution, random numbers will be generated within the range lower_bound up to upper_bound
- * @param[in] upper_bound max. value of random distribution, random numbers will be generated within the range lower_bound up to upper_bound
- */
-sick_lidar_localization::UniformRandomInteger::UniformRandomInteger(int lower_bound, int upper_bound)
-: m_random_engine(time(0)), m_uniform_distribution(lower_bound, upper_bound), m_random_generator(m_random_engine, m_uniform_distribution)
+int main(int argc, char** argv)
 {
-}
-
-/*
- * Returns a uniform distributed integer random number within the range lower_bound up to upper_bound
- */
-int sick_lidar_localization::UniformRandomInteger::generate(void)
-{
-  return m_random_generator();
-}
-
-/*
- * Creates and returns uniform distributed binary random data of a given size
- * @param[in] data_size number of random bytes created, size of output data
- * @return binary random data of size <data_size>
- */
-std::vector<uint8_t> sick_lidar_localization::UniformRandomInteger::generate(int data_size)
-{
-  std::vector<uint8_t> data(data_size, 0);
-  for(int n = 0; n < data_size; n++)
-  {
-    data[n] = (uint8_t)(m_random_generator() & 0xFF);
-  }
-  return data;
+  // Ros configuration and initialization
+  ros::init(argc, argv, "verify_sim_loc_driver");
+  ros::NodeHandle nh;
+  ROS_INFO_STREAM("verify_sim_loc_driver started.");
+  
+  std::string result_telegrams_topic = "/sick_lidar_localization/driver/result_telegrams";      // default topic to publish result port telegram messages (type SickLocResultPortTelegramMsg)
+  std::string result_testcases_topic = "/sick_lidar_localization/test_server/result_testcases"; // default topic to publish testcases with result port telegrams (type SickLocResultPortTestcaseMsg)
+  ros::param::param<std::string>("/sick_lidar_localization/driver/result_telegrams_topic", result_telegrams_topic, result_telegrams_topic);
+  ros::param::param<std::string>("/sick_lidar_localization/test_server/result_testcases_topic", result_testcases_topic, result_testcases_topic);
+  
+  // Init verifier to compare and check sim_loc_driver and sim_loc_test_server messages
+  sick_lidar_localization::VerifierThread verifier;
+  
+  // Subscribe to sim_loc_driver messages
+  ros::Subscriber result_telegram_subscriber = nh.subscribe(result_telegrams_topic, 1, &sick_lidar_localization::VerifierThread::messageCbResultPortTelegrams, &verifier);
+  
+  // Subscribe to sim_loc_test_server messages
+  ros::Subscriber testcase_subscriber = nh.subscribe(result_testcases_topic, 1, &sick_lidar_localization::VerifierThread::messageCbResultPortTestcases, &verifier);
+  
+  // Start verification thread
+  verifier.start();
+  
+  // Run ros event loop
+  ros::spin();
+  
+  std::cout << "verify_sim_loc_driver finished." << std::endl;
+  ROS_INFO_STREAM("verify_sim_loc_driver finished.");
+  verifier.stop();
+  std::cout << "verify_sim_loc_driver exits." << std::endl;
+  ROS_INFO_STREAM("verify_sim_loc_driver exits.");
+  return 0;
 }

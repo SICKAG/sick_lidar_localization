@@ -57,23 +57,30 @@
  */
 #include <ros/ros.h>
 
-#include "sick_lidar_localization/sim_loc_test_server_thread.h"
-#include "sick_lidar_localization/sim_loc_testcase_generator.h"
-#include "sick_lidar_localization/sim_loc_random.h"
-#include "sick_lidar_localization/sim_loc_utils.h"
+#include "sick_lidar_localization/cola_parser.h"
+#include "sick_lidar_localization/cola_transmitter.h"
+#include "sick_lidar_localization/random_generator.h"
+#include "sick_lidar_localization/test_server_thread.h"
+#include "sick_lidar_localization/testcase_generator.h"
+#include "sick_lidar_localization/utils.h"
 
-/*
+/*!
  * Constructor. The server thread does not start automatically, call start() and stop() to start and stop the server.
  * @param[in] nh ros node handle
- * @param[in] tcp_port tcp server port, default: The localization controller uses IP port number 2201 to send localization results
+ * @param[in] ip_port_results ip port for result telegrams, default: 2201
+ * @param[in] ip_port_cola ip port for command requests and responses, default: 2111
  */
-sick_lidar_localization::TestServerThread::TestServerThread(ros::NodeHandle* nh, int tcp_port) :
-  m_tcp_port(tcp_port), m_tcp_connection_thread(0), m_tcp_connection_thread_running(false), m_worker_thread_running(false),
-  m_ioservice(), m_tcp_acceptor(m_ioservice, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), m_tcp_port)),
+sick_lidar_localization::TestServerThread::TestServerThread(ros::NodeHandle* nh, int ip_port_results, int ip_port_cola)
+: m_ip_port_results(ip_port_results), m_ip_port_cola(ip_port_cola), m_ioservice(),
+  m_tcp_connection_thread_results(0), m_tcp_connection_thread_cola(0),
+  m_tcp_connection_thread_running(false), m_worker_thread_running(false),
+  m_tcp_acceptor_results(m_ioservice, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), m_ip_port_results)),
+  m_tcp_acceptor_cola(m_ioservice, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), m_ip_port_cola)),
   m_result_telegram_rate(10), m_demo_move_in_circles(false), m_error_simulation_enabled(false), m_error_simulation_flag(NO_ERROR),
   m_error_simulation_thread(0), m_error_simulation_thread_running(false)
 {
-  m_tcp_acceptor.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
+  m_tcp_acceptor_results.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
+  m_tcp_acceptor_cola.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
   if(nh)
   {
     std::string result_testcases_topic = "/sick_lidar_localization/test_server/result_testcases"; // default topic to publish testcases with result port telegrams (type SickLocResultPortTestcaseMsg)
@@ -87,16 +94,15 @@ sick_lidar_localization::TestServerThread::TestServerThread(ros::NodeHandle* nh,
   }
 }
 
-/*
+/*!
  * Destructor. Stops the server thread and closes all tcp connections.
- * @param[in] tcp_port tcp server port, default: The localization controller uses IP port number 2201 to send localization results
  */
 sick_lidar_localization::TestServerThread::~TestServerThread()
 {
   stop();
 }
 
-/*
+/*!
  * Starts the server thread, starts to listen and accept tcp connections from clients.
  * @return true on success, false on failure.
  */
@@ -115,12 +121,14 @@ bool sick_lidar_localization::TestServerThread::start(void)
     ROS_INFO_STREAM("TestServerThread: running in normal mode, no error simulation.");
     
   }
+  // Start and run 3 threads to create sockets for new tcp clients on ip ports 2201 (results), 2111 (requests) and 2112 (responses)
   m_tcp_connection_thread_running = true;
-  m_tcp_connection_thread = new boost::thread(&sick_lidar_localization::TestServerThread::runConnectionThreadCb, this);
+  m_tcp_connection_thread_results = new boost::thread(&sick_lidar_localization::TestServerThread::runConnectionThreadResultCb, this);
+  m_tcp_connection_thread_cola = new boost::thread(&sick_lidar_localization::TestServerThread::runConnectionThreadColaCb, this);
   return true;
 }
 
-/*
+/*!
  * Stops the server thread and closes all tcp connections.
  * @return true on success, false on failure.
  */
@@ -136,23 +144,36 @@ bool sick_lidar_localization::TestServerThread::stop(void)
     m_error_simulation_thread = 0;
   }
   m_ioservice.stop();
-  if(m_tcp_acceptor.is_open())
+  // close both tcp acceptors for ip ports 2201 (results), 2111 (cola command requests)
+  std::vector<boost::asio::ip::tcp::acceptor*> tcp_acceptors = { &m_tcp_acceptor_results, & m_tcp_acceptor_cola };
+  for(std::vector<boost::asio::ip::tcp::acceptor*>::iterator iter_acceptor = tcp_acceptors.begin(); iter_acceptor != tcp_acceptors.end(); iter_acceptor++)
   {
-    m_tcp_acceptor.cancel(); // cancel the blocking call m_tcp_acceptor.listen() in the connection thread
-    m_tcp_acceptor.close();
+    if((*iter_acceptor)->is_open())
+    {
+      (*iter_acceptor)->cancel(); // cancel possibly blocking calls of m_tcp_acceptor_results.listen() in the connection thread
+      (*iter_acceptor)->close();  // close tcp acceptor
+    }
   }
-  if(m_tcp_connection_thread)
+  // close 2 threads creating sockets for new tcp clients on ip ports 2201 (results), 2111 (cola command requests)
+  std::vector<thread_ptr*> tcp_connection_threads = { &m_tcp_connection_thread_results, &m_tcp_connection_thread_cola };
+  for(std::vector<thread_ptr*>::iterator iter_connection_thread = tcp_connection_threads.begin(); iter_connection_thread != tcp_connection_threads.end(); iter_connection_thread++)
   {
-    m_tcp_connection_thread->join();
-    delete(m_tcp_connection_thread);
-    m_tcp_connection_thread = 0;
+    thread_ptr & tcp_connection_thread = **iter_connection_thread;
+    if(tcp_connection_thread)
+    {
+      tcp_connection_thread->join();
+      delete(tcp_connection_thread);
+      tcp_connection_thread = 0;
+    }
   }
+  // close sockets
   closeTcpConnections();
+  // close worker/client threads
   closeWorkerThreads();
   return true;
 }
 
-/*
+/*!
  * Closes all tcp connections
  */
 void sick_lidar_localization::TestServerThread::closeTcpConnections(void)
@@ -160,24 +181,63 @@ void sick_lidar_localization::TestServerThread::closeTcpConnections(void)
   for(std::list<boost::asio::ip::tcp::socket*>::iterator socket_iter = m_tcp_sockets.begin(); socket_iter != m_tcp_sockets.end(); socket_iter++)
   {
     boost::asio::ip::tcp::socket* p_socket = *socket_iter;
-    if(p_socket && p_socket->is_open())
+    try
     {
-      p_socket->shutdown(boost::asio::ip::tcp::socket::shutdown_both);
-      p_socket->close();
+      if(p_socket && p_socket->is_open())
+      {
+        p_socket->shutdown(boost::asio::ip::tcp::socket::shutdown_both);
+        p_socket->close();
+      }
+    }
+    catch(std::exception & exc)
+    {
+      ROS_WARN_STREAM("TestServerThread::closeTcpConnections(): exception " << exc.what() << " on closing socket.");
     }
     *socket_iter = 0;
   }
   m_tcp_sockets.clear();
 }
 
-/*
+/*!
+ * Closes a socket.
+ * @param[in,out] p_socket socket to be closed
+ */
+void sick_lidar_localization::TestServerThread::closeSocket(socket_ptr & p_socket)
+{
+  boost::lock_guard<boost::mutex> worker_thread_lockguard(m_tcp_worker_threads_mutex);
+  try
+  {
+    if(p_socket && p_socket->is_open())
+    {
+      p_socket->shutdown(boost::asio::ip::tcp::socket::shutdown_both);
+      p_socket->close();
+    }
+    if(p_socket)
+    {
+      for(std::list<boost::asio::ip::tcp::socket*>::iterator socket_iter = m_tcp_sockets.begin(); socket_iter != m_tcp_sockets.end(); )
+      {
+        if(p_socket == *socket_iter)
+          socket_iter = m_tcp_sockets.erase(socket_iter);
+        else
+          socket_iter++;
+      }
+      p_socket = 0;
+    }
+  }
+  catch(std::exception & exc)
+  {
+    ROS_WARN_STREAM("TestServerThread::closeSocket(): exception " << exc.what() << " on closing socket.");
+  }
+}
+
+/*!
  * Stops all worker threads
  */
 void sick_lidar_localization::TestServerThread::closeWorkerThreads(void)
 {
-  boost::lock_guard<boost::mutex> worker_thread_lockguard(m_tcp_worker_threads_mutex);
   m_worker_thread_running = false;
-  for(std::list<boost::thread*>::iterator thread_iter = m_tcp_worker_threads.begin(); thread_iter != m_tcp_worker_threads.end(); thread_iter++)
+  boost::lock_guard<boost::mutex> worker_thread_lockguard(m_tcp_worker_threads_mutex);
+  for(std::list<thread_ptr>::iterator thread_iter = m_tcp_worker_threads.begin(); thread_iter != m_tcp_worker_threads.end(); thread_iter++)
   {
     boost::thread *p_thread = *thread_iter;
     p_thread->join();
@@ -186,7 +246,7 @@ void sick_lidar_localization::TestServerThread::closeWorkerThreads(void)
   m_tcp_worker_threads.clear();
 }
 
-/*
+/*!
  * Callback for result telegram messages (SickLocResultPortTelegramMsg) from sim_loc_driver.
  * Buffers the last telegram to monitor sim_loc_driver messages in error simulation mode.
  * @param[in] msg result telegram message (SickLocResultPortTelegramMsg)
@@ -196,14 +256,32 @@ void sick_lidar_localization::TestServerThread::messageCbResultPortTelegrams(con
   m_last_telegram_received.set(msg);
 }
 
-/*
- * Thread callback, listens and accept tcp connections from clients.
+/*!
+ * Thread callback, listens and accept tcp connections from clients for result telegrams.
  * Starts a new worker thread to generate result port telegrams for each tcp client.
  */
-void sick_lidar_localization::TestServerThread::runConnectionThreadCb(void)
+void sick_lidar_localization::TestServerThread::runConnectionThreadResultCb(void)
+{
+  runConnectionThreadGenericCb(m_tcp_acceptor_results, m_ip_port_results, &sick_lidar_localization::TestServerThread::runWorkerThreadResultCb);
+}
+
+/*!
+ * Thread callback, listens and accept tcp connections from clients for cola telegrams.
+ * Starts a new worker thread to receive command requests for each tcp client.
+ */
+void sick_lidar_localization::TestServerThread::runConnectionThreadColaCb(void)
+{
+  runConnectionThreadGenericCb(m_tcp_acceptor_cola, m_ip_port_cola, &sick_lidar_localization::TestServerThread::runWorkerThreadColaCb);
+}
+
+/*!
+ * Thread callback, listens and accept tcp connections from clients.
+ * Starts a worker thread for each tcp client.
+ */
+template<typename Callable>void sick_lidar_localization::TestServerThread::runConnectionThreadGenericCb(boost::asio::ip::tcp::acceptor & tcp_acceptor_results, int ip_port_results, Callable thread_function_cb)
 {
   ROS_INFO_STREAM("TestServerThread: connection thread started");
-  while(ros::ok() && m_tcp_connection_thread_running && m_tcp_acceptor.is_open())
+  while(ros::ok() && m_tcp_connection_thread_running && tcp_acceptor_results.is_open())
   {
     if(m_error_simulation_flag.get() == DONT_LISTEN) // error simulation: testserver does not open listening port
     {
@@ -214,23 +292,22 @@ void sick_lidar_localization::TestServerThread::runConnectionThreadCb(void)
     boost::asio::ip::tcp::socket* tcp_client_socket = new boost::asio::ip::tcp::socket(m_ioservice);
     boost::system::error_code errorcode;
     if(m_error_simulation_flag.get() != DONT_ACCECPT)
-      ROS_INFO_STREAM("TestServerThread: listening to tcp connections on port " << m_tcp_port);
-    m_tcp_acceptor.listen();
+      ROS_INFO_STREAM("TestServerThread: listening to tcp connections on port " << ip_port_results);
+    tcp_acceptor_results.listen();
     if(m_error_simulation_flag.get() == DONT_ACCECPT) // error simulation: testserver does not does not accecpt tcp clients
     {
       ros::Duration(0.1).sleep();
       continue;
     }
-    m_tcp_acceptor.accept(*tcp_client_socket, errorcode); // normal mode: accept new tcp client
+    tcp_acceptor_results.accept(*tcp_client_socket, errorcode); // normal mode: accept new tcp client
     if (!errorcode && tcp_client_socket->is_open())
     {
-      m_tcp_sockets.push_back(tcp_client_socket);
       // tcp client connected, start worker thread
       ROS_INFO_STREAM("TestServerThread: established new tcp client connection");
       boost::lock_guard<boost::mutex> worker_thread_lockguard(m_tcp_worker_threads_mutex);
+      m_tcp_sockets.push_back(tcp_client_socket);
       m_worker_thread_running = true;
-      boost::thread* tcp_worker_thread = new boost::thread(&sick_lidar_localization::TestServerThread::runWorkerThreadCb, this, tcp_client_socket);
-      m_tcp_worker_threads.push_back(tcp_worker_thread);
+      m_tcp_worker_threads.push_back(new boost::thread(thread_function_cb, this, tcp_client_socket));
     }
   }
   closeTcpConnections();
@@ -238,14 +315,14 @@ void sick_lidar_localization::TestServerThread::runConnectionThreadCb(void)
   ROS_INFO_STREAM("TestServerThread: connection thread finished");
 }
 
-/*
- * Worker thread callback, generates and sends telegrams to a tcp client.
- * There's one worker thread for each tcp client.
- * @param[in] p_socket socket to send telegrams to the tcp client
+/*!
+ * Worker thread callback, generates and sends result telegrams to a tcp client.
+ * There's one result worker thread for each tcp client.
+ * @param[in] p_socket socket to send result telegrams to the tcp client
  */
-void sick_lidar_localization::TestServerThread::runWorkerThreadCb(boost::asio::ip::tcp::socket* p_socket)
+void sick_lidar_localization::TestServerThread::runWorkerThreadResultCb(boost::asio::ip::tcp::socket* p_socket)
 {
-  ROS_INFO_STREAM("TestServerThread: worker thread started");
+  ROS_INFO_STREAM("TestServerThread: worker thread for result telegrams started");
   ros::Duration send_telegrams_delay(1.0 / m_result_telegram_rate);
   sick_lidar_localization::SickLocResultPortTestcaseMsg testcase = sick_lidar_localization::TestcaseGenerator::createDefaultResultPortTestcase(); // initial testcase is the default testcase
   sick_lidar_localization::UniformRandomInteger random_generator(0,255);
@@ -262,7 +339,7 @@ void sick_lidar_localization::TestServerThread::runWorkerThreadCb(boost::asio::i
     {
       std::vector<uint8_t> random_data = random_generator.generate(random_length.generate()); // binary random data of random size
       boost::asio::write(*p_socket, boost::asio::buffer(random_data.data(), random_data.size()), boost::asio::transfer_exactly(random_data.size()), error_code);
-      ROS_DEBUG_STREAM("TestServerThread: send random data " << sick_lidar_localization::Utils::toHexString(random_data));
+      ROS_DEBUG_STREAM("TestServerThread for result telegrams: send random data " << sick_lidar_localization::Utils::toHexString(random_data));
     }
     else
     {
@@ -279,19 +356,24 @@ void sick_lidar_localization::TestServerThread::runWorkerThreadCb(boost::asio::i
           int byte_cnt = ((random_integer.generate()) % (testcase.binary_data.size()));
           testcase.binary_data[byte_cnt] = (uint8_t)(random_generator.generate() & 0xFF);
         }
-        ROS_DEBUG_STREAM("TestServerThread: send random binary telegram " << sick_lidar_localization::Utils::toHexString(testcase.binary_data));
+        ROS_DEBUG_STREAM("TestServerThread for result telegrams: send random binary telegram " << sick_lidar_localization::Utils::toHexString(testcase.binary_data));
       }
       // send binary result port telegram to tcp client
       size_t bytes_written = boost::asio::write(*p_socket, boost::asio::buffer(testcase.binary_data.data(), testcase.binary_data.size()), boost::asio::transfer_exactly(testcase.binary_data.size()), error_code);
       if (error_code || bytes_written != testcase.binary_data.size())
       {
         std::stringstream error_info;
-        error_info << "## ERROR TestServerThread: failed to send binary result port telegram, " << bytes_written << " of " << testcase.binary_data.size() << " bytes send, error code: " << error_code.message();
-        ROS_LOG_STREAM((m_error_simulation_flag.get() == NO_ERROR) ? (::ros::console::levels::Warn) : (::ros::console::levels::Debug), ROSCONSOLE_DEFAULT_NAME, error_info.str());
+        error_info << "## ERROR TestServerThread for result telegrams: failed to send binary result port telegram, " << bytes_written << " of " << testcase.binary_data.size() << " bytes send, error code: " << error_code.message();
+        if(m_error_simulation_flag.get() == NO_ERROR)
+        {
+          ROS_WARN_STREAM(error_info.str() << ", close socket and leave worker thread for result telegrams");
+          break;
+        }
+        ROS_DEBUG_STREAM(error_info.str());
       }
       else
       {
-        ROS_DEBUG_STREAM("TestServerThread: send binary result port telegram " << sick_lidar_localization::Utils::toHexString(testcase.binary_data));
+        ROS_DEBUG_STREAM("TestServerThread for result telegrams: send binary result port telegram " << sick_lidar_localization::Utils::toHexString(testcase.binary_data));
       }
       // publish testcases (SickLocResultPortTestcaseMsg, i.e. binary telegram and SickLocResultPortTelegramMsg messages) for test and verification of sim_loc_driver
       testcase.header.stamp = ros::Time::now();
@@ -301,10 +383,54 @@ void sick_lidar_localization::TestServerThread::runWorkerThreadCb(boost::asio::i
     // next testcase is a result port telegram with random data
     testcase = sick_lidar_localization::TestcaseGenerator::createRandomResultPortTestcase();
   }
-  ROS_INFO_STREAM("TestServerThread: worker thread finished");
+  closeSocket(p_socket);
+  ROS_INFO_STREAM("TestServerThread: worker thread for result telegrams finished");
 }
 
-/*
+/*!
+ * Worker thread callback, receives command requests from a tcp client
+ * and sends a synthetical command response.
+ * There's one request worker thread for each tcp client.
+ * @param[in] p_socket socket to receive command requests from the tcp client
+ */
+void sick_lidar_localization::TestServerThread::runWorkerThreadColaCb(boost::asio::ip::tcp::socket* p_socket)
+{
+  ROS_INFO_STREAM("TestServerThread: worker thread for command requests started");
+  while(ros::ok() && m_worker_thread_running && p_socket && p_socket->is_open())
+  {
+    // Read command request from tcp client
+    ServerColaRequest request;
+    ros::Time receive_timestamp;
+    if(sick_lidar_localization::ColaTransmitter::receive(*p_socket, request.telegram_data, 1, receive_timestamp))
+    {
+      // command requests received, generate and send a synthetical response
+      bool cola_binary = sick_lidar_localization::ColaAsciiBinaryConverter::IsColaBinary(request.telegram_data);
+      if(cola_binary)
+        request.telegram_data = sick_lidar_localization::ColaAsciiBinaryConverter::ColaBinaryToColaAscii(request.telegram_data);
+      std::string ascii_telegram = sick_lidar_localization::ColaAsciiBinaryConverter::ConvertColaAscii(request.telegram_data);
+      ROS_INFO_STREAM("TestServerThread: received cola request " << ascii_telegram);
+      sick_lidar_localization::SickLocColaTelegramMsg telegram_msg = sick_lidar_localization::ColaParser::decodeColaTelegram(ascii_telegram);
+      // Generate a synthetical response depending on the request
+      sick_lidar_localization::SickLocColaTelegramMsg telegram_answer = sick_lidar_localization::TestcaseGenerator::createColaResponse(telegram_msg);
+      // Send command response to tcp client
+      std::vector<uint8_t> binary_response = sick_lidar_localization::ColaParser::encodeColaTelegram(telegram_answer);
+      std::string ascii_response = sick_lidar_localization::ColaAsciiBinaryConverter::ConvertColaAscii(binary_response);
+      if(cola_binary)
+        binary_response = sick_lidar_localization::ColaAsciiBinaryConverter::ColaAsciiToColaBinary(binary_response);
+      ROS_INFO_STREAM("TestServerThread: sending cola response " << ascii_response << (cola_binary ? " (Cola-Binary)" : " (Cola-ASCII)"));
+      ros::Time send_timestamp;
+      if (!sick_lidar_localization::ColaTransmitter::send(*p_socket, binary_response, send_timestamp))
+      {
+        ROS_WARN_STREAM("TestServerThread: failed to send cola response, ColaTransmitter::send() returned false, data hexdump: " << sick_lidar_localization::Utils::toHexString(binary_response));
+      }
+    }
+    ros::Duration(0.0001).sleep();
+  }
+  closeSocket(p_socket);
+  ROS_INFO_STREAM("TestServerThread: worker thread for command requests finished");
+}
+
+/*!
  * Waits for a given time in seconds, as long as ros::ok() and m_error_simulation_thread_running == true.
  * @param[in] seconds delay in seconds
  */
@@ -317,7 +443,7 @@ void sick_lidar_localization::TestServerThread::errorSimulationWait(double secon
   }
 }
 
-/*
+/*!
  * Waits for and returns the next telegram message from sick_lidar_localization driver.
  * @param[in] timeout_seconds wait timeout in seconds
  * @param[out] telegram_msg last telegram message received
@@ -338,7 +464,7 @@ bool sick_lidar_localization::TestServerThread::errorSimulationWaitForTelegramRe
   return false;
 }
 
-/*
+/*!
  * Thread callback, runs an error simulation and switches m_error_simulation_flag through the error test cases.
  */
 void sick_lidar_localization::TestServerThread::runErrorSimulationThreadCb(void)
@@ -381,7 +507,7 @@ void sick_lidar_localization::TestServerThread::runErrorSimulationThreadCb(void)
   // Error simulation testcase: testserver does not accecpt tcp clients for 10 seconds, normal execution afterwards.
   number_testcases++;
   m_error_simulation_flag.set(DONT_ACCECPT);
-  ROS_INFO_STREAM("TestServerThread: 3. error simulation testcase: server not responding, listening on port " << m_tcp_port << ", but accepting no tcp clients");
+  ROS_INFO_STREAM("TestServerThread: 3. error simulation testcase: server not responding, listening on port " << m_ip_port_results << ", but accepting no tcp clients");
   closeWorkerThreads();
   closeTcpConnections();
   errorSimulationWait(10);

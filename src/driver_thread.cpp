@@ -64,9 +64,9 @@
 #include <vector>
 
 #include "sick_lidar_localization/SickLocDiagnosticMsg.h"
-#include "sick_lidar_localization/sim_loc_driver_thread.h"
-#include "sick_lidar_localization/sim_loc_testcase_generator.h"
-#include "sick_lidar_localization/sim_loc_utils.h"
+#include "sick_lidar_localization/driver_thread.h"
+#include "sick_lidar_localization/testcase_generator.h"
+#include "sick_lidar_localization/utils.h"
 
 
 /*
@@ -210,13 +210,20 @@ bool sick_lidar_localization::DriverThread::isRunning(void)
 void sick_lidar_localization::DriverThread::closeTcpConnections(bool force_shutdown)
 {
   m_tcp_connected = false;
-  if(force_shutdown || m_tcp_socket.is_open())
+  try
   {
-    publishDiagnosticMessage(NO_ERROR, "sim_loc_driver: closing socket");
-    ROS_INFO_STREAM("DriverThread::closeTcpConnections(force_shutdown=" << force_shutdown << "): shutdown socket");
-    m_tcp_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both);
-    ROS_INFO_STREAM("DriverThread::closeTcpConnections(force_shutdown=" << force_shutdown << "): close socket");
-    m_tcp_socket.close();
+    if (force_shutdown || m_tcp_socket.is_open())
+    {
+      publishDiagnosticMessage(NO_ERROR, "sim_loc_driver: closing socket");
+      ROS_INFO_STREAM("DriverThread::closeTcpConnections(force_shutdown=" << force_shutdown << "): shutdown socket");
+      m_tcp_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both);
+      ROS_INFO_STREAM("DriverThread::closeTcpConnections(force_shutdown=" << force_shutdown << "): close socket");
+      m_tcp_socket.close();
+    }
+  }
+  catch(std::exception & exc)
+  {
+    ROS_WARN_STREAM("DriverThread::closeTcpConnections(): exception " << exc.what() << " on closing connection.");
   }
 }
 
@@ -227,67 +234,74 @@ void sick_lidar_localization::DriverThread::runReceiverThreadCb(void)
 {
   publishDiagnosticMessage(NO_ERROR, "sim_loc_driver: receiver thread started");
   ROS_INFO_STREAM("DriverThread: receiver thread started");
-  ros::Time diagnostic_msg_published;
-  // Connect to localization controller
-  while(ros::ok() && m_tcp_receiver_thread_running && !m_tcp_connected)
+  try
   {
-    boost::asio::ip::tcp::resolver tcpresolver(m_ioservice);
-    boost::asio::ip::tcp::resolver::query tcpquery(m_server_adress, std::to_string(m_tcp_port));
-    boost::asio::ip::tcp::resolver::iterator it = tcpresolver.resolve(tcpquery);
-    boost::system::error_code errorcode;
-    m_tcp_socket.connect(*it, errorcode);
-    if(!errorcode && m_tcp_socket.is_open())
+    ros::Time diagnostic_msg_published;
+    // Connect to localization controller
+    while(ros::ok() && m_tcp_receiver_thread_running && !m_tcp_connected)
     {
-      m_tcp_connected = true;
-      publishDiagnosticMessage(NO_ERROR, std::string("sim_loc_driver: tcp connection established to localization controller ") + m_server_adress + ":" + std::to_string(m_tcp_port));
-      ROS_INFO_STREAM("DriverThread: tcp connection established to localization controller " << m_server_adress << ":" << m_tcp_port);
+      boost::asio::ip::tcp::resolver tcpresolver(m_ioservice);
+      boost::asio::ip::tcp::resolver::query tcpquery(m_server_adress, std::to_string(m_tcp_port));
+      boost::asio::ip::tcp::resolver::iterator it = tcpresolver.resolve(tcpquery);
+      boost::system::error_code errorcode;
+      m_tcp_socket.connect(*it, errorcode);
+      if(!errorcode && m_tcp_socket.is_open())
+      {
+        m_tcp_connected = true;
+        publishDiagnosticMessage(NO_ERROR, std::string("sim_loc_driver: tcp connection established to localization controller ") + m_server_adress + ":" + std::to_string(m_tcp_port));
+        ROS_INFO_STREAM("DriverThread: tcp connection established to localization controller " << m_server_adress << ":" << m_tcp_port);
+      }
+      else
+      {
+        publishDiagnosticMessage(NO_TCP_CONNECTION, std::string("sim_loc_driver: no tcp connection to localization controller ") + m_server_adress + ":" + std::to_string(m_tcp_port));
+        ROS_WARN_STREAM("DriverThread: no connection to localization controller " << m_server_adress << ":" << m_tcp_port
+        << ", error " << errorcode.value() << " \"" << errorcode.message() << "\", retry in " << m_tcp_connection_retry_delay << " seconds");
+        ros::Duration(m_tcp_connection_retry_delay).sleep();
+      }
     }
-    else
+    // Receive binary telegrams from localization controller
+    size_t telegram_size = sick_lidar_localization::TestcaseGenerator::createDefaultResultPortTestcase().binary_data.size(); // 106 byte result port telegrams
+    while(ros::ok() && m_tcp_receiver_thread_running && m_tcp_socket.is_open())
     {
-      publishDiagnosticMessage(NO_TCP_CONNECTION, std::string("sim_loc_driver: no tcp connection to localization controller ") + m_server_adress + ":" + std::to_string(m_tcp_port));
-      ROS_WARN_STREAM("DriverThread: no connection to localization controller " << m_server_adress << ":" << m_tcp_port
-      << ", error " << errorcode.value() << " \"" << errorcode.message() << "\", retry in " << m_tcp_connection_retry_delay << " seconds");
-      ros::Duration(m_tcp_connection_retry_delay).sleep();
+      size_t bytes_received = 0, bytes_required = telegram_size;
+      std::vector<uint8_t> receive_buffer(bytes_required, 0);
+      boost::system::error_code errorcode;
+      std::string error_info("");
+      while(ros::ok() && m_tcp_receiver_thread_running && m_tcp_socket.is_open() && bytes_received < bytes_required)
+      {
+        size_t bytes_to_read =  bytes_required - bytes_received;
+        bytes_received += boost::asio::read(m_tcp_socket, boost::asio::buffer(&receive_buffer[bytes_received],bytes_to_read), boost::asio::transfer_exactly(bytes_to_read), errorcode);
+        if(errorcode)
+        {
+          std::stringstream error_info_stream;
+          error_info_stream << "DriverThread: tcp socket read errorcode " << errorcode.value() << " \"" << errorcode.message() << "\"";
+          if(error_info != error_info_stream.str())
+          {
+            publishDiagnosticMessage(NO_TCP_CONNECTION, std::string("sim_loc_driver: tcp socket read errorcode") + std::to_string(errorcode.value()) + ", " + errorcode.message());
+            ROS_WARN_STREAM(error_info_stream.str());
+          }
+          error_info = error_info_stream.str();
+        }
+        else if( (ros::Time::now() - diagnostic_msg_published).toSec() >= 60)
+        {
+          publishDiagnosticMessage(NO_ERROR, std::string("sim_loc_driver: tcp connection established to localization controller ") + m_server_adress + ":" + std::to_string(m_tcp_port));
+          diagnostic_msg_published = ros::Time::now();
+        }
+        if(bytes_received < bytes_required)
+          ros::Duration(0.0001).sleep();
+      }
+      // Copy received telegram to fifo
+      if(bytes_received >= bytes_required)
+      {
+        m_fifo_buffer.push(receive_buffer);
+        ROS_DEBUG_STREAM("DriverThread: received " << bytes_received << " byte telegram (hex): " << sick_lidar_localization::Utils::toHexString(receive_buffer));
+        ros::Duration(0.0001).sleep();
+      }
     }
   }
-  // Receive binary telegrams from localization controller
-  size_t telegram_size = sick_lidar_localization::TestcaseGenerator::createDefaultResultPortTestcase().binary_data.size(); // 106 byte result port telegrams
-  while(ros::ok() && m_tcp_receiver_thread_running && m_tcp_socket.is_open())
+  catch(std::exception & exc)
   {
-    size_t bytes_received = 0, bytes_required = telegram_size;
-    std::vector<uint8_t> receive_buffer(bytes_required, 0);
-    boost::system::error_code errorcode;
-    std::string error_info("");
-    while(ros::ok() && m_tcp_receiver_thread_running && m_tcp_socket.is_open() && bytes_received < bytes_required)
-    {
-      size_t bytes_to_read =  bytes_required - bytes_received;
-      bytes_received += boost::asio::read(m_tcp_socket, boost::asio::buffer(&receive_buffer[bytes_received],bytes_to_read), boost::asio::transfer_exactly(bytes_to_read), errorcode);
-      if(errorcode)
-      {
-        std::stringstream error_info_stream;
-        error_info_stream << "DriverThread: tcp socket read errorcode " << errorcode.value() << " \"" << errorcode.message() << "\"";
-        if(error_info != error_info_stream.str())
-        {
-          publishDiagnosticMessage(NO_TCP_CONNECTION, std::string("sim_loc_driver: tcp socket read errorcode") + std::to_string(errorcode.value()) + ", " + errorcode.message());
-          ROS_WARN_STREAM(error_info_stream.str());
-        }
-        error_info = error_info_stream.str();
-      }
-      else if( (ros::Time::now() - diagnostic_msg_published).toSec() >= 60)
-      {
-        publishDiagnosticMessage(NO_ERROR, std::string("sim_loc_driver: tcp connection established to localization controller ") + m_server_adress + ":" + std::to_string(m_tcp_port));
-        diagnostic_msg_published = ros::Time::now();
-      }
-      if(bytes_received < bytes_required)
-        ros::Duration(0.0001).sleep();
-    }
-    // Copy received telegram to fifo
-    if(bytes_received >= bytes_required)
-    {
-      m_fifo_buffer.push(receive_buffer);
-      ROS_DEBUG_STREAM("DriverThread: received " << bytes_received << " byte telegram (hex): " << sick_lidar_localization::Utils::toHexString(receive_buffer));
-      ros::Duration(0.0001).sleep();
-    }
+    ROS_WARN_STREAM("## ERROR DriverThread::runReceiverThreadCb(): exception " << exc.what());
   }
   m_tcp_receiver_thread_running = false;
   ROS_INFO_STREAM("DriverThread: receiver thread finished");

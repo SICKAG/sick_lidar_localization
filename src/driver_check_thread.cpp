@@ -62,8 +62,8 @@
 #include <ros/ros.h>
 #include <boost/algorithm/clamp.hpp>
 
-#include "sick_lidar_localization/sim_loc_driver_check_thread.h"
-#include "sick_lidar_localization/sim_loc_utils.h"
+#include "sick_lidar_localization/driver_check_thread.h"
+#include "sick_lidar_localization/utils.h"
 
 /*
  * Constructor, reads the configuration parameter incl. the
@@ -226,7 +226,7 @@ sick_lidar_localization::SickLocResultPortTelegramMsg sick_lidar_localization::M
   telegram.telegram_payload.Reserved1 = (uint32_t)boost::algorithm::clamp<double>(d_value, 0, 0xFFFFFFFF); // Reserved. uint32, size:= UInt32 = 4 byte
   ros::param::param<int>(param_section+"/telegram_payload/Reserved2", telegram.telegram_payload.Reserved2, 0); // Reserved. int32, size:= Int32 = 4 byte
   ros::param::param<int>(param_section+"/telegram_payload/Quality", i_value, 0);
-  telegram.telegram_payload.Quality = (uint8_t)i_value; // Quality of pose [1 … 100], 1 = bad pose quality, 100 = good pose quality. uint8, size:= UInt8 = 1 byte
+  telegram.telegram_payload.Quality = (uint8_t)i_value; // Quality of pose [0 … 100], 1 = bad pose quality, 100 = good pose quality. uint8, size:= UInt8 = 1 byte
   ros::param::param<int>(param_section+"/telegram_payload/OutliersRatio", i_value, 0);
   telegram.telegram_payload.OutliersRatio = (uint8_t)i_value; // Ratio of beams that cannot be assigned to the current reference map [%]. uint8, size:= UInt8 = 1 byte
   ros::param::param<int>(param_section+"/telegram_payload/CovarianceX", telegram.telegram_payload.CovarianceX, 0); // Covariance c1 of the pose X [mm^2]. int32, size:= Int32 = 4 byte

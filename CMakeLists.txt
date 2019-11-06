@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
         geometry_msgs
         sensor_msgs
         std_msgs
+        tf
 )
 
 ## System dependencies are found with CMake's conventions
@@ -59,6 +60,7 @@ find_package(Doxygen)
 ## Generate messages in the 'msg' folder
 add_message_files(
         FILES
+        SickLocColaTelegramMsg.msg
         SickLocDiagnosticMsg.msg
         SickLocResultPortHeaderMsg.msg
         SickLocResultPortPayloadMsg.msg
@@ -68,11 +70,11 @@ add_message_files(
 )
 
 ## Generate services in the 'srv' folder
-# add_service_files(
-#   FILES
-#   Service1.srv
-#   Service2.srv
-# )
+add_service_files(
+        FILES
+        SickLocColaTelegramSrv.srv
+        SickLocRequestTimestampSrv.srv
+)
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -132,6 +134,7 @@ catkin_package(
 ## Your package locations should be listed before other locations
 include_directories(
         include
+        test/include
         ${catkin_INCLUDE_DIRS}
         ${BOOST_INCLUDE_DIRS}
         # ${TinyXML_INCLUDE_DIRS}
@@ -140,16 +143,17 @@ include_directories(
 
 ## Declare a C++ library
 add_library(sick_localization_lib
-        src/sim_loc_driver_check_thread.cpp
-        src/sim_loc_driver_monitor.cpp
-        src/sim_loc_driver_thread.cpp
-        src/sim_loc_pointcloud_converter.cpp
-        src/sim_loc_random.cpp
-        src/sim_loc_result_port_parser.cpp
-        src/sim_loc_testcase_generator.cpp
-        src/sim_loc_test_server_thread.cpp
-        src/sim_loc_utils.cpp
-        src/sim_loc_verifier_thread.cpp
+        src/cola_converter.cpp
+        src/cola_parser.cpp
+        src/cola_transmitter.cpp
+        src/driver_check_thread.cpp
+        src/driver_monitor.cpp
+        src/driver_thread.cpp
+        src/pointcloud_converter_thread.cpp
+        src/random_generator.cpp
+        src/result_port_parser.cpp
+        src/testcase_generator.cpp
+        src/utils.cpp
         src/crc/crc16ccitt_false.cpp
         )
 
@@ -161,12 +165,16 @@ add_library(sick_localization_lib
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(sim_loc_driver src/sim_loc_driver.cpp)
-add_executable(sim_loc_driver_check src/sim_loc_driver_check.cpp)
-add_executable(sim_loc_test_server src/sim_loc_test_server.cpp)
+##
+## Executables for ros driver sick_lidar_localization
+add_executable(sim_loc_driver src/driver.cpp)
+add_executable(sim_loc_driver_check src/driver_check.cpp)
 add_executable(pointcloud_converter src/pointcloud_converter.cpp)
-add_executable(unittest_sim_loc_parser src/unittest_sim_loc_parser.cpp)
-add_executable(verify_sim_loc_driver src/verify_sim_loc_driver.cpp)
+
+## Executables for test purposes
+add_executable(sim_loc_test_server test/src/test_server.cpp test/src/test_server_thread.cpp)
+add_executable(unittest_sim_loc_parser test/src/unittest_sim_loc_parser.cpp)
+add_executable(verify_sim_loc_driver test/src/verify_sim_loc_driver.cpp test/src/verifier_thread.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the

@@ -11,7 +11,7 @@ int32  PoseY          # Position Y of the vehicle on the map in cartesian global
 int32  PoseYaw        # Orientation (yaw) of the vehicle on the map [mdeg] Size: Int32 = 4 byte
 uint32 Reserved1      # Reserved. Size: UInt32 = 4 byte
 int32  Reserved2      # Reserved. Size: Int32 = 4 byte
-uint8  Quality        # Quality of pose [1 … 100], 1 = bad pose quality, 100 = good pose quality. Size: UInt8 = 1 byte
+uint8  Quality        # Quality of pose [0 … 100], 1 = bad pose quality, 100 = good pose quality. Size: UInt8 = 1 byte
 uint8  OutliersRatio  # Ratio of beams that cannot be assigned to the current reference map [%]. Size: UInt8 = 1 byte
 int32  CovarianceX    # Covariance c1 of the pose X [mm^2]. Size: Int32 = 4 byte
 int32  CovarianceY    # Covariance c5 of the pose Y [mm^2]. Size: Int32 = 4 byte

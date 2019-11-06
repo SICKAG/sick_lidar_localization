@@ -1,11 +1,5 @@
 /*
- * @brief sim_loc_driver_check subscribes to sim_loc_driver messages
- * and checks the telegram data against configured min and max values.
- *
- * This way a scene specific plausibility check of sim_loc_driver messages
- * can be performed when running automated tests against localization controllers
- * like SIM1000FXA. A warning will be logged in case of failures or values out of
- * range.
+ * @brief sim_loc_random implements random number generators.
  *
  * Copyright (C) 2019 Ing.-Buero Dr. Michael Lehning, Hildesheim
  * Copyright (C) 2019 SICK AG, Waldkirch
@@ -58,36 +52,39 @@
  *  Copyright 2019 Ing.-Buero Dr. Michael Lehning
  *
  */
-#include <ros/ros.h>
+#include <time.h>
 
-#include "sick_lidar_localization/sim_loc_driver_check_thread.h"
+#include "sick_lidar_localization/random_generator.h"
 
-int main(int argc, char** argv)
+/*
+ * Constructor
+ * @param[in] lower_bound min. value of random distribution, random numbers will be generated within the range lower_bound up to upper_bound
+ * @param[in] upper_bound max. value of random distribution, random numbers will be generated within the range lower_bound up to upper_bound
+ */
+sick_lidar_localization::UniformRandomInteger::UniformRandomInteger(int lower_bound, int upper_bound)
+: m_random_engine(time(0)), m_uniform_distribution(lower_bound, upper_bound), m_random_generator(m_random_engine, m_uniform_distribution)
 {
-  // Ros configuration and initialization
-  ros::init(argc, argv, "sim_loc_driver_check");
-  ros::NodeHandle nh;
-  ROS_INFO_STREAM("sim_loc_driver_check started.");
-  
-  std::string result_telegrams_topic = "/sick_lidar_localization/driver/result_telegrams"; // default topic to publish result port telegram messages (type SickLocResultPortTelegramMsg)
-  ros::param::param<std::string>("/sick_lidar_localization/sim_loc_driver_check/result_telegrams_topic", result_telegrams_topic, result_telegrams_topic);
-  
-  // Init thread to check sim_loc_driver messages against configured min and max values
-  sick_lidar_localization::MessageCheckThread check_thread;
-  
-  // Subscribe to sim_loc_driver messages
-  ros::Subscriber result_telegram_subscriber = nh.subscribe(result_telegrams_topic, 1, &sick_lidar_localization::MessageCheckThread::messageCbResultPortTelegrams, &check_thread);
-  
-  // Start checking thread
-  check_thread.start();
-  
-  // Run ros event loop
-  ros::spin();
-  
-  std::cout << "sim_loc_driver_check finished." << std::endl;
-  ROS_INFO_STREAM("sim_loc_driver_check finished.");
-  check_thread.stop();
-  std::cout << "sim_loc_driver_check exits." << std::endl;
-  ROS_INFO_STREAM("sim_loc_driver_check exits.");
-  return 0;
+}
+
+/*
+ * Returns a uniform distributed integer random number within the range lower_bound up to upper_bound
+ */
+int sick_lidar_localization::UniformRandomInteger::generate(void)
+{
+  return m_random_generator();
+}
+
+/*
+ * Creates and returns uniform distributed binary random data of a given size
+ * @param[in] data_size number of random bytes created, size of output data
+ * @return binary random data of size <data_size>
+ */
+std::vector<uint8_t> sick_lidar_localization::UniformRandomInteger::generate(int data_size)
+{
+  std::vector<uint8_t> data(data_size, 0);
+  for(int n = 0; n < data_size; n++)
+  {
+    data[n] = (uint8_t)(m_random_generator() & 0xFF);
+  }
+  return data;
 }
