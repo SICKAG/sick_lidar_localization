@@ -19,7 +19,8 @@ source ./devel/setup.bash
 # Cleanup
 #
 
-./src/sick_lidar_localization/test/scripts/killall.bash
+if [ -d ./src/sick_lidar_localization ]         ; then ./src/sick_lidar_localization/test/scripts/killall.bash         ; fi
+if [ -d ./src/sick_lidar_localization_pretest ] ; then ./src/sick_lidar_localization_pretest/test/scripts/killall.bash ; fi
 rm -rf ~/.ros/*
 rosclean purge -y
 if [ ! -d ~/.ros/log ] ; then mkdir -p ~/.ros/log ; fi
@@ -58,7 +59,8 @@ rosrun rviz rviz &
 #
 
 sleep 600
-./src/sick_lidar_localization/test/scripts/killall.bash
+if [ -d ./src/sick_lidar_localization ]         ; then ./src/sick_lidar_localization/test/scripts/killall.bash         ; fi
+if [ -d ./src/sick_lidar_localization_pretest ] ; then ./src/sick_lidar_localization_pretest/test/scripts/killall.bash ; fi
 killall roslaunch
 killall rviz
 killall static_transform_publisher

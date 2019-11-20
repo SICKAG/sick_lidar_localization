@@ -133,6 +133,14 @@ namespace sick_lidar_localization
      * @return true, if test passed, false otherwise.
      */
     virtual bool checkTelegram(sick_lidar_localization::SickLocResultPortTelegramMsg & telegram);
+
+    /*!
+     * Checks the vehicle time of a result telegram message (system time from ticks by software pll) against min and max
+     * allowed difference to ros::Time::now(). Returns true, if test passed (vehicle time  within their range), or false otherwise.
+     * @param[in] telegram result telegram message (SickLocResultPortTelegramMsg)
+     * @return true, if test passed, false otherwise.
+     */
+    virtual bool checkVehicleTime(sick_lidar_localization::SickLocResultPortTelegramMsg & telegram);
     
     /*
      * member data
@@ -141,6 +149,11 @@ namespace sick_lidar_localization
     sick_lidar_localization::FifoBuffer<sick_lidar_localization::SickLocResultPortTelegramMsg, boost::mutex> m_result_port_telegram_fifo; ///< fifo buffer for result port telegrams from sim_loc_driver
     sick_lidar_localization::SickLocResultPortTelegramMsg m_result_port_telegram_min_values; ///< min allowed values of result port telegrams
     sick_lidar_localization::SickLocResultPortTelegramMsg m_result_port_telegram_max_values; ///< max allowed values of result port telegrams
+    double m_vehicle_time_delta_min;                        ///< min. allowed time diff in seconds between vehicle time (system time from ticks by software pll) and ros::Time::now()
+    double m_vehicle_time_delta_max;                        ///< max. allowed time diff in seconds between vehicle time (system time from ticks by software pll) and ros::Time::now()
+    bool m_vehicle_time_check_enabled;                      ///< true: check of vehicle time is enabled (default), false in case of simulated network errors (LocRequestTimestamp not available)
+    double m_software_pll_expected_initialization_duration; ///< expected initialization time for software pll (system time from lidar ticks not yet available)
+    ros::Time m_timestamp_valid_telegram;      ///< timestamp of a telegram with valid vehicle time
     bool m_message_check_thread_running;       ///< true: m_message_check_thread is running, otherwise false
     boost::thread* m_message_check_thread;     ///< thread to check sim_loc_driver messages
     double m_message_check_frequency;          ///< frequency to check sim_loc_driver messages (default: 100)

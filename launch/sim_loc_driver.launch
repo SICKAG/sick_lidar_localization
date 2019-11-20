@@ -14,6 +14,10 @@
   <node name="sim_loc_driver_check" pkg="sick_lidar_localization" type="sim_loc_driver_check" output="screen">
   </node>
 
+  <!-- Launch sim_loc_time_sync to provide time synchronization services (SickLocRequestTimestamp and SickLocTimeSync) -->
+  <node name="sim_loc_time_sync" pkg="sick_lidar_localization" type="sim_loc_time_sync" output="screen">
+  </node>
+
   <!-- Launch pointcloud_converter to convert and publish PointCloud2 messages -->
   <node name="pointcloud_converter" pkg="sick_lidar_localization" type="pointcloud_converter" output="screen">
   </node>

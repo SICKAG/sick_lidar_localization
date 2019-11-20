@@ -1,10 +1,6 @@
 /*
- * @brief sim_loc_test_server implements a simple tcp server,
- * simulating a localization controller for unittests.
- *
- * Note: sim_loc_test_server does not implement the functions of localization controller,
- * it just implements a simple tcp server, accepting tcp connections from clients
- * and generating telegrams to test the ros driver for sim localization.
+ * @brief client_socket encapsulates connecting, closing and setting socket options
+ * for tcp client sockets using boost::asio::ip::tcp::socket and boost::asio::io_service.
  *
  * Copyright (C) 2019 Ing.-Buero Dr. Michael Lehning, Hildesheim
  * Copyright (C) 2019 SICK AG, Waldkirch
@@ -57,43 +53,64 @@
  *  Copyright 2019 Ing.-Buero Dr. Michael Lehning
  *
  */
-#include <ros/ros.h>
-#include <string>
-#include <vector>
+#ifndef __SIM_LOC_CLIENT_SOCKET_H_INCLUDED
+#define __SIM_LOC_CLIENT_SOCKET_H_INCLUDED
 
-#include "sick_lidar_localization/test_server_thread.h"
-#include "sick_lidar_localization/utils.h"
+#include <boost/asio/buffer.hpp>
+#include <boost/asio/io_service.hpp>
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/read.hpp>
+#include <boost/asio/write.hpp>
 
-int main(int argc, char** argv)
+namespace sick_lidar_localization
 {
-  // Ros configuration and initialization
-  ros::init(argc, argv, "sim_loc_test_server");
-  ros::NodeHandle nh;
-  ROS_INFO_STREAM("sim_loc_test_server started.");
+  /*!
+   * Class sick_lidar_localization::ClientSocket encapsulates connecting, closing and setting socket options
+   * for tcp client sockets implemented by boost::asio::ip::tcp::socket.
+   */
+  class ClientSocket
+  {
+  public:
   
-  // Create a server to simulate a localization controller, incl. a listener thread to accept tcp connections
-  int tcp_port_results = 2201; // Default: The localization controller uses IP port number 2201 to send localization results
-  int tcp_port_cola = 2111;    // For requests and to transmit settings to the localization controller: IP port number 2111 and 2112 to send telegrams and to request data, SOPAS CoLa-A or CoLa-B protocols
-  ros::param::param<int>("/sick_lidar_localization/test_server/result_telegrams_tcp_port", tcp_port_results, tcp_port_results);
-  ros::param::param<int>("/sick_lidar_localization/test_server/cola_telegrams_tcp_port", tcp_port_cola, tcp_port_cola);
-  sick_lidar_localization::TestServerThread test_server_thread(&nh, tcp_port_results, tcp_port_cola);
+    /*!
+     * Constructor.
+     * @param[in] io_service boost io service for tcp connections (several sockets may share one io_service)
+     */
+    ClientSocket(boost::asio::io_service & io_service);
   
-  // Subscribe to sim_loc_driver messages to monitor sim_loc_driver in error simulation mode
-  std::string result_telegrams_topic = "/sick_lidar_localization/driver/result_telegrams";      // default topic to publish result port telegram messages (type SickLocResultPortTelegramMsg)
-  ros::param::param<std::string>("/sick_lidar_localization/driver/result_telegrams_topic", result_telegrams_topic, result_telegrams_topic);
-  ros::Subscriber result_telegram_subscriber = nh.subscribe(result_telegrams_topic, 1, &sick_lidar_localization::TestServerThread::messageCbResultPortTelegrams, &test_server_thread);
+    /*!
+     * Destructor, closes all tcp connections.
+     */
+    virtual ~ClientSocket();
   
-  // Start simulation of a localization controller
-  test_server_thread.start();
-
-  // Run ros event loop
-  ros::spin();
+    /*!
+     * Connects to a server.
+     * @param[in] io_service boost io service for tcp connections (several sockets may share one io_service)
+     * @param[in] server_adress ip adress of the localization controller, default: 192.168.0.1
+     * @param[in] tcp_port tcp port for command requests, default: 2111 for command requests and 2112 for  command responses
+     * @return true on success, false on failure (server unknown or unreachable)
+     */
+    virtual bool connect(boost::asio::io_service & io_service, const std::string & server_adress, int tcp_port);
   
-  // Cleanup and exit
-  std::cout << "sim_loc_test_server finished." << std::endl;
-  ROS_INFO_STREAM("sim_loc_test_server finished.");
-  test_server_thread.stop();
-  std::cout << "sim_loc_test_server exits." << std::endl;
-  ROS_INFO_STREAM("sim_loc_test_server exits.");
-  return 0;
-}
+    /*!
+     * Closes the tcp connection to the server.
+     * @param[in] force_shutdown if true, the socket is shutdown even if it's state is not opened or connected
+     * (otherwise the socket is closed, if its state is currently opened)
+     * @return true on success (socket closed), false on failure
+     */
+    virtual bool close(bool force_shutdown = false);
+  
+    /*!
+     * Returns the tcp client socket implementation
+     * @return tcp client socket implementation
+     */
+    virtual boost::asio::ip::tcp::socket & socket(void) { return m_tcp_socket; }
+    
+  protected:
+  
+    boost::asio::ip::tcp::socket m_tcp_socket; ///< tcp client socket implementation
+    
+  }; // class ClientSocket
+  
+} // namespace sick_lidar_localization
+#endif // __SIM_LOC_CLIENT_SOCKET_H_INCLUDED

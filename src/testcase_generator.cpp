@@ -60,6 +60,9 @@
 #include "sick_lidar_localization/testcase_generator.h"
 #include "sick_lidar_localization/utils.h"
 
+
+uint32_t sick_lidar_localization::TestcaseGenerator::s_u32ResultPoseInterval = 1; ///< result pose interval, i.e. the interval in number of scans (default: 1, i.e. result telegram with each processed scan)
+
 /*!
  * Creates and returns a deterministic default testcase for result port telegrams (binary telegrams and SickLocResultPortTelegramMsg)
  * @return SickLocResultPortTestcaseMsg with the binary telegram and SickLocResultPortTelegramMsg
@@ -137,8 +140,8 @@ sick_lidar_localization::SickLocResultPortTestcaseMsg sick_lidar_localization::T
   
   // Update telegram timestamps
   double delta_time_seconds = (ros::Time::now() - start_time).toSec();
-  telegram_msg.telegram_payload.Timestamp += (uint32_t)(1000.0 * delta_time_seconds); // Time stamp of the pose [ms]. The time stamp indicates the time at which the pose is calculated. Size: UInt32 = 4 byte
-  telegram_msg.telegram_header.SystemTime += (uint64_t)(delta_time_seconds);          // SystemTime not used. Size: NTP = 8 byte
+  telegram_msg.telegram_payload.Timestamp = createTimestampTicksMilliSec();    // Time stamp of the pose [ms]. The time stamp indicates the time at which the pose is calculated. Size: UInt32 = 4 byte
+  telegram_msg.telegram_header.SystemTime += (uint64_t)(delta_time_seconds);   // SystemTime not used. Size: NTP = 8 byte
   
   // Re-encode the modified result port telegram (SickLocResultPortTelegramMsg)
   sick_lidar_localization::ResultPortParser result_port_parser(testcase.header.frame_id);
@@ -180,7 +183,7 @@ sick_lidar_localization::SickLocResultPortTestcaseMsg sick_lidar_localization::T
   // Update telegram timestamps
   double delta_time_seconds = (ros::Time::now() - start_time).toSec();
   telegram_msg.telegram_payload.Timestamp = createTimestampTicksMilliSec();             // Time stamp of the pose [ms]. The time stamp indicates the time at which the pose is calculated. Size: UInt32 = 4 byte
-  telegram_msg.telegram_header.SystemTime += (uint64_t)(delta_time_seconds);  // SystemTime not used. Size: NTP = 8 byte
+  telegram_msg.telegram_header.SystemTime += (uint64_t)(delta_time_seconds);            // SystemTime not used. Size: NTP = 8 byte
   
   // Re-encode the modified result port telegram (SickLocResultPortTelegramMsg)
   sick_lidar_localization::ResultPortParser result_port_parser(testcase.header.frame_id);
@@ -206,12 +209,6 @@ sick_lidar_localization::SickLocResultPortTestcaseMsg sick_lidar_localization::T
  */
 sick_lidar_localization::SickLocColaTelegramMsg sick_lidar_localization::TestcaseGenerator::createColaResponse(const sick_lidar_localization::SickLocColaTelegramMsg & cola_request)
 {
-  // Generate a synthetical response to LocMapState requests: "sRA LocMapState 1"
-  if(cola_request.command_type == sick_lidar_localization::ColaParser::sRN && cola_request.command_name == "LocMapState")
-  {
-    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sRA, cola_request.command_name, {"1"});
-  }
-  
   // Generate a synthetical response to LocRequestTimestamp requests: "sAN LocRequestTimestamp <timestamp>" with uint32_t timestamp in hex and ms
   if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "LocRequestTimestamp")
   {
@@ -222,9 +219,95 @@ sick_lidar_localization::SickLocColaTelegramMsg sick_lidar_localization::Testcas
     uint32_t ticks_ms = createTimestampTicksMilliSec();
     // Simulate some network latency
     ros::Duration(0.001 * time_jitter_network_ms.generate()).sleep();
-    std::stringstream timestamp_hex;
-    timestamp_hex << std::hex << std::uppercase << ticks_ms;
-    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {timestamp_hex.str()});
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {hexstr(ticks_ms)});
+  }
+  
+  // static test server settings (sMN or sRN requests)
+  // tbd: export settings by function LocalizationEnabled(), ResultTelegramsEnabled(), ResultTelegramsBigEndian(),
+  // and use test server settings in test_server_thread to configure result telegrams:
+  // s_controller_settings["LocState"]==2 && s_controller_settings["LocResultState"]>0: localization on and result telegrams activated, otherwise result telegrams deactivated
+  // s_controller_settings["LocResultEndianness"]==0: big endian (default), s_controller_settings["LocResultEndianness"]>0: little endian
+  static std::map<std::string, int32_t> s_controller_settings = {
+    {"IsSystemReady", 1},        // 0:false, 1:true (default)
+    {"LocState", 2},             // controller state: 0:BOOTING, 1:IDLE, 2:LOCALIZING, 3:DEMO_MAPPING
+    {"LocResultPort", 2201},     // tcp port for result telegrams (default: 2201)
+    {"LocResultMode", 0},        // 0:stream (default), 1:poll
+    {"LocResultState", 1},       // result output: 0: disabled, 1: enabled
+    {"LocResultEndianness", 0},  // 0: big endian (default), 1: little endian
+    {"LocMapState", 1},          // map state: 0:not active, 1:active
+    {"LocRequestResultData", 1}  // in poll mode, trigger sending the localization result of the next processed scan via TCP interface.
+  };
+  
+  // Set settings from Configuration Telegrams
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "LocStartLocalizing")
+  {
+    s_controller_settings["LocState"] = 2;
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(1)});
+  }
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "LocStop")
+  {
+    s_controller_settings["LocState"] = 1;
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(1)});
+  }
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "LocStopAndSave")
+  {
+    s_controller_settings["LocState"] = 1;
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(1)});
+  }
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "LocSetResultPort" && cola_request.parameter.size() == 1)
+  {
+    s_controller_settings["LocResultPort"] = std::strtol(cola_request.parameter[0].c_str(), 0, 0);
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(1)});
+  }
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "LocSetResultMode" && cola_request.parameter.size() == 1)
+  {
+    s_controller_settings["LocResultMode"] = std::strtol(cola_request.parameter[0].c_str(), 0, 0);
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(1)});
+  }
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "LocSetResultPoseEnabled" && cola_request.parameter.size() == 1)
+  {
+    s_controller_settings["LocResultState"] = std::strtol(cola_request.parameter[0].c_str(), 0, 0);
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(1)});
+  }
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "LocSetResultEndianness" && cola_request.parameter.size() == 1)
+  {
+    s_controller_settings["LocResultEndianness"] = std::strtol(cola_request.parameter[0].c_str(), 0, 0);;
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(1)});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "LocSetPose" && cola_request.parameter.size() == 4)
+  {
+    int32_t posex_mm = std::strtol(cola_request.parameter[0].c_str(), 0, 0);
+    int32_t posey_mm = std::strtol(cola_request.parameter[1].c_str(), 0, 0);
+    int32_t yaw_mdeg = std::strtol(cola_request.parameter[2].c_str(), 0, 0);
+    int32_t uncertainty = std::strtol(cola_request.parameter[3].c_str(), 0, 0);
+    bool success = (posex_mm >= -300000 && posex_mm <= +300000 && posey_mm >= -300000 && posey_mm <= +300000
+      && yaw_mdeg >= -180000 && yaw_mdeg <= +180000 && uncertainty >= 0 && uncertainty < 300000);
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(success?1:0)});
+  }
+
+
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "LocSetResultPoseInterval" && cola_request.parameter.size() == 1)
+  {
+    s_u32ResultPoseInterval = std::strtoul(cola_request.parameter[0].c_str(), 0, 0);
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(1)});
+  }
+  
+  // Create sAN responses to sMN requests resp. sRA responses to sRN requests
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN || cola_request.command_type == sick_lidar_localization::ColaParser::sRN)
+  {
+    sick_lidar_localization::ColaParser::COLA_SOPAS_COMMAND response_type = sick_lidar_localization::ColaParser::sINVALID;
+    if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN)
+      response_type = sick_lidar_localization::ColaParser::sAN; // sAN responses to sMN requests
+    else if(cola_request.command_type == sick_lidar_localization::ColaParser::sRN)
+      response_type = sick_lidar_localization::ColaParser::sRA; // sRA responses to sRN requests
+    for(std::map<std::string, int32_t>::iterator iter_settings = s_controller_settings.begin(); iter_settings != s_controller_settings.end(); iter_settings++)
+    {
+      if(cola_request.command_name == iter_settings->first)
+      {
+        return sick_lidar_localization::ColaParser::createColaTelegram(response_type, cola_request.command_name, {decstr(iter_settings->second)});
+      }
+    }
   }
   
   // Default response: "sAN <command_name>" without parameter (sAN: Response to sMN)

@@ -155,7 +155,7 @@ void sick_lidar_localization::VerifierThread::runVerificationThreadCb(void)
   size_t total_verification_cnt = 0, total_verification_failed_cnt = 0;
   while(ros::ok() && m_verification_thread_running)
   {
-    while(ros::ok() && m_verification_thread_running && m_result_port_testcase_fifo.size() < 4) // delay verification by 4 messages (messages may cross each other)
+    while (ros::ok() && m_verification_thread_running && m_result_port_testcase_fifo.size() < 4) // delay verification by 4 messages (messages may cross each other)
     {
       ros::Duration(1.0 / m_result_telegram_rate).sleep();
     }
@@ -165,25 +165,23 @@ void sick_lidar_localization::VerifierThread::runVerificationThreadCb(void)
     TelegramCounterCondition condition(server_telegram_counter);
     sick_lidar_localization::SickLocResultPortTelegramMsg driver_telegram = m_result_port_telegram_fifo.findFirstIf(condition, true);
     // Compare testcase and driver message
-    if(server_telegram_counter != driver_telegram.telegram_header.TelegramCounter)
+    if (server_telegram_counter == driver_telegram.telegram_header.TelegramCounter) // Testcase from the server corresponds to the result telegram from the driver
     {
-      ROS_WARN_STREAM("## ERROR VerifierThread: No driver message found for testcase with TelegramCounter " << server_telegram_counter);
-      total_verification_failed_cnt++;
+      if (!sick_lidar_localization::Utils::identicalByStream(driver_telegram, server_testcase.telegram_msg))
+      {
+        ROS_WARN_STREAM("## ERROR VerifierThread: driver message differs from server testcase (TelegramCounter " << server_telegram_counter << ")");
+        ROS_WARN_STREAM("## driver message (received):  " << sick_lidar_localization::Utils::flattenToString(driver_telegram));
+        ROS_WARN_STREAM("## server testcase (expected): " << sick_lidar_localization::Utils::flattenToString(server_testcase.telegram_msg));
+        total_verification_failed_cnt++;
+      }
+      else
+      {
+        ROS_INFO_STREAM("VerifierThread: testcase verified and okay (TelegramCounter " << server_telegram_counter << ")");
+        ROS_DEBUG_STREAM("VerifierThread: driver message (received):  " << sick_lidar_localization::Utils::flattenToString(driver_telegram));
+        ROS_DEBUG_STREAM("VerifierThread: server testcase (expected): " << sick_lidar_localization::Utils::flattenToString(server_testcase.telegram_msg));
+      }
+      total_verification_cnt++;
     }
-    else if(!sick_lidar_localization::Utils::identicalByStream(driver_telegram, server_testcase.telegram_msg))
-    {
-      ROS_WARN_STREAM("## ERROR VerifierThread: driver message differs from server testcase (TelegramCounter " << server_telegram_counter << ")");
-      ROS_WARN_STREAM("## driver message (received):  " << sick_lidar_localization::Utils::flattenToString(driver_telegram));
-      ROS_WARN_STREAM("## server testcase (expected): " << sick_lidar_localization::Utils::flattenToString(server_testcase.telegram_msg));
-      total_verification_failed_cnt++;
-    }
-    else
-    {
-      ROS_INFO_STREAM("VerifierThread: testcase verified and okay (TelegramCounter " << server_telegram_counter << ")");
-      ROS_DEBUG_STREAM("VerifierThread: driver message (received):  " << sick_lidar_localization::Utils::flattenToString(driver_telegram));
-      ROS_DEBUG_STREAM("VerifierThread: server testcase (expected): " << sick_lidar_localization::Utils::flattenToString(server_testcase.telegram_msg));
-    }
-    total_verification_cnt++;
   }
   ROS_INFO_STREAM("VerifierThread: verification thread for sim_loc_driver messages finished");
   std::stringstream info_msg;

@@ -32,17 +32,18 @@ source ./devel/setup.bash
 # Cleanup
 #
 
-./src/sick_lidar_localization/test/scripts/killall.bash
+if [ -d ./src/sick_lidar_localization ]         ; then ./src/sick_lidar_localization/test/scripts/killall.bash         ; fi
+if [ -d ./src/sick_lidar_localization_pretest ] ; then ./src/sick_lidar_localization_pretest/test/scripts/killall.bash ; fi
 rm -rf ~/.ros/*
 rosclean purge -y
-if [ ! -d ~/.ros/log ] ; then mkdir -p ~/.ros/log/error_simu ; fi
+if [ ! -d ~/.ros/log/error_simu ] ; then mkdir -p ~/.ros/log/error_simu ; fi
 
 #
 # Start sick_lidar_localization driver, log diagnostic messages
 #
 
 echo -e "sick_lidar_localization error simulation: starting sick_lidar_localization sim_loc_driver.launch ..." 2>&1 | tee -a ~/.ros/log/error_simu/error_simu.log
-roslaunch sick_lidar_localization sim_loc_driver.launch localization_controller_ip_adress:=127.0.0.1 2>&1 | unbuffer -p tee -a ~/.ros/log/error_simu/sim_loc_driver_error_simu.log &
+roslaunch sick_lidar_localization sim_loc_driver.launch localization_controller_ip_adress:=127.0.0.1 sim_loc_driver_check_cfg:=message_check_error_simu.yaml 2>&1 | unbuffer -p tee -a ~/.ros/log/error_simu/sim_loc_driver_error_simu.log &
 echo -e "sick_lidar_localization error simulation: sick_lidar_localization sim_loc_driver.launch started." 2>&1 | tee -a ~/.ros/log/error_simu/error_simu.log
 sleep 10
 
@@ -83,19 +84,22 @@ if true ; then
 fi
 
 #
-# Start test server and run in error simulation mode (disconnect and reconnect, send no or invalid telegrams). 
-# sick_lidar_localization driver must handle errors with error and diagnosis messages and reconnect if required.
+# Run test server in error simulation mode (disconnect and reconnect, send no or invalid telegrams). 
+# sick_lidar_localization driver handles errors with diagnostic messages and reconnects if required.
 #
 
 if true ; then
-  roslaunch sick_lidar_localization sim_loc_test_server.launch error_simulation:=true 2>&1 | tee -a ~/.ros/log/error_simu/error_simu.log
+  roslaunch sick_lidar_localization sim_loc_test_server.launch error_simulation:=true 2>&1 | tee -a ~/.ros/log/error_simu/error_simu.log &
+  sleep 180
+  rosnode kill /sim_loc_test_server ; sleep 1 ; killall -9 sim_loc_test_server
 fi
 
 #
 # Cleanup and exit
 #
 
-./src/sick_lidar_localization/test/scripts/killall.bash
+if [ -d ./src/sick_lidar_localization ]         ; then ./src/sick_lidar_localization/test/scripts/killall.bash         ; fi
+if [ -d ./src/sick_lidar_localization_pretest ] ; then ./src/sick_lidar_localization_pretest/test/scripts/killall.bash ; fi
 killall roslaunch
 grep "WARN" ~/.ros/log/error_simu/*.log ; grep "ERR" ~/.ros/log/error_simu/*.log
 sleep 15

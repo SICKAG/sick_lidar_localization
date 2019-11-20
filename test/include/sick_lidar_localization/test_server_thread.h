@@ -131,8 +131,9 @@ namespace sick_lidar_localization
     
     /*!
      * Closes all tcp connections
+     * @param[in] force_shutdown if true, sockets are immediately forced to shutdown
      */
-    virtual void closeTcpConnections(void);
+    virtual void closeTcpConnections(bool force_shutdown = false);
 
     /*!
      * Closes a socket.

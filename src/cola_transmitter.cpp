@@ -89,21 +89,7 @@ sick_lidar_localization::ColaTransmitter::~ColaTransmitter()
  */
 bool sick_lidar_localization::ColaTransmitter::connect(void)
 {
-  try
-  {
-    // Connect to localization controller
-    boost::asio::ip::tcp::resolver tcpresolver(m_ioservice);
-    boost::asio::ip::tcp::resolver::query tcpquery(m_server_adress, std::to_string(m_tcp_port));
-    boost::asio::ip::tcp::resolver::iterator it = tcpresolver.resolve(tcpquery);
-    boost::system::error_code errorcode;
-    m_tcp_socket.connect(*it, errorcode);
-    return !errorcode && m_tcp_socket.is_open();
-  }
-  catch(std::exception & exc)
-  {
-    ROS_WARN_STREAM("## ERROR ColaTransmitter::connect(): connect to " << m_server_adress << ":" << m_tcp_port << " failed, exception " << exc.what());
-  }
-  return false;
+  return m_tcp_socket.connect(m_ioservice, m_server_adress, m_tcp_port);
 }
 
 /*!
@@ -114,11 +100,7 @@ bool sick_lidar_localization::ColaTransmitter::close(void)
 {
   try
   {
-    if (m_tcp_socket.is_open())
-    {
-      m_tcp_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both);
-      m_tcp_socket.close();
-    }
+    m_tcp_socket.close();
     m_ioservice.stop();
     return true;
   }
@@ -137,7 +119,7 @@ bool sick_lidar_localization::ColaTransmitter::close(void)
  */
 bool sick_lidar_localization::ColaTransmitter::send(const std::vector<uint8_t> & data, ros::Time & send_timestamp)
 {
-  return send(m_tcp_socket, data, send_timestamp);
+  return send(m_tcp_socket.socket(), data, send_timestamp);
 }
 
 /*!
@@ -177,7 +159,7 @@ bool sick_lidar_localization::ColaTransmitter::send(boost::asio::ip::tcp::socket
  */
 bool sick_lidar_localization::ColaTransmitter::receive(std::vector<uint8_t> & telegram, double timeout, ros::Time & receive_timestamp)
 {
-  return receive(m_tcp_socket, telegram, timeout, receive_timestamp);
+  return receive(m_tcp_socket.socket(), telegram, timeout, receive_timestamp);
 }
 
 /*!
@@ -200,6 +182,7 @@ bool sick_lidar_localization::ColaTransmitter::receive(boost::asio::ip::tcp::soc
       // Read 1 byte
       uint8_t byte_received = 0;
       boost::system::error_code errorcode;
+      // Possibly better than receiving byte for byte: use boost::asio::read_until to read until <ETX> received
       if (socket.available() > 0 && boost::asio::read(socket, boost::asio::buffer(&byte_received, 1), boost::asio::transfer_exactly(1), errorcode) > 0 && !errorcode)
       {
         if (telegram.empty())

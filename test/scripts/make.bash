@@ -11,15 +11,15 @@ rm -f ./devel/lib/*sick*                           2> /dev/null
 rm -f ./devel/lib/sick_lidar_localization/*sick*   2> /dev/null
 rm -f ./install/lib/*sick*                         2> /dev/null
 rm -f ./install/lib/sick_lidar_localization/*sick* 2> /dev/null
-if [ ! -d ./src/sick_lidar_localization ] && [ -d ./src/sick_lidar_localization_pretest ] ; then
-  pushd ./src # Note: development repo is https://github.com/michael1309/sick_lidar_localization_pretest.git, relase repo is https://github.com/SICKAG/sick_lidar_localization.git
-  ln -s ./sick_lidar_localization_pretest ./sick_lidar_localization
-  popd
-fi
-if [ ! -d ./src/sick_lidar_localization ] ; then
-  echo -e "\n## ERROR make.bash: directory ./src/sick_lidar_localization not found.\n"
-  exit
-fi
+# if [ ! -d ./src/sick_lidar_localization ] && [ -d ./src/sick_lidar_localization_pretest ] ; then
+#   pushd ./src # Note: development repo is https://github.com/michael1309/sick_lidar_localization_pretest.git, relase repo is https://github.com/SICKAG/sick_lidar_localization.git
+#   ln -s ./sick_lidar_localization_pretest ./sick_lidar_localization
+#   popd
+# fi
+# if [ ! -d ./src/sick_lidar_localization ] ; then
+#   echo -e "\n## ERROR make.bash: directory ./src/sick_lidar_localization not found.\n"
+#   exit
+# fi
 
 #
 # Build and install sick_lidar_localization binaries.
@@ -32,6 +32,8 @@ source ./install/setup.bash
 
 # lint, install by running
 catkin_lint -W1 ./src/sick_lidar_localization
+if [ -d ./src/sick_lidar_localization ]         ; then catkin_lint -W1 ./src/sick_lidar_localization         ; fi
+if [ -d ./src/sick_lidar_localization_pretest ] ; then catkin_lint -W1 ./src/sick_lidar_localization_pretest ; fi
 
 # print warnings and errors
 echo -e "\nmake.bash finished.\n"

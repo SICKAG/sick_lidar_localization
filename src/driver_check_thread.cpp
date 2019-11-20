@@ -73,11 +73,29 @@ sick_lidar_localization::MessageCheckThread::MessageCheckThread()
 : m_message_check_thread_running(false), m_message_check_thread(0), m_message_check_frequency(100)
 {
   // Read configuation
+  int software_pll_fifo_length = 7, time_sync_initial_length = 10;
+  double time_sync_rate = 0.1, time_sync_initial_rate = 1.0;
   ros::param::param<double>("/sick_lidar_localization/sim_loc_driver_check/message_check_frequency", m_message_check_frequency, m_message_check_frequency);
+  ros::param::param<int>("/sick_lidar_localization/time_sync/software_pll_fifo_length", software_pll_fifo_length, software_pll_fifo_length);
+  ros::param::param<double>("/sick_lidar_localization/time_sync/time_sync_rate", time_sync_rate, time_sync_rate);
+  ros::param::param<double>("/sick_lidar_localization/time_sync/time_sync_initial_rate", time_sync_initial_rate, time_sync_initial_rate);
+  ros::param::param<int>("/sick_lidar_localization/time_sync/time_sync_initial_length", time_sync_initial_length, time_sync_initial_length);
+  assert(software_pll_fifo_length > 0 && time_sync_rate > FLT_EPSILON);
+  m_software_pll_expected_initialization_duration = (software_pll_fifo_length / time_sync_initial_rate + 1); // expected initialization time for software pll (system time from lidar ticks not yet available)
   // Read min allowed values in a result port telegrams
   m_result_port_telegram_min_values = readYamlResultPortTelegram("/sick_lidar_localization/sim_loc_driver_check/result_telegram_min_values");
+  m_result_port_telegram_min_values.vehicle_time_valid = false;
+  m_result_port_telegram_min_values.vehicle_time_sec = 0;
+  m_result_port_telegram_min_values.vehicle_time_nsec = 0;
+  ros::param::param<double>("/sick_lidar_localization/sim_loc_driver_check/result_telegram_min_values/vehicle_time_delta", m_vehicle_time_delta_min, -1.0);
+  ros::param::param<bool>("/sick_lidar_localization/sim_loc_driver_check/result_telegram_min_values/check_vehicle_time", m_vehicle_time_check_enabled, true);
   // Read max allowed values in a result port telegrams
   m_result_port_telegram_max_values = readYamlResultPortTelegram("/sick_lidar_localization/sim_loc_driver_check/result_telegram_max_values");
+  m_result_port_telegram_max_values.vehicle_time_valid = true;
+  m_result_port_telegram_max_values.vehicle_time_sec = UINT32_MAX;
+  m_result_port_telegram_max_values.vehicle_time_nsec = UINT32_MAX;
+  ros::param::param<double>("/sick_lidar_localization/sim_loc_driver_check/result_telegram_max_values/vehicle_time_delta", m_vehicle_time_delta_max, 1.0);
+  ros::param::param<bool>("/sick_lidar_localization/sim_loc_driver_check/result_telegram_max_values/check_vehicle_time", m_vehicle_time_check_enabled, true);
   ROS_INFO_STREAM("MessageCheckThread: min allowed values in result port telegrams: " << sick_lidar_localization::Utils::flattenToString(m_result_port_telegram_min_values));
   ROS_INFO_STREAM("MessageCheckThread: max allowed values in result port telegrams: " << sick_lidar_localization::Utils::flattenToString(m_result_port_telegram_max_values));
 }
@@ -181,6 +199,11 @@ sick_lidar_localization::SickLocResultPortTelegramMsg sick_lidar_localization::M
   std::vector<int> i_vec;
   std::vector<uint8_t> u8_vec;
   sick_lidar_localization::SickLocResultPortTelegramMsg telegram;
+  
+  // Default values, can be overwritten by parameter settings
+  telegram.vehicle_time_valid = false;
+  telegram.vehicle_time_sec = 0;
+  telegram.vehicle_time_nsec = 0;
   
   // Read ros header
   ros::param::param<double>(param_section+"/header/seq", d_value, 0);
@@ -298,5 +321,34 @@ bool sick_lidar_localization::MessageCheckThread::checkTelegram(sick_lidar_local
     CHECK_TELEGRAM_VALUE(telegram_payload.CovarianceX, telegram, m_result_port_telegram_min_values, m_result_port_telegram_max_values) &&
     CHECK_TELEGRAM_VALUE(telegram_payload.CovarianceY, telegram, m_result_port_telegram_min_values, m_result_port_telegram_max_values) &&
     CHECK_TELEGRAM_VALUE(telegram_payload.CovarianceYaw, telegram, m_result_port_telegram_min_values, m_result_port_telegram_max_values) &&
-    CHECK_TELEGRAM_VALUE(telegram_payload.Reserved3, telegram, m_result_port_telegram_min_values, m_result_port_telegram_max_values);
+    CHECK_TELEGRAM_VALUE(telegram_payload.Reserved3, telegram, m_result_port_telegram_min_values, m_result_port_telegram_max_values) &&
+      (!m_vehicle_time_check_enabled || checkVehicleTime(telegram)); // Check vehicle time (system time from ticks by software pll), if enabled by default
 }
+
+/*
+ * Checks the vehicle time of a result telegram message (system time from ticks by software pll) against min and max
+ * allowed difference to ros::Time::now(). Returns true, if test passed (vehicle time  within their range), or false otherwise.
+ * @param[in] telegram result telegram message (SickLocResultPortTelegramMsg)
+ * @return true, if test passed, false otherwise.
+ */
+
+bool sick_lidar_localization::MessageCheckThread::checkVehicleTime(sick_lidar_localization::SickLocResultPortTelegramMsg & telegram)
+{
+  if(m_timestamp_valid_telegram.sec <= 0)
+    m_timestamp_valid_telegram = ros::Time::now();
+  if(telegram.vehicle_time_valid)
+  {
+    m_timestamp_valid_telegram = ros::Time::now();
+    ros::Time message_time(telegram.header.stamp.sec, telegram.header.stamp.nsec);
+    ros::Time vehicle_time(telegram.vehicle_time_sec,telegram.vehicle_time_nsec);
+    ros::Duration delta_time = message_time - vehicle_time;
+    return delta_time.toSec() >= m_vehicle_time_delta_min && delta_time.toSec() <= m_vehicle_time_delta_max;
+  }
+  else if((ros::Time::now() - m_timestamp_valid_telegram).toSec() <= m_software_pll_expected_initialization_duration // software pll is initializing
+  || (std::abs(m_vehicle_time_delta_min) >= FLT_MAX && std::abs(m_vehicle_time_delta_max) >= FLT_MAX)) // checkVehicleTime disabled for error simulation (unreachable controller etc.)
+  {
+    return true; // software pll initializing, system time from lidar ticks not yet available
+  }
+  return false; // vehicle time out of range
+}
+

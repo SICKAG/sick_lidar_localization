@@ -56,12 +56,7 @@
 #ifndef __SIM_LOC_COLA_TRANSMITTER_H_INCLUDED
 #define __SIM_LOC_COLA_TRANSMITTER_H_INCLUDED
 
-#include <boost/asio/buffer.hpp>
-#include <boost/asio/io_service.hpp>
-#include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/read.hpp>
-#include <boost/asio/write.hpp>
-
+#include "sick_lidar_localization/client_socket.h"
 #include "sick_lidar_localization/fifo_buffer.h"
 
 namespace sick_lidar_localization
@@ -195,7 +190,7 @@ namespace sick_lidar_localization
     std::string m_server_adress;                        ///< ip adress of the localization controller, default: 192.168.0.1
     int m_tcp_port;                                     ///< tcp port of the localization controller, default: 2111 for command requests and 2112 for  command responses
     boost::asio::io_service m_ioservice;                ///< boost io service for tcp connections
-    boost::asio::ip::tcp::socket m_tcp_socket;          ///< tcp socket connected to the localization controller
+    sick_lidar_localization::ClientSocket m_tcp_socket; ///< tcp socket connected to the localization controller
     double m_receive_timeout;                           ///< default timeout in seconds for receive functions
     bool m_receiver_thread_running;                     ///< true: m_receiver_thread is running, otherwise false
     boost::thread* m_receiver_thread;                   ///< thread to receive responses from localization server

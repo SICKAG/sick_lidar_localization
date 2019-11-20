@@ -142,7 +142,7 @@ bool sick_lidar_localization::DriverMonitor::initColaTransmitter(const std::stri
 {
   if(!m_cola_transmitter)
   {
-    m_cola_transmitter = new sick_lidar_localization::ColaTransmitter(server_adress, ip_port_cola);
+    m_cola_transmitter = new sick_lidar_localization::ColaTransmitter(server_adress, ip_port_cola, receive_timeout);
     if (!m_cola_transmitter->connect())
     {
       ROS_WARN_STREAM("## ERROR DriverMonitor::serviceCbColaTelegram: can't connect to localization server " << server_adress << ":" << ip_port_cola);

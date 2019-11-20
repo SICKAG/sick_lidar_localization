@@ -93,6 +93,9 @@ int32 | telegram_payload.CovarianceY | Covariance c5 of the pose Y [mm^2]
 int32 | telegram_payload.CovarianceYaw | Covariance c9 of the pose Yaw [mdeg^2]
 uint64 | telegram_payload.Reserved3 | Reserved
 uint16 | telegram_trailer.Checksum | CRC16-CCITT over length of header (52 bytes) and payload (52 bytes) without 2 bytes of the trailer
+bool | vehicle_time_valid | true: vehicle_time_sec and vehicle_time_nsec valid, false: software pll still in initial phase
+uint32 | vehicle_time_sec | System time of vehicles pose calculated by software pll (seconds part of the system time)
+uint32 | vehicle_time_nsec | System time of vehicles pose calculated by software pll (nano seconds part of the system time)
 
 Example output of a result telegram (ros message of type [msg/SickLocResultPortTelegramMsg.msg](msg/SickLocResultPortTelegramMsg.msg)):
 
@@ -130,10 +133,109 @@ telegram_payload:
   Reserved3: 0
 telegram_trailer: 
   Checksum: 25105
+vehicle_time_valid: True
+vehicle_time_sec: 1571732539
+vehicle_time_nsec: 854719042
 ```
 
 Note: Result telegrams always have the same MagicWord: `1397310283` (`0x5349434B` hex resp. `SICK` in ascii/ansi) and a
 length of 106 bytes (`Length: 106`).
+
+## Time synchronization
+
+The localization controller sends the timestamp of a pose in millisecond ticks (telegram_payload.Timestamp of a result 
+port telegram). This timestamp in milliseconds is accurate, but differs from the ros system time by a time offset. 
+This time offset can be queried by a LocRequestTimestamp command.
+
+LocRequestTimestamp commands are transmitted to the localization controller by the Cola protocoll. See SICK manuals for 
+a description of the Cola protocoll and SOPAS commands.
+
+Cola commands can be transmitted to the localization controller by ros service "SickLocColaTelegram", implemented by 
+sim_loc_driver and defined in file [srv/SickLocColaTelegramSrv.srv](srv/SickLocColaTelegramSrv.srv). 
+Example for a Cola command to query a LocRequestTimestamp:
+
+```
+> rosservice call SickLocColaTelegram "{cola_ascii_request: 'sMN LocRequestTimestamp', wait_response_timeout: 1}"
+cola_ascii_response: "sAN LocRequestTimestamp 1EDB"
+send_timestamp_sec: 1573118218
+send_timestamp_nsec: 365014292
+receive_timestamp_sec: 1573118218
+receive_timestamp_nsec: 367832063
+```
+
+`cola_ascii_response` is the response of the localization controller. `send_timestamp` and `receive_timestamp` are ros
+system timestamps immediately before sending the request resp. immediately after receiving the controllers response.
+Using send and receive timestamps, the time offset can be calculated:
+
+```
+delta_time_ms := mean_time_vehicle_ms - timestamp_lidar_ms
+mean_time_vehicle_ms := (send_time_vehicle + receive_time_vehicle) / 2
+                     := vehicles mean timestamp in milliseconds
+send_time_vehicle    := vehicles timestamp when sending LocRequestTimestamp
+receive_time_vehicle := vehicles timestamp when receiving the LocRequestTimestamp response
+timestamp_lidar_ms   := lidar timestamp in milliseconds from LocRequestTimestamp response
+```
+
+This time offset calculation is provided by ros service "SickLocRequestTimestamp", implemented by the
+sim_loc_driver and defined in file [srv/SickLocRequestTimestampSrv.srv](srv/SickLocRequestTimestampSrv.srv).
+Example to query the time offset:
+
+```
+> rosservice call SickLocRequestTimestamp "{}"
+timestamp_lidar_ms: 23745
+mean_time_vehicle_ms: 1573118234209
+delta_time_ms: 1573118210464
+send_time_vehicle_sec: 1573118234
+send_time_vehicle_nsec: 208421663
+receive_time_vehicle_sec: 1573118234
+receive_time_vehicle_nsec: 211120716
+```
+
+`delta_time_ms` gives the time offset in milliseconds. See operation manuals for details 
+about time synchronization, time offset calculation and Cola telegrams.
+
+The time offset depends on network latencies and transmission delays. To get a more accurate value, the time offset can be
+calculated from N measurements by a software pll. The software pll estimates the mean time offset and calculates the 
+system time from any ticks. See [doc/software_pll.md](doc/software_pll.md) for further details.
+
+The system timestamp of a vehicle pose is calculated from lidar ticks for each result port telegram and published by 
+ros message [msg/SickLocResultPortTelegramMsg.msg](msg/SickLocResultPortTelegramMsg.msg). This way, an application does
+not need to care about time synchronization itself. It's sufficient to use `vehicle_time_sec` and `vehicle_time_nsec` in
+the result telegrams. Example output of a result telegram:
+                                     
+```
+> rostopic echo "/sick_lidar_localization/driver/result_telegrams"
+Timestamp: 525924            # Lidar timestamp in millisecond ticks
+vehicle_time_valid: True     # System timestamp by software pll is valid
+vehicle_time_sec: 1573119569 # System timestamp of vehicle pose (second part)
+vehicle_time_nsec: 854719042 # System timestamp of vehicle pose (nanosecond part)
+```
+
+The system timestamp of a vehicle pose can be calculated from ticks using ros service "SickLocTimeSync", too. This service
+returns the system timestamp from ticks using the software pll running in the driver. It's is defined in file 
+[srv/SickLocTimeSyncSrv.srv](srv/SickLocTimeSyncSrv.srv). Example:
+
+```
+> rosservice call SickLocTimeSync "{timestamp_lidar_ms: 123456}"
+vehicle_time_valid: True
+vehicle_time_sec: 1573119167
+vehicle_time_nsec: 380565047
+```
+
+**Important note:** The driver sends LocRequestTimestamp commands to the localization controller with a constant rate,
+each 10 seconds by default (configurable by parameter `time_sync_rate` in file [yaml/sim_loc_driver.yaml](yaml/sim_loc_driver.yaml)).
+The software pll is updated after each successful LocRequestTimestamp with the current lidar ticks and the current system
+time. The software pll uses a fifo buffer to calculate a regression, with a buffer size of 7 by default (configurable by 
+parameter `software_pll_fifo_length` in file [yaml/sim_loc_driver.yaml](yaml/sim_loc_driver.yaml)). Therefore, it takes
+at least 7 LocRequestTimestamp commands before the software pll is fully initialized and time synchronization becomes valid.
+Within the initialization phase (at least 7 LocRequestTimestamp commands), a system time can not be calculated from
+lidar ticks. During initialization phase, `vehicle_time_valid` will be false, `vehicle_time_sec` and `vehicle_time_nsec` 
+will have value 0.
+
+SICK recommends a time_sync_rate of 0.1 or below („SICK recommends you set the request cycle time from the vehicle 
+controller to 10 seconds or higher”). Therefore, the initial phase after start will take round about 70 seconds (7 LocRequestTimestamp 
+commands with 10 seconds delay by default). During the initial phase, the time synchronization service is not available
+and the vehicle system time is not valid.
 
 ## Diagnostics
 
@@ -172,7 +274,7 @@ PARSE_ERROR | 2 | Parse error, telegram could not be decoded
 CONFIGURATION_ERROR | 3 | Invalid driver configuration
 INTERNAL_ERROR | 4 | Internal error (should never happen)
 
-## Configuration
+## Driver configuration
 
 The sick_lidar_localization driver is configured by file [yaml/sim_loc_driver.yaml](yaml/sim_loc_driver.yaml):
 
@@ -180,6 +282,8 @@ Parametername | Defaultvalue | Description
 --- | --- | ---
 localization_controller_default_ip_adress | "192.168.0.1" | Default IP adress "192.168.0.1" of the localization controller (if not otherwise set by parameter "localization_controller_ip_adress")
 result_telegrams_tcp_port | 2201 | TCP port number of the localization controller sending localization results
+cola_telegrams_tcp_port | 2111 | For requests and to transmit settings to the localization controller: IP port number 2111 and 2112 to send telegrams and to request data, SOPAS CoLa-A or CoLa-B protocols
+cola_binary | 0 | 0: send Cola-ASCII (default), 1: send Cola-Binary, 2: toggle between Cola-ASCII and Cola-Binary (test and development only!)
 tcp_connection_retry_delay | 1.0 | Delay in seconds to retry to connect to the localization controller, default 1 second
 result_telegrams_topic | "/sick_lidar_localization/driver/result_telegrams" | ros topic to publish result port telegram messages (type SickLocResultPortTelegramMsg)
 result_telegrams_frame_id | "sick_lidar_localization" | ros frame id of result port telegram messages (type SickLocResultPortTelegramMsg)
@@ -187,6 +291,12 @@ diagnostic_topic | "/sick_lidar_localization/driver/diagnostic" | ros topic to p
 diagnostic_frame_id | "sick_lidar_localization" | ros frame id of diagnostic messages (type SickLocDiagnosticMsg)
 monitoring_rate | 1.0 | frequency to monitor driver messages, once per second by default
 monitoring_message_timeout | 1.0 | timeout for driver messages, shutdown tcp-sockets and reconnect after message timeout, 1 second by default
+point_cloud_topic | "/cloud" | ros topic to publish PointCloud2 data
+point_cloud_frame_id | "pointcloud_sick_lidar_localization" | ros frame id of PointCloud2 messages
+tf_parent_frame_id | "tf_demo_map" | parent frame of tf messages of of vehicles pose (typically frame of the loaded map)
+tf_child_frame_id | "tf_sick_lidar_localization" | child frame of tf messages of of vehicles pose
+software_pll_fifo_length | 7 | Length of software pll fifo, default: 7
+time_sync_rate | 0.1 | Frequency to request timestamps from localization controller using ros service "SickLocRequestTimestamp" and to update software pll, default: 0.1
 
 Note: The IP address of the SICK localization controller (192.168.0.1 by default) can be set by commandline argument 
 `localization_controller_ip_adress:=<ip-address>` when starting the driver with 
@@ -340,6 +450,8 @@ MessageCheckThread: check messages thread summary: 1153 messages checked, 0 fail
 pointcloud_convert in file [src/pointcloud_converter.cpp](src/pointcloud_converter.cpp) implements a subscriber to 
 sim_loc_driver messages. The driver messages are converted to both PointCloud2 on topic "/cloud" and and TF messages,
 which can be viewed by rviz.
+
+![doc/sequenceDiagramResultTelegrams.png](doc/sequenceDiagramResultTelegrams.png)
 
 To run and visualize an example with a simulated vehicle moving in circles, run the following commands: 
 

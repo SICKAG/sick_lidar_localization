@@ -1,4 +1,4 @@
-# Demo configuration of sim_loc_driver_check
+# Default configuration of sim_loc_driver_check
 #
 # sim_loc_driver_check subscribes to sim_loc_driver messages and checks the telegram data
 # against min and max values configured in this yaml-file.
@@ -32,8 +32,8 @@ sick_lidar_localization:
         ErrorCode:        0                      # ErrorCode 0:= OK, ErrorCode 1:= UNKNOWNERROR. uint16, size:= UInt16 = 2 byte
         ScanCounter:      0.0                    # Counter of related scan data. uint32, size:= UInt32 = 4 byte
         Timestamp:        0.0                    # Time stamp of the pose [ms]. The time stamp indicates the time at which the pose is calculated. uint32, size:= UInt32 = 4 byte
-        PoseX:            -50000                 # Position X of the vehicle on the map in cartesian global coordinates [mm]. int32, size:= Int32 = 4 byte
-        PoseY:            -50000                 # Position Y of the vehicle on the map in cartesian global coordinates [mm]. int32, size:= Int32 = 4 byte
+        PoseX:            -2147483648            # Position X of the vehicle on the map in cartesian global coordinates [mm]. int32, size:= Int32 = 4 byte
+        PoseY:            -2147483648            # Position Y of the vehicle on the map in cartesian global coordinates [mm]. int32, size:= Int32 = 4 byte
         PoseYaw:          -360000                # Orientation (yaw) of the vehicle on the map [mdeg]. int32, size:= Int32 = 4 byte
         Reserved1:        0.0                    # Reserved. uint32, size:= UInt32 = 4 byte
         Reserved2:        -2147483648            # Reserved. int32, size:= Int32 = 4 byte
@@ -45,8 +45,8 @@ sick_lidar_localization:
         Reserved3:        0.0                    # Reserved. uint64, size:= UInt64 = 8 byte
       telegram_trailer:                          # 2 byte trailer of a result port telegram
         Checksum:         0                      # CRC16-CCITT checksum. uint16, size:= UInt16 = 2 byte
-      vehicle_time_delta: -1.0                   # min. allowed time diff in seconds between vehicle time (system time from ticks by software pll) and ros::Time::now()
-      check_vehicle_time: true                   # check of vehicle time is enabled (default)
+      vehicle_time_delta: -1.0e308               # min. allowed time diff in seconds between vehicle time (system time from ticks by software pll) and ros::Time::now()
+      check_vehicle_time: false                  # we can't check the vehicle time without LocRequestTimestamps, which are not available due to simulation of network errors
     result_telegram_max_values:                  # configuration of max allowed values in a result port telegram
       header:                                    # ros header with sequence id, timestamp and frame id
         seq:              4294967296.0           # 4294967296 = 0xFFFFFFFF # sequence ID, consecutively increasing ID, uint32, size:= 4 byte
@@ -63,11 +63,11 @@ sick_lidar_localization:
         TelegramCounter:  4294967296.0           # 4294967296 = 0xFFFFFFFF # Telegram counter since last start-up. uint32, size:= UInt32 = 4 byte
         SystemTime:       18446744073709551616.0 # 18446744073709551616 = 0xFFFFFFFFFFFFFFFF # Not used. uint64, size:= NTP = 8 byte
       telegram_payload:                          # 52 byte payload of a result port telegram
-        ErrorCode:        0                      # ErrorCode 0:= OK, ErrorCode 1:= UNKNOWNERROR. uint16, size:= UInt16 = 2 byte
+        ErrorCode:        0xFFFF                 # ErrorCode 0:= OK, ErrorCode 1:= UNKNOWNERROR. uint16, size:= UInt16 = 2 byte
         ScanCounter:      4294967296.0           # 4294967296 = 0xFFFFFFFF # Counter of related scan data. uint32, size:= UInt32 = 4 byte
         Timestamp:        4294967296.0           # 4294967296 = 0xFFFFFFFF # Time stamp of the pose [ms]. The time stamp indicates the time at which the pose is calculated. uint32, size:= UInt32 = 4 byte
-        PoseX:            50000                  # Position X of the vehicle on the map in cartesian global coordinates [mm]. int32, size:= Int32 = 4 byte
-        PoseY:            50000                  # Position Y of the vehicle on the map in cartesian global coordinates [mm]. int32, size:= Int32 = 4 byte
+        PoseX:            2147483647             # Position X of the vehicle on the map in cartesian global coordinates [mm]. int32, size:= Int32 = 4 byte
+        PoseY:            2147483647             # Position Y of the vehicle on the map in cartesian global coordinates [mm]. int32, size:= Int32 = 4 byte
         PoseYaw:          360000                 # Orientation (yaw) of the vehicle on the map [mdeg]. int32, size:= Int32 = 4 byte
         Reserved1:        4294967296.0           # 4294967296 = 0xFFFFFFFF          # Reserved. uint32, size:= UInt32 = 4 byte
         Reserved2:        2147483647             # Reserved. int32, size:= Int32 = 4 byte
@@ -79,5 +79,6 @@ sick_lidar_localization:
         Reserved3:        18446744073709551616.0 # 18446744073709551616 = 0xFFFFFFFFFFFFFFFF # Reserved. uint64, size:= UInt64 = 8 byte
       telegram_trailer:                          # 2 byte trailer of a result port telegram
         Checksum:         0xFFFF                 # CRC16-CCITT checksum. uint16, size:= UInt16 = 2 byte
-      vehicle_time_delta: 1.0                    # max. allowed time diff in seconds between vehicle time (system time from ticks by software pll) and ros::Time::now()
-      check_vehicle_time: true                   # check of vehicle time is enabled (default)
+      vehicle_time_delta: 1.0e308                # max. allowed time diff in seconds between vehicle time (system time from ticks by software pll) and ros::Time::now()
+      check_vehicle_time: false                  # we can't check the vehicle time without LocRequestTimestamps, which are not available due to simulation of network errors
+

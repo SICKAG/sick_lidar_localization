@@ -1,10 +1,23 @@
 /*
- * @brief sim_loc_test_server implements a simple tcp server,
- * simulating a localization controller for unittests.
+ * @brief time_sync advertises and runs ros services "SickLocRequestTimestamp" and "SickLocTimeSync"
+ * for time synchronization.
  *
- * Note: sim_loc_test_server does not implement the functions of localization controller,
- * it just implements a simple tcp server, accepting tcp connections from clients
- * and generating telegrams to test the ros driver for sim localization.
+ * ROS service SickLocRequestTimestamp requests a timestamp from the localization controller
+ * by sending cola command LocRequestTimestamp ("sMN LocRequestTimestamp").
+ *
+ * The service receives and decodes the current timestamp (uint32 timestamp in milliseconds)
+ * and calculates the time offset with the following formular:
+ *
+ * delta_time_ms := mean_time_vehicle_ms - timestamp_lidar_ms
+ * mean_time_vehicle_ms := (send_time_vehicle + receive_time_vehicle) / 2
+ *                      := vehicles mean timestamp in milliseconds
+ * send_time_vehicle    := vehicles timestamp when sending LocRequestTimestamp
+ * receive_time_vehicle := vehicles timestamp when receiving the LocRequestTimestamp response
+ * timestamp_lidar_ms   := lidar timestamp in milliseconds from LocRequestTimestamp response
+ *
+ * See Operation-Instruction-v1.1.0.241R.pdf for details about time synchronization and
+ * time offset calculation. See Technical_information_Telegram_Listing_NAV_LOC_en_IM0076556.PDF
+ * for further details about Cola telegram LocRequestTimestamp.
  *
  * Copyright (C) 2019 Ing.-Buero Dr. Michael Lehning, Hildesheim
  * Copyright (C) 2019 SICK AG, Waldkirch
@@ -58,42 +71,34 @@
  *
  */
 #include <ros/ros.h>
-#include <string>
-#include <vector>
 
-#include "sick_lidar_localization/test_server_thread.h"
-#include "sick_lidar_localization/utils.h"
+#include "sick_lidar_localization/time_sync_service.h"
 
 int main(int argc, char** argv)
 {
   // Ros configuration and initialization
-  ros::init(argc, argv, "sim_loc_test_server");
+  ros::init(argc, argv, "time_sync");
   ros::NodeHandle nh;
-  ROS_INFO_STREAM("sim_loc_test_server started.");
+  ROS_INFO_STREAM("time_sync started.");
   
-  // Create a server to simulate a localization controller, incl. a listener thread to accept tcp connections
-  int tcp_port_results = 2201; // Default: The localization controller uses IP port number 2201 to send localization results
-  int tcp_port_cola = 2111;    // For requests and to transmit settings to the localization controller: IP port number 2111 and 2112 to send telegrams and to request data, SOPAS CoLa-A or CoLa-B protocols
-  ros::param::param<int>("/sick_lidar_localization/test_server/result_telegrams_tcp_port", tcp_port_results, tcp_port_results);
-  ros::param::param<int>("/sick_lidar_localization/test_server/cola_telegrams_tcp_port", tcp_port_cola, tcp_port_cola);
-  sick_lidar_localization::TestServerThread test_server_thread(&nh, tcp_port_results, tcp_port_cola);
+  // Initialize TimeSyncService
+  sick_lidar_localization::TimeSyncService time_sync_service(&nh);
   
-  // Subscribe to sim_loc_driver messages to monitor sim_loc_driver in error simulation mode
-  std::string result_telegrams_topic = "/sick_lidar_localization/driver/result_telegrams";      // default topic to publish result port telegram messages (type SickLocResultPortTelegramMsg)
-  ros::param::param<std::string>("/sick_lidar_localization/driver/result_telegrams_topic", result_telegrams_topic, result_telegrams_topic);
-  ros::Subscriber result_telegram_subscriber = nh.subscribe(result_telegrams_topic, 1, &sick_lidar_localization::TestServerThread::messageCbResultPortTelegrams, &test_server_thread);
+  // Start time synchronization thread to run the software pll
+  if(!time_sync_service.start())
+  {
+    ROS_ERROR_STREAM("## ERROR time_sync: could not start synchronization thread, exiting");
+    return EXIT_FAILURE;
+  }
   
-  // Start simulation of a localization controller
-  test_server_thread.start();
-
   // Run ros event loop
   ros::spin();
   
   // Cleanup and exit
-  std::cout << "sim_loc_test_server finished." << std::endl;
-  ROS_INFO_STREAM("sim_loc_test_server finished.");
-  test_server_thread.stop();
-  std::cout << "sim_loc_test_server exits." << std::endl;
-  ROS_INFO_STREAM("sim_loc_test_server exits.");
-  return 0;
+  std::cout << "time_sync finished." << std::endl;
+  ROS_INFO_STREAM("time_sync finished.");
+  time_sync_service.stop();
+  std::cout << "time_sync exits." << std::endl;
+  ROS_INFO_STREAM("time_sync exits.");
+  return EXIT_SUCCESS;
 }

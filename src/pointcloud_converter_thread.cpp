@@ -180,7 +180,12 @@ sensor_msgs::PointCloud2 sick_lidar_localization::PointCloudConverter::convertTo
     1.0e-3 * msg.telegram_payload.PoseYaw * M_PI / 180.0, // yaw angle in radians
     0.6); // triangle_height in meter (demo only)
   // set pointcloud header
-  pointcloud_msg.header.stamp = msg.header.stamp; // timestamp of telegram
+  pointcloud_msg.header.stamp = msg.header.stamp; // telegram timestamp
+  if(msg.vehicle_time_valid) // software pll initialized: use system time of vehicle pose calculated from lidar ticks by software pll
+  {
+    pointcloud_msg.header.stamp.sec = msg.vehicle_time_sec;
+    pointcloud_msg.header.stamp.nsec = msg.vehicle_time_nsec;
+  }
   pointcloud_msg.header.frame_id = m_point_cloud_frame_id;
   pointcloud_msg.header.seq = 0;
   // clear cloud data
@@ -227,7 +232,12 @@ geometry_msgs::TransformStamped sick_lidar_localization::PointCloudConverter::co
   double posy = 1.0e-3 * msg.telegram_payload.PoseY; // y-position in meter
   double yaw  = 1.0e-3 * msg.telegram_payload.PoseYaw * M_PI / 180.0; // yaw angle in radians
   geometry_msgs::TransformStamped vehicle_transform;
-  vehicle_transform.header.stamp = ros::Time::now();
+  vehicle_transform.header.stamp = msg.header.stamp; // telegram timestamp
+  if(msg.vehicle_time_valid) // software pll initialized: use system time of vehicle pose calculated from lidar ticks by software pll
+  {
+    vehicle_transform.header.stamp.sec = msg.vehicle_time_sec;
+    vehicle_transform.header.stamp.nsec = msg.vehicle_time_nsec;
+  }
   vehicle_transform.header.frame_id = m_tf_parent_frame_id;
   vehicle_transform.child_frame_id = m_tf_child_frame_id;
   vehicle_transform.transform.translation.x = posx;

@@ -45,6 +45,8 @@ sick_lidar_localization:
         Reserved3:        0.0                    # Reserved. uint64, size:= UInt64 = 8 byte
       telegram_trailer:                          # 2 byte trailer of a result port telegram
         Checksum:         0                      # CRC16-CCITT checksum. uint16, size:= UInt16 = 2 byte
+      vehicle_time_delta: -5.0                   # min. allowed time diff in seconds between vehicle time (system time from ticks by software pll) and ros::Time::now()
+      check_vehicle_time: true                   # check of vehicle time is enabled (default)
     result_telegram_max_values:                  # configuration of max allowed values in a result port telegram
       header:                                    # ros header with sequence id, timestamp and frame id
         seq:              4294967296.0           # 4294967296 = 0xFFFFFFFF # sequence ID, consecutively increasing ID, uint32, size:= 4 byte
@@ -77,4 +79,6 @@ sick_lidar_localization:
         Reserved3:        18446744073709551616.0 # 18446744073709551616 = 0xFFFFFFFFFFFFFFFF # Reserved. uint64, size:= UInt64 = 8 byte
       telegram_trailer:                          # 2 byte trailer of a result port telegram
         Checksum:         0xFFFF                 # CRC16-CCITT checksum. uint16, size:= UInt16 = 2 byte
+      vehicle_time_delta: 5.0                    # max. allowed time diff in seconds between vehicle time (system time from ticks by software pll) and ros::Time::now()
+      check_vehicle_time: true                   # check of vehicle time is enabled (default)
 

@@ -68,6 +68,7 @@
 #include "sick_lidar_localization/SickLocResultPortTelegramMsg.h"
 #include "sick_lidar_localization/SickLocResultPortTestcaseMsg.h"
 #include "sick_lidar_localization/SickLocRequestTimestampSrv.h"
+#include "sick_lidar_localization/SickLocTimeSyncSrv.h"
 
 namespace sick_lidar_localization
 {
@@ -100,6 +101,16 @@ namespace sick_lidar_localization
     /** member variables */
     ElementType m_value; ///< protected value
     MutexType m_value_mutex; ///< mutex to protect value
+  };
+  
+  /*!
+   * Shortcut for SetGet<uint32_t>
+   */
+  class SetGet32 : public SetGet<uint32_t>
+  {
+  public:
+    /*! Constructor with optional initialization of  value */
+    SetGet32(const uint32_t & value = 0) : SetGet<uint32_t>(value) {}
   };
   
   /*!

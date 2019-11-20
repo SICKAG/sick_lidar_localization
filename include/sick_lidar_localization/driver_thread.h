@@ -62,16 +62,12 @@
 #ifndef __SIM_LOC_DRIVER_THREAD_H_INCLUDED
 #define __SIM_LOC_DRIVER_THREAD_H_INCLUDED
 
-#include <boost/asio/buffer.hpp>
-#include <boost/asio/io_service.hpp>
-#include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/read.hpp>
-#include <boost/asio/write.hpp>
 #include <boost/thread.hpp>
 #include <boost/thread/mutex.hpp>
 #include <boost/thread/recursive_mutex.hpp>
 #include <list>
 
+#include "sick_lidar_localization/client_socket.h"
 #include "sick_lidar_localization/fifo_buffer.h"
 
 namespace sick_lidar_localization
@@ -162,20 +158,22 @@ namespace sick_lidar_localization
      * member data
      */
   
-    bool m_initialized;                                 ///< true after successfull initialization (publisher, config parameter, etc.), otherwise false
-    bool m_tcp_connected;                               ///< true if a tcp connection to the localization controller is established, otherwise false
-    std::string m_server_adress;                        ///< ip adress of the localization controller, default: 192.168.0.1
-    int m_tcp_port;                                     ///< tcp port of the localization controller, default: The localization controller uses IP port number 2201 to send localization results
-    double m_tcp_connection_retry_delay;                ///< delay in seconds to retry to connect to the localization controller, default: 1 second
-    boost::asio::io_service m_ioservice;                ///< boost io service for tcp connections
-    boost::asio::ip::tcp::socket m_tcp_socket;          ///< tcp socket connected to the localization controller
-    boost::thread* m_tcp_receiver_thread;               ///< thread to receive telegrams from the localization controller
-    bool m_tcp_receiver_thread_running;                 ///< true: m_tcp_receiver_thread is running, otherwise false
-    boost::thread* m_converter_thread;                  ///< thread to convert and publish localization data
-    bool m_converter_thread_running;                    ///< true: m_converter_thread is running, otherwise false
+    bool m_initialized;                                     ///< true after successfull initialization (publisher, config parameter, etc.), otherwise false
+    bool m_tcp_connected;                                   ///< true if a tcp connection to the localization controller is established, otherwise false
+    std::string m_server_adress;                            ///< ip adress of the localization controller, default: 192.168.0.1
+    int m_tcp_port;                                         ///< tcp port of the localization controller, default: The localization controller uses IP port number 2201 to send localization results
+    double m_tcp_connection_retry_delay;                    ///< delay in seconds to retry to connect to the localization controller, default: 1 second
+    boost::asio::io_service m_ioservice;                    ///< boost io service for tcp connections
+    sick_lidar_localization::ClientSocket m_tcp_socket;     ///< tcp socket connected to the localization controller
+    boost::thread* m_tcp_receiver_thread;                   ///< thread to receive telegrams from the localization controller
+    bool m_tcp_receiver_thread_running;                     ///< true: m_tcp_receiver_thread is running, otherwise false
+    boost::thread* m_converter_thread;                      ///< thread to convert and publish localization data
+    bool m_converter_thread_running;                        ///< true: m_converter_thread is running, otherwise false
     sick_lidar_localization::FifoBuffer<std::vector<uint8_t>, boost::mutex> m_fifo_buffer; ///< fifo buffer to transfer data from receiver thread to converter thread
-    ros::Publisher m_result_telegrams_publisher;        ///< ros publisher for result port telegram messages (type SickLocResultPortTelegramMsg)
-    std::string m_result_telegrams_frame_id;            ///< ros frame id of result port telegram messages (type SickLocResultPortTelegramMsg), default: "sick_lidar_localization"
+    ros::Publisher m_result_telegrams_publisher;            ///< ros publisher for result port telegram messages (type SickLocResultPortTelegramMsg)
+    std::string m_result_telegrams_frame_id;                ///< ros frame id of result port telegram messages (type SickLocResultPortTelegramMsg), default: "sick_lidar_localization"
+    ros::ServiceClient m_timesync_service_client;           ///< client to call ros service "SickLocTimeSync" to calculate system time from ticks by software pll
+    double m_software_pll_expected_initialization_duration; ///< expected initialization time for software pll (system time from lidar ticks not yet available)
   
     /*
      * configuration and member data for diagnostic messages

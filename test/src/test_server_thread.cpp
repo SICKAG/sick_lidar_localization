@@ -175,15 +175,16 @@ bool sick_lidar_localization::TestServerThread::stop(void)
 
 /*!
  * Closes all tcp connections
+ * @param[in] force_shutdown if true, sockets are immediately forced to shutdown
  */
-void sick_lidar_localization::TestServerThread::closeTcpConnections(void)
+void sick_lidar_localization::TestServerThread::closeTcpConnections(bool force_shutdown)
 {
   for(std::list<boost::asio::ip::tcp::socket*>::iterator socket_iter = m_tcp_sockets.begin(); socket_iter != m_tcp_sockets.end(); socket_iter++)
   {
     boost::asio::ip::tcp::socket* p_socket = *socket_iter;
     try
     {
-      if(p_socket && p_socket->is_open())
+      if(p_socket && (force_shutdown || p_socket->is_open()))
       {
         p_socket->shutdown(boost::asio::ip::tcp::socket::shutdown_both);
         p_socket->close();
@@ -291,15 +292,25 @@ template<typename Callable>void sick_lidar_localization::TestServerThread::runCo
     // normal mode: listen to tcp port, accept and connect to new tcp clients
     boost::asio::ip::tcp::socket* tcp_client_socket = new boost::asio::ip::tcp::socket(m_ioservice);
     boost::system::error_code errorcode;
-    if(m_error_simulation_flag.get() != DONT_ACCECPT)
+    if(m_error_simulation_flag.get() != DONT_LISTEN && m_error_simulation_flag.get() != DONT_ACCECPT)
       ROS_INFO_STREAM("TestServerThread: listening to tcp connections on port " << ip_port_results);
     tcp_acceptor_results.listen();
-    if(m_error_simulation_flag.get() == DONT_ACCECPT) // error simulation: testserver does not does not accecpt tcp clients
+    if(m_error_simulation_flag.get() == DONT_LISTEN || m_error_simulation_flag.get() == DONT_ACCECPT) // error simulation: testserver does not does not accecpt tcp clients
     {
       ros::Duration(0.1).sleep();
       continue;
     }
     tcp_acceptor_results.accept(*tcp_client_socket, errorcode); // normal mode: accept new tcp client
+    if(m_error_simulation_flag.get() == DONT_LISTEN || m_error_simulation_flag.get() == DONT_ACCECPT) // error simulation: testserver does not does not accecpt tcp clients
+    {
+      if(tcp_client_socket->is_open())
+      {
+        tcp_client_socket->shutdown(boost::asio::ip::tcp::socket::shutdown_both);
+        tcp_client_socket->close();
+  
+      }
+      continue;
+    }
     if (!errorcode && tcp_client_socket->is_open())
     {
       // tcp client connected, start worker thread
@@ -323,16 +334,15 @@ template<typename Callable>void sick_lidar_localization::TestServerThread::runCo
 void sick_lidar_localization::TestServerThread::runWorkerThreadResultCb(boost::asio::ip::tcp::socket* p_socket)
 {
   ROS_INFO_STREAM("TestServerThread: worker thread for result telegrams started");
-  ros::Duration send_telegrams_delay(1.0 / m_result_telegram_rate);
-  sick_lidar_localization::SickLocResultPortTestcaseMsg testcase = sick_lidar_localization::TestcaseGenerator::createDefaultResultPortTestcase(); // initial testcase is the default testcase
   sick_lidar_localization::UniformRandomInteger random_generator(0,255);
   sick_lidar_localization::UniformRandomInteger random_length(1, 512);
   sick_lidar_localization::UniformRandomInteger random_integer(0, INT_MAX);
   double circle_yaw = 0;
   while(ros::ok() && m_worker_thread_running && p_socket && p_socket->is_open())
   {
-    boost::system::error_code error_code;
+    ros::Duration send_telegrams_delay((double)sick_lidar_localization::TestcaseGenerator::ResultPoseInterval() / m_result_telegram_rate);
     send_telegrams_delay.sleep();
+    boost::system::error_code error_code;
     if (m_error_simulation_flag.get() == DONT_SEND) // error simulation: testserver does not send any telegrams
       continue;
     if (m_error_simulation_flag.get() == SEND_RANDOM_TCP) // error simulation: testserver sends invalid random tcp packets
@@ -343,6 +353,8 @@ void sick_lidar_localization::TestServerThread::runWorkerThreadResultCb(boost::a
     }
     else
     {
+      // create testcase is a result port telegram with random based sythetical data
+      sick_lidar_localization::SickLocResultPortTestcaseMsg testcase = sick_lidar_localization::TestcaseGenerator::createRandomResultPortTestcase();
       if(m_demo_move_in_circles) // simulate a sensor moving in circles
       {
         testcase = sick_lidar_localization::TestcaseGenerator::createResultPortCircles(2.0, circle_yaw);
@@ -380,8 +392,6 @@ void sick_lidar_localization::TestServerThread::runWorkerThreadResultCb(boost::a
       testcase.header.frame_id = m_result_testcases_frame_id;
       m_result_testcases_publisher.publish(testcase);
     }
-    // next testcase is a result port telegram with random data
-    testcase = sick_lidar_localization::TestcaseGenerator::createRandomResultPortTestcase();
   }
   closeSocket(p_socket);
   ROS_INFO_STREAM("TestServerThread: worker thread for result telegrams finished");
@@ -412,6 +422,9 @@ void sick_lidar_localization::TestServerThread::runWorkerThreadColaCb(boost::asi
       sick_lidar_localization::SickLocColaTelegramMsg telegram_msg = sick_lidar_localization::ColaParser::decodeColaTelegram(ascii_telegram);
       // Generate a synthetical response depending on the request
       sick_lidar_localization::SickLocColaTelegramMsg telegram_answer = sick_lidar_localization::TestcaseGenerator::createColaResponse(telegram_msg);
+      
+      // tbd: handle DONT_SEND, SEND_RANDOM_TCP and SEND_INVALID_TELEGRAMS as done in runWorkerThreadResultCb
+      
       // Send command response to tcp client
       std::vector<uint8_t> binary_response = sick_lidar_localization::ColaParser::encodeColaTelegram(telegram_answer);
       std::string ascii_response = sick_lidar_localization::ColaAsciiBinaryConverter::ConvertColaAscii(binary_response);
@@ -490,8 +503,9 @@ void sick_lidar_localization::TestServerThread::runErrorSimulationThreadCb(void)
   number_testcases++;
   m_error_simulation_flag.set(DONT_LISTEN);
   ROS_INFO_STREAM("TestServerThread: 2. error simulation testcase: server not responding, not listening, no tcp connections accepted.");
-  closeWorkerThreads();
-  closeTcpConnections();
+  m_worker_thread_running = false;
+  ros::Duration(1.0 / m_result_telegram_rate).sleep();
+  closeTcpConnections(true);
   errorSimulationWait(10);
   m_error_simulation_flag.set(NO_ERROR);
   ROS_INFO_STREAM("TestServerThread: 2. error simulation testcase: switched to normal execution, expecting telegram messages from driver");
@@ -508,8 +522,9 @@ void sick_lidar_localization::TestServerThread::runErrorSimulationThreadCb(void)
   number_testcases++;
   m_error_simulation_flag.set(DONT_ACCECPT);
   ROS_INFO_STREAM("TestServerThread: 3. error simulation testcase: server not responding, listening on port " << m_ip_port_results << ", but accepting no tcp clients");
-  closeWorkerThreads();
-  closeTcpConnections();
+  m_worker_thread_running = false;
+  ros::Duration(1.0 / m_result_telegram_rate).sleep();
+  closeTcpConnections(true);
   errorSimulationWait(10);
   m_error_simulation_flag.set(NO_ERROR);
   errorSimulationWait(10);
@@ -527,7 +542,6 @@ void sick_lidar_localization::TestServerThread::runErrorSimulationThreadCb(void)
   ROS_INFO_STREAM("TestServerThread: 4. error simulation testcase: server not sending telegrams");
   errorSimulationWait(10);
   m_error_simulation_flag.set(NO_ERROR);
-  closeWorkerThreads();
   errorSimulationWait(10);
   if(!errorSimulationWaitForTelegramReceived(10, telegram_msg))
   {
@@ -543,7 +557,6 @@ void sick_lidar_localization::TestServerThread::runErrorSimulationThreadCb(void)
   ROS_INFO_STREAM("TestServerThread: 5. error simulation testcase: server sending random tcp data");
   errorSimulationWait(10);
   m_error_simulation_flag.set(NO_ERROR);
-  closeWorkerThreads();
   errorSimulationWait(10);
   if(!errorSimulationWaitForTelegramReceived(10, telegram_msg))
   {
@@ -559,7 +572,6 @@ void sick_lidar_localization::TestServerThread::runErrorSimulationThreadCb(void)
   ROS_INFO_STREAM("TestServerThread: 6. error simulation testcase: server sending invalid telegrams");
   errorSimulationWait(10);
   m_error_simulation_flag.set(NO_ERROR);
-  closeWorkerThreads();
   errorSimulationWait(10);
   if(!errorSimulationWaitForTelegramReceived(10, telegram_msg))
   {

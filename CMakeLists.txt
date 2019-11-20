@@ -74,6 +74,7 @@ add_service_files(
         FILES
         SickLocColaTelegramSrv.srv
         SickLocRequestTimestampSrv.srv
+        SickLocTimeSyncSrv.srv
 )
 
 ## Generate actions in the 'action' folder
@@ -143,6 +144,7 @@ include_directories(
 
 ## Declare a C++ library
 add_library(sick_localization_lib
+        src/client_socket.cpp
         src/cola_converter.cpp
         src/cola_parser.cpp
         src/cola_transmitter.cpp
@@ -152,7 +154,9 @@ add_library(sick_localization_lib
         src/pointcloud_converter_thread.cpp
         src/random_generator.cpp
         src/result_port_parser.cpp
+        src/SoftwarePLL.cpp
         src/testcase_generator.cpp
+        src/time_sync_service.cpp
         src/utils.cpp
         src/crc/crc16ccitt_false.cpp
         )
@@ -169,6 +173,7 @@ add_library(sick_localization_lib
 ## Executables for ros driver sick_lidar_localization
 add_executable(sim_loc_driver src/driver.cpp)
 add_executable(sim_loc_driver_check src/driver_check.cpp)
+add_executable(sim_loc_time_sync src/time_sync.cpp)
 add_executable(pointcloud_converter src/pointcloud_converter.cpp)
 
 ## Executables for test purposes
@@ -199,6 +204,11 @@ add_dependencies(sim_loc_driver_check
         ${catkin_EXPORTED_TARGETS}
         )
 add_dependencies(sim_loc_test_server
+        sick_localization_lib
+        ${${PROJECT_NAME}_EXPORTED_TARGETS}
+        ${catkin_EXPORTED_TARGETS}
+        )
+add_dependencies(sim_loc_time_sync
         sick_localization_lib
         ${${PROJECT_NAME}_EXPORTED_TARGETS}
         ${catkin_EXPORTED_TARGETS}
@@ -239,6 +249,11 @@ target_link_libraries(sim_loc_test_server
         ${Boost_LIBRARIES}
         ${catkin_LIBRARIES}
         )
+target_link_libraries(sim_loc_time_sync
+        sick_localization_lib
+        ${Boost_LIBRARIES}
+        ${catkin_LIBRARIES}
+        )
 target_link_libraries(pointcloud_converter
         sick_localization_lib
         ${Boost_LIBRARIES}
@@ -270,7 +285,7 @@ target_link_libraries(verify_sim_loc_driver
 # )
 
 ## Mark executables and/or libraries for installation
-install(TARGETS sick_localization_lib sim_loc_driver sim_loc_driver_check sim_loc_test_server pointcloud_converter unittest_sim_loc_parser verify_sim_loc_driver
+install(TARGETS sick_localization_lib sim_loc_driver sim_loc_driver_check sim_loc_test_server sim_loc_time_sync pointcloud_converter unittest_sim_loc_parser verify_sim_loc_driver
         ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

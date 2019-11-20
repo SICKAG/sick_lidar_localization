@@ -100,9 +100,43 @@ namespace sick_lidar_localization
      * @return Synthetical cola response from server
      */
     static sick_lidar_localization::SickLocColaTelegramMsg createColaResponse(const sick_lidar_localization::SickLocColaTelegramMsg & cola_request);
+  
+    /*!
+     * Returns the result pose interval, i.e. the interval in number of scans
+     * 1 (default): result with each processed scan
+     * 2: result with every second processed scan
+     * n: result with every n.th processed scan
+     * This parameter can be set by cola command "LocSetResultPoseInterval", f.e. "sMN LocSetResultPoseInterval 1"
+     * @return result pose interval
+     */
+    static uint32_t ResultPoseInterval(void){ return s_u32ResultPoseInterval; }
     
   protected:
-
+  
+    /*!
+     * Converts value x to hex string
+     * @param x value to be converted
+     * @return x as hex string
+     */
+    template <typename T> static std::string hexstr(const T & x)
+    {
+      std::stringstream hex_stream;
+      hex_stream << std::hex << std::uppercase << x;
+      return hex_stream.str();
+    }
+  
+    /*!
+     * Converts value x to decimal string
+     * @param x value to be converted
+     * @return x as hex string
+     */
+    template <typename T> static std::string decstr(const T & x)
+    {
+      std::stringstream dec_stream;
+      dec_stream << std::dec << std::uppercase << x;
+      return dec_stream.str();
+    }
+  
     /*!
      * Creates and returns a timestamp in milliseconds ticks.
      * To simulate time jitter, network latency and time drift,
@@ -111,6 +145,8 @@ namespace sick_lidar_localization
      */
     static uint32_t createTimestampTicksMilliSec(void);
   
+    static uint32_t s_u32ResultPoseInterval; ///< result pose interval, i.e. the interval in number of scans (default: 1, i.e. result telegram with each processed scan)
+    
   }; // class TestcaseGenerator
   
 } // namespace sick_lidar_localization

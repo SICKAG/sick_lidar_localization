@@ -11,7 +11,7 @@
 
 string  cola_ascii_request       # Cola-ASCII telegram to send to the localization controller, f.e. "sRN SetAccessMode 3 F4724744".
 float32 wait_response_timeout    # Timeout for the controller response in secondes. Use 0.0 for Cola requests without controller response.
-#  bool send_binary              # Not used (true: send binary telegram, false/default: send ASCII telegram)
+# bool send_binary               # Not used (true: send binary telegram, false/default: send ASCII telegram)
 
 ---
 
