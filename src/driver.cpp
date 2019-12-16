@@ -79,8 +79,8 @@ int main(int argc, char** argv)
   // * Binary result port protocol TCP/IP
   int tcp_port_results = 2201; // Default: The localization controller uses IP port number 2201 to send localization results
   int tcp_port_cola = 2111;    // For requests and to transmit settings to the localization controller: IP port number 2111 and 2112 to send telegrams and to request data, SOPAS CoLa-A or CoLa-B protocols
-  ros::param::param<std::string>("/sim_loc_driver/localization_controller_ip_adress" , server_adress, server_adress);
-  ros::param::param<std::string>("/sick_lidar_localization/driver/localization_controller_default_ip_adress", server_default_adress, server_default_adress);
+  ros::param::param<std::string>("/sim_loc_driver/localization_controller_ip_address" , server_adress, server_adress);
+  ros::param::param<std::string>("/sick_lidar_localization/driver/localization_controller_default_ip_address", server_default_adress, server_default_adress);
   ros::param::param<int>("/sick_lidar_localization/driver/result_telegrams_tcp_port", tcp_port_results, tcp_port_results);
   ros::param::param<int>("/sick_lidar_localization/driver/cola_telegrams_tcp_port", tcp_port_cola, tcp_port_cola);
   server_adress = (server_adress.empty()) ? server_default_adress : server_adress;

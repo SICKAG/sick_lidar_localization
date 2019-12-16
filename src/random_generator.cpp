@@ -56,8 +56,11 @@
 
 #include "sick_lidar_localization/random_generator.h"
 
-/*
- * Constructor
+const std::string sick_lidar_localization::UniformRandomAsciiString::s_ascii_chars = " !\"#$%&'()*+,-./0123456789:;=?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_abcdefghijklmnopqrstuvwxyz{|}~";  ///< static list of ascii chars
+
+
+/*!
+ * UniformRandomInteger constructor
  * @param[in] lower_bound min. value of random distribution, random numbers will be generated within the range lower_bound up to upper_bound
  * @param[in] upper_bound max. value of random distribution, random numbers will be generated within the range lower_bound up to upper_bound
  */
@@ -66,7 +69,7 @@ sick_lidar_localization::UniformRandomInteger::UniformRandomInteger(int lower_bo
 {
 }
 
-/*
+/*!
  * Returns a uniform distributed integer random number within the range lower_bound up to upper_bound
  */
 int sick_lidar_localization::UniformRandomInteger::generate(void)
@@ -74,10 +77,10 @@ int sick_lidar_localization::UniformRandomInteger::generate(void)
   return m_random_generator();
 }
 
-/*
+/*!
  * Creates and returns uniform distributed binary random data of a given size
  * @param[in] data_size number of random bytes created, size of output data
- * @return binary random data of size <data_size>
+ * @return binary random data of length data_size
  */
 std::vector<uint8_t> sick_lidar_localization::UniformRandomInteger::generate(int data_size)
 {
@@ -87,4 +90,25 @@ std::vector<uint8_t> sick_lidar_localization::UniformRandomInteger::generate(int
     data[n] = (uint8_t)(m_random_generator() & 0xFF);
   }
   return data;
+}
+
+/*!
+ * UniformRandomAsciiString constructor
+ */
+sick_lidar_localization::UniformRandomAsciiString::UniformRandomAsciiString(): m_random_generator(0, (int)(s_ascii_chars.length()) - 1)
+{
+}
+
+/*!
+ * Creates and returns a random ascii string
+ * @param[in] length length of string
+ * @return random ascii string
+ */
+std::string sick_lidar_localization::UniformRandomAsciiString::generate(int length)
+{
+  std::string random_string;
+  random_string.reserve(length);
+  for(size_t n = 0; n < length; n++)
+    random_string.push_back(s_ascii_chars[m_random_generator.generate()]);
+  return random_string;
 }

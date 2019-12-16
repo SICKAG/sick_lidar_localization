@@ -36,7 +36,7 @@ sleep 3 # make sure ros core and sim_loc_test_server are up and running
 # Run ros driver, connect to localization controller and receive, convert and publish telegrams
 #
 
-roslaunch sick_lidar_localization sim_loc_driver.launch localization_controller_ip_adress:=127.0.0.1 &
+roslaunch sick_lidar_localization sim_loc_driver.launch localization_controller_ip_address:=127.0.0.1 &
 
 #
 # Visualize PointCloud2 messages by rviz:

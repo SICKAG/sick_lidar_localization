@@ -43,7 +43,7 @@ if [ ! -d ~/.ros/log/error_simu ] ; then mkdir -p ~/.ros/log/error_simu ; fi
 #
 
 echo -e "sick_lidar_localization error simulation: starting sick_lidar_localization sim_loc_driver.launch ..." 2>&1 | tee -a ~/.ros/log/error_simu/error_simu.log
-roslaunch sick_lidar_localization sim_loc_driver.launch localization_controller_ip_adress:=127.0.0.1 sim_loc_driver_check_cfg:=message_check_error_simu.yaml 2>&1 | unbuffer -p tee -a ~/.ros/log/error_simu/sim_loc_driver_error_simu.log &
+roslaunch sick_lidar_localization sim_loc_driver.launch localization_controller_ip_address:=127.0.0.1 sim_loc_driver_check_cfg:=message_check_error_simu.yaml 2>&1 | unbuffer -p tee -a ~/.ros/log/error_simu/sim_loc_driver_error_simu.log &
 echo -e "sick_lidar_localization error simulation: sick_lidar_localization sim_loc_driver.launch started." 2>&1 | tee -a ~/.ros/log/error_simu/error_simu.log
 sleep 10
 
@@ -112,4 +112,6 @@ popd
 rm -rf ./log/error_simu
 mkdir  ./log/error_simu
 cp -rf ~/.ros/log/error_simu/*.log ./log/error_simu
+echo -e "\nsick_lidar_localization summary:"
+grep -R "summary" ./log/*
 

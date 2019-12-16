@@ -344,39 +344,43 @@ void sick_lidar_localization::TestServerThread::runWorkerThreadResultCb(boost::a
     send_telegrams_delay.sleep();
     boost::system::error_code error_code;
     if (m_error_simulation_flag.get() == DONT_SEND) // error simulation: testserver does not send any telegrams
+    {
+      ROS_DEBUG_STREAM("TestServerThread for cresult telegrams: error simulation, server not sending any telegrams");
       continue;
+    }
     if (m_error_simulation_flag.get() == SEND_RANDOM_TCP) // error simulation: testserver sends invalid random tcp packets
     {
       std::vector<uint8_t> random_data = random_generator.generate(random_length.generate()); // binary random data of random size
       boost::asio::write(*p_socket, boost::asio::buffer(random_data.data(), random_data.size()), boost::asio::transfer_exactly(random_data.size()), error_code);
       ROS_DEBUG_STREAM("TestServerThread for result telegrams: send random data " << sick_lidar_localization::Utils::toHexString(random_data));
+      continue;
     }
-    else
+    // create testcase is a result port telegram with random based sythetical data
+    sick_lidar_localization::SickLocResultPortTestcaseMsg testcase = sick_lidar_localization::TestcaseGenerator::createRandomResultPortTestcase();
+    if(m_demo_move_in_circles) // simulate a sensor moving in circles
     {
-      // create testcase is a result port telegram with random based sythetical data
-      sick_lidar_localization::SickLocResultPortTestcaseMsg testcase = sick_lidar_localization::TestcaseGenerator::createRandomResultPortTestcase();
-      if(m_demo_move_in_circles) // simulate a sensor moving in circles
+      testcase = sick_lidar_localization::TestcaseGenerator::createResultPortCircles(2.0, circle_yaw);
+      circle_yaw = sick_lidar_localization::Utils::normalizeAngle(circle_yaw + 1.0 * M_PI / 180);
+    }
+    if (m_error_simulation_flag.get() == SEND_INVALID_TELEGRAMS) // error simulation: testserver sends invalid telegrams (invalid data, false checksums, etc.)
+    {
+      int number_random_bytes = ((random_integer.generate()) % (testcase.binary_data.size()));
+      for(int cnt_random_bytes = 0; cnt_random_bytes < number_random_bytes; cnt_random_bytes++)
       {
-        testcase = sick_lidar_localization::TestcaseGenerator::createResultPortCircles(2.0, circle_yaw);
-        circle_yaw = sick_lidar_localization::Utils::normalizeAngle(circle_yaw + 1.0 * M_PI / 180);
+        int byte_cnt = ((random_integer.generate()) % (testcase.binary_data.size()));
+        testcase.binary_data[byte_cnt] = (uint8_t)(random_generator.generate() & 0xFF);
       }
-      if (m_error_simulation_flag.get() == SEND_INVALID_TELEGRAMS) // error simulation: testserver sends invalid telegrams (invalid data, false checksums, etc.)
-      {
-        int number_random_bytes = ((random_integer.generate()) % (testcase.binary_data.size()));
-        for(int cnt_random_bytes = 0; cnt_random_bytes < number_random_bytes; cnt_random_bytes++)
-        {
-          int byte_cnt = ((random_integer.generate()) % (testcase.binary_data.size()));
-          testcase.binary_data[byte_cnt] = (uint8_t)(random_generator.generate() & 0xFF);
-        }
-        ROS_DEBUG_STREAM("TestServerThread for result telegrams: send random binary telegram " << sick_lidar_localization::Utils::toHexString(testcase.binary_data));
-      }
-      // send binary result port telegram to tcp client
+      ROS_DEBUG_STREAM("TestServerThread for result telegrams: send random binary telegram " << sick_lidar_localization::Utils::toHexString(testcase.binary_data));
+    }
+    // send binary result port telegram to tcp client (if localization is "on")
+    if(sick_lidar_localization::TestcaseGenerator::LocalizationEnabled() && sick_lidar_localization::TestcaseGenerator::ResultTelegramsEnabled())
+    {
       size_t bytes_written = boost::asio::write(*p_socket, boost::asio::buffer(testcase.binary_data.data(), testcase.binary_data.size()), boost::asio::transfer_exactly(testcase.binary_data.size()), error_code);
       if (error_code || bytes_written != testcase.binary_data.size())
       {
         std::stringstream error_info;
         error_info << "## ERROR TestServerThread for result telegrams: failed to send binary result port telegram, " << bytes_written << " of " << testcase.binary_data.size() << " bytes send, error code: " << error_code.message();
-        if(m_error_simulation_flag.get() == NO_ERROR)
+        if (m_error_simulation_flag.get() == NO_ERROR)
         {
           ROS_WARN_STREAM(error_info.str() << ", close socket and leave worker thread for result telegrams");
           break;
@@ -406,6 +410,9 @@ void sick_lidar_localization::TestServerThread::runWorkerThreadResultCb(boost::a
 void sick_lidar_localization::TestServerThread::runWorkerThreadColaCb(boost::asio::ip::tcp::socket* p_socket)
 {
   ROS_INFO_STREAM("TestServerThread: worker thread for command requests started");
+  sick_lidar_localization::UniformRandomInteger random_generator(0,255);
+  sick_lidar_localization::UniformRandomInteger random_length(1, 128);
+  sick_lidar_localization::UniformRandomAsciiString random_ascii;
   while(ros::ok() && m_worker_thread_running && p_socket && p_socket->is_open())
   {
     // Read command request from tcp client
@@ -413,6 +420,19 @@ void sick_lidar_localization::TestServerThread::runWorkerThreadColaCb(boost::asi
     ros::Time receive_timestamp;
     if(sick_lidar_localization::ColaTransmitter::receive(*p_socket, request.telegram_data, 1, receive_timestamp))
     {
+      if (m_error_simulation_flag.get() == DONT_SEND) // error simulation: testserver does not send any telegrams
+      {
+        ROS_DEBUG_STREAM("TestServerThread for command requests: error simulation, server not sending any telegrams");
+        continue;
+      }
+      if (m_error_simulation_flag.get() == SEND_RANDOM_TCP) // error simulation: testserver sends invalid random tcp packets
+      {
+        boost::system::error_code error_code;
+        std::vector<uint8_t> random_data = random_generator.generate(random_length.generate()); // binary random data of random size
+        boost::asio::write(*p_socket, boost::asio::buffer(random_data.data(), random_data.size()), boost::asio::transfer_exactly(random_data.size()), error_code);
+        ROS_DEBUG_STREAM("TestServerThread for command requests: send random data " << sick_lidar_localization::Utils::toHexString(random_data));
+        continue;
+      }
       // command requests received, generate and send a synthetical response
       bool cola_binary = sick_lidar_localization::ColaAsciiBinaryConverter::IsColaBinary(request.telegram_data);
       if(cola_binary)
@@ -422,9 +442,14 @@ void sick_lidar_localization::TestServerThread::runWorkerThreadColaCb(boost::asi
       sick_lidar_localization::SickLocColaTelegramMsg telegram_msg = sick_lidar_localization::ColaParser::decodeColaTelegram(ascii_telegram);
       // Generate a synthetical response depending on the request
       sick_lidar_localization::SickLocColaTelegramMsg telegram_answer = sick_lidar_localization::TestcaseGenerator::createColaResponse(telegram_msg);
-      
-      // tbd: handle DONT_SEND, SEND_RANDOM_TCP and SEND_INVALID_TELEGRAMS as done in runWorkerThreadResultCb
-      
+      if (m_error_simulation_flag.get() == SEND_INVALID_TELEGRAMS) // error simulation: testserver sends invalid telegrams (invalid data, false checksums, etc.)
+      {
+        telegram_answer.command_name = random_ascii.generate(random_length.generate()); // random ascii string
+        telegram_answer.parameter.clear();
+        for(int n = random_length.generate(); n > 0; n--)
+          telegram_answer.parameter.push_back(random_ascii.generate(random_length.generate())); // random ascii string
+        ROS_DEBUG_STREAM("TestServerThread for result telegrams: send random cola response " << sick_lidar_localization::Utils::flattenToString(telegram_answer));
+      }
       // Send command response to tcp client
       std::vector<uint8_t> binary_response = sick_lidar_localization::ColaParser::encodeColaTelegram(telegram_answer);
       std::string ascii_response = sick_lidar_localization::ColaAsciiBinaryConverter::ConvertColaAscii(binary_response);

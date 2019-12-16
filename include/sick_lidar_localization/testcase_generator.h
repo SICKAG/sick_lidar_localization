@@ -110,6 +110,18 @@ namespace sick_lidar_localization
      * @return result pose interval
      */
     static uint32_t ResultPoseInterval(void){ return s_u32ResultPoseInterval; }
+
+    /*!
+     * Returns true, if localization is active (default), otherwise false (localization deactivated)
+     * @return result telegrams are activated (true) or deactivated
+     */
+    static bool LocalizationEnabled(void);
+
+    /*!
+     * Returns true, if result telegrams are activated (i.e. localization on and result telegrams active), otherwise false (result telegrams deactivated)
+     * @return result telegrams are activated (true, default) or deactivated
+     */
+    static bool ResultTelegramsEnabled(void);
     
   protected:
   
@@ -146,6 +158,7 @@ namespace sick_lidar_localization
     static uint32_t createTimestampTicksMilliSec(void);
   
     static uint32_t s_u32ResultPoseInterval; ///< result pose interval, i.e. the interval in number of scans (default: 1, i.e. result telegram with each processed scan)
+    static std::map<std::string, int32_t> s_controller_settings; ///< test server settings, set by sMN or sRN requests
     
   }; // class TestcaseGenerator
   

@@ -134,6 +134,14 @@ namespace sick_lidar_localization
      * (if started by a cola service request "SickLocColaTelegram")
      */
     void stopColaTransmitter(void);
+
+    /*!
+     * Returns true, if result telegrams have been received within configured timeout "monitoring_message_timeout".
+     * If no result telegrams have been received within the timeout, the localization status is queried by ros service
+     * "SickLocState". If localization is not activated (LocState != 2), this function returns true (no error).
+     * Otherwise, result telegrams are missing and false is returned (error).
+     */
+    bool resultTelegramsReceiveStatusIsOk(void);
     
     /*!
      * Thread callback, implements the monitoring and restarts a DriverThread in case of tcp-errors.
@@ -155,6 +163,7 @@ namespace sick_lidar_localization
     sick_lidar_localization::SetGet<ros::Time> m_driver_message_recv_timestamp; ///< time of the last received driver message (threadsafe)
     double m_monitoring_rate;                ///< frequency to monitor driver messages, default: once per second
     double m_receive_telegrams_timeout;      ///< timeout for driver messages, shutdown tcp-sockets and reconnect after message timeout, default: 1 second
+    double m_cola_response_timeout;          ///< timeout in seconds for cola responses from localization controller, default: 1
     sick_lidar_localization::ColaTransmitter* m_cola_transmitter; ///< transmitter for cola commands (send requests, receive responses)
     boost::mutex m_service_cb_mutex;          ///< mutex to protect serviceCbColaTelegram (one service request at a time)
   

@@ -67,7 +67,7 @@ namespace sick_lidar_localization
   public:
     
     /*!
-     * Constructor
+     * UniformRandomInteger constructor
      * @param[in] lower_bound min. value of random distribution, random numbers will be generated within the range lower_bound up to upper_bound,(lower and upper bound included)
      * @param[in] upper_bound max. value of random distribution, random numbers will be generated within the range lower_bound up to upper_bound (lower and upper bound included)
      */
@@ -85,7 +85,7 @@ namespace sick_lidar_localization
      * @return binary random data of length data_size
      */
     std::vector<uint8_t> generate(int data_size);
-    
+
   protected:
     
     /*
@@ -97,6 +97,36 @@ namespace sick_lidar_localization
     boost::variate_generator<boost::mt19937&, boost::uniform_int<> > m_random_generator; ///< random number generator (glues mersenne engine and distribution)
   
   }; // class UniformIntegerRandom
+  
+  /*!
+   * class UniformRandomAsciiString generates uniform distributed ascii strings.
+   */
+  class UniformRandomAsciiString
+  {
+  public:
+  
+    /*!
+     * UniformRandomAsciiString constructor
+     */
+    UniformRandomAsciiString();
+  
+    /*!
+     * Creates and returns a random ascii string
+     * @param[in] length length of string
+     * @return random ascii string
+     */
+    std::string generate(int length);
+
+
+  protected:
+  
+    /*
+     * member data
+     */
+    UniformRandomInteger m_random_generator; ///< random number generator
+    static const std::string s_ascii_chars;  ///< list of ascii chars: " !\"#$%&'()*+,-./0123456789:;=?@ ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_abcdefghijklmnopqrstuvwxyz{|}~"
+  
+  }; // class UniformRandomAsciiString
   
 } // namespace sick_lidar_localization
 #endif // __SIM_LOC_RANDOM_H_INCLUDED

@@ -33,12 +33,12 @@ https://supportportal.sick.com/Product_notes/lidar-loc-operation-instruction/.
 ```console
 cd ~/catkin_ws
 source ./devel/setup.bash
-roslaunch sick_lidar_localization sim_loc_driver.launch localization_controller_ip_adress:=192.168.0.1
+roslaunch sick_lidar_localization sim_loc_driver.launch localization_controller_ip_address:=192.168.0.1
 ```
 
 Note: The IP address of the SICK localization controller is 192.168.0.1 by default. Depending on your network configuration,
-different IP addresses can be configured by commandline argument `localization_controller_ip_adress:=<ip-address>` or 
-by changing the value `localization_controller_default_ip_adress: "<ip-address>"` in the drivers configuration file 
+different IP addresses can be configured by commandline argument `localization_controller_ip_address:=<ip-address>` or 
+by changing the value `localization_controller_default_ip_address: "<ip-address>"` in the drivers configuration file 
 [yaml/sim_loc_driver.yaml](yaml/sim_loc_driver.yaml).
 
 The sick_lidar_localization driver connects to the localization controller, receives result port telegrams and publishes
@@ -216,7 +216,7 @@ returns the system timestamp from ticks using the software pll running in the dr
 [srv/SickLocTimeSyncSrv.srv](srv/SickLocTimeSyncSrv.srv). Example:
 
 ```
-> rosservice call SickLocTimeSync "{timestamp_lidar_ms: 123456}"
+> rosservice call SickLocTimeSync "{timestamp_lidar_ms: 123t456}"
 vehicle_time_valid: True
 vehicle_time_sec: 1573119167
 vehicle_time_nsec: 380565047
@@ -236,6 +236,128 @@ SICK recommends a time_sync_rate of 0.1 or below („SICK recommends you set the
 controller to 10 seconds or higher”). Therefore, the initial phase after start will take round about 70 seconds (7 LocRequestTimestamp 
 commands with 10 seconds delay by default). During the initial phase, the time synchronization service is not available
 and the vehicle system time is not valid.
+
+## SIM configuration
+
+The localization controller can be configured by Cola telegrams. See manual Telegram-Listing-v1.1.0.241R.pdf for a list of
+all settings. The following Cola telegrams are supported by the ros driver:
+
+Request | Response | Parameter | Description
+--- | --- | --- | ---
+**States Telegrams**|||
+"sMN IsSystemReady"      | "sAN IsSystemReady \<uint8\>"      | 0:true, 1:false | Check if the system is ready
+"sRN LocState"           | "sRA LocState \<uint8\>"           | 0:BOOTING, 1:IDLE, 2:LOCALIZING, 3:DEMO_MAPPING | Read localization state
+"sMN LocStartLocalizing" | "sAN LocStartLocalizing \<uint8\>" | 0:failed, 1:success | Start localization
+"sMN LocStop"            | "sAN LocStop \<uint8\>"            | 0:failed, 1:success | Stop localization or demo mapping
+"sMN LocStopAndSave"     | "sAN LocStopAndSave \<uint8\>"     | 0:failed, 1:success | Stop localization, save settings
+**Result Output Configuration Telegrams**|||
+"sMN LocSetResultPort \<port\>"             | "sAN LocSetResultPort \<uint8\>"         | 0:failed, 1:success, \<port\>: uint16 (default: 2201) | Set TCP-port for result output
+"sMN LocSetResultMode \<mode\>"             | "sAN LocSetResultMode \<uint8\>"         | 0:failed, 1:success, \<mode\>: uint8 (0:stream, 1: poll, default: stream) |  Set mode of result output (stream or: poll)
+"sMN LocSetResultPoseEnabled \<enabled\>"   | "sAN LocSetResultPoseEnabled \<uint8\>"  | 0:failed, 1:success, \<enabled\>: uint8 (0: disabled, 1: enabled, default: enabled) | Disable/enable result output
+"sMN LocSetResultEndianness \<endianness\>" | "sAN LocSetResultEndianness \<uint8\>"   | 0:failed, 1:success, \<endianness\>: uint8 (0: big endian, 1: little endian, default: big endian) |  Set endianness of result output
+"sMN LocSetResultPoseInterval \<interval\>" | "sAN LocSetResultPoseInterval \<uint8\>" | 0:failed, 1:success, \<interval\>: uint8 (0-255, interval in number of scans, 1: result with each processed scan, default: 1) |  Set interval of result output
+"sMN LocRequestResultData"                  | "sAN LocRequestResultData \<uint8\>"     | 0:failed, 1:success | If in poll mode, trigger sending the localization result of the next processed scan via TCP interface.
+**SetPose Telegrams**|||
+"sMN LocSetPose \<posex\> \<posey\> \<yaw\> \<uncertainty\>" | "sAN LocSetPose \<uint8\>" | 0:failed, 1:success, \<posex\>: int32 (x coordinate in mm), \<posey\>: int32 (y coordinate in mm), \<yaw\>: int32 (yaw angle in millidegree, -180000 to +180000), \<uncertainty\>: uint16 (translation uncertainty in mm) | Initialize vehicle pose
+**Result Output Settings** (queries, ros service SickLocColaTelegram only)|||
+"sRN LocResultState"      | "sRA LocResultState \<uint8\>"      | 0:disabled, 1:enabled, MSB: error flag | Read state of the result output
+"sRN LocResultPort"       | "sRA LocResultPort \<uint16\>"      | tcp port | Read TCP port used for result output
+"sRN LocResultMode"       | "sRA LocResultMode \<uint8\>"       | 0:stream, 1: poll | Read result mode
+"sRN LocResultEndianness" | "sRA LocResultEndianness \<uint8\>" | 0: big endian, 1: little endian | Read endianness of result output
+**Timestamp Telegrams**|||
+"sMN LocRequestTimestamp"  | "sAN LocRequestTimestamp \<hexvalue\>" | 4 byte timestamp (ticks in milliseconds) | Query timestamp, see "Time synchronization"
+
+Note: Other commands like "sMN mSCreboot" (reboot controller) can be send to the localization controller using ros service
+"SickLocColaTelegram", too. But only the subset of Cola telegrams listed above are officially supported under ROS.
+The following examples show how to call Cola telegrams supported and tested by ros service "SickLocColaTelegram":
+
+```
+# States Telegrams
+rosservice call SickLocColaTelegram "{cola_ascii_request: 'sMN IsSystemReady', wait_response_timeout: 1}"      # expected answer: "sAN IsSystemReady 1"      # 0:true, 1:false # Check if the system is ready
+rosservice call SickLocColaTelegram "{cola_ascii_request: 'sRN LocState', wait_response_timeout: 1}"           # expected answer: "sRA LocState 2"           # 0:BOOTING, 1:IDLE, 2:LOCALIZING, 3:DEMO_MAPPING # Read localization state
+rosservice call SickLocColaTelegram "{cola_ascii_request: 'sMN LocStartLocalizing', wait_response_timeout: 1}" # expected answer: "sAN LocStartLocalizing 1" # 0:failed, 1:success # Start localization
+rosservice call SickLocColaTelegram "{cola_ascii_request: 'sMN LocStop', wait_response_timeout: 1}"            # expected answer: "sAN LocStop 1"            # 0:failed, 1:success # Stop localization or demo mapping
+rosservice call SickLocColaTelegram "{cola_ascii_request: 'sMN LocStopAndSave', wait_response_timeout: 1}"     # expected answer: "sAN LocStopAndSave 1"     # 0:failed, 1:success # Stop localization, save settings
+# Result Output Configuration Telegrams
+rosservice call SickLocColaTelegram "{cola_ascii_request: 'sMN LocSetResultPort 2201', wait_response_timeout: 1}"      # expected answer: "sAN LocSetResultPort 1"         # 0:failed, 1:success, <port>: uint16 (default: 2201) # Set TCP-port for result output
+rosservice call SickLocColaTelegram "{cola_ascii_request: 'sMN LocSetResultMode 0', wait_response_timeout: 1}"         # expected answer: "sAN LocSetResultMode 1"         # 0:failed, 1:success, <mode>: uint8 (0:stream, 1: poll, default: stream) #  Set mode of result output (stream or: poll)
+rosservice call SickLocColaTelegram "{cola_ascii_request: 'sMN LocSetResultPoseEnabled 1', wait_response_timeout: 1}"  # expected answer: "sAN LocSetResultPoseEnabled 1"  # 0:failed, 1:success, <enabled>: uint8 (0: disabled, 1: enabled, default: enabled) # Disable/enable result output
+rosservice call SickLocColaTelegram "{cola_ascii_request: 'sMN LocSetResultEndianness 0', wait_response_timeout: 1}"   # expected answer: "sAN LocSetResultEndianness 1"   # 0:failed, 1:success, <endianness>: uint8 (0: big endian, 1: little endian, default: big endian) #  Set endianness of result output
+rosservice call SickLocColaTelegram "{cola_ascii_request: 'sMN LocSetResultPoseInterval 1', wait_response_timeout: 1}" # expected answer: "sAN LocSetResultPoseInterval 1" # 0:failed, 1:success, <interval>: uint8 (0-255, interval in number of scans, 1: result with each processed scan, default: 1) #  Set interval of result output
+rosservice call SickLocColaTelegram "{cola_ascii_request: 'sMN LocRequestResultData', wait_response_timeout: 1}"       # expected answer: "sAN LocRequestResultData 1"     # 0:failed, 1:success # If in poll mode, trigger sending the localization result of the next processed scan via TCP interface.
+# SetPose Telegrams
+rosservice call SickLocColaTelegram "{cola_ascii_request: 'sMN LocSetPose +10300 -5200 +30000 +1000', wait_response_timeout: 1}" # expected answer: "sAN LocSetPose 1" # 0:failed, 1:success, <posex>: int32 (x coordinate in mm), <posey>: int32 (y coordinate in mm), <yaw>: int32 (yaw angle in millidegree, -180000 to +180000), <uncertainty>: uint16 (translation uncertainty in mm) # Initialize vehicle pose
+# Timestamp Telegrams
+rosservice call SickLocColaTelegram "{cola_ascii_request: 'sMN LocRequestTimestamp', wait_response_timeout: 1}"  # expected answer: "sAN LocRequestTimestamp <hexvalue>" # 4 byte timestamp (ticks in milliseconds) # Query timestamp, see "Time synchronization"
+# Result Output Settings (queries, ros service SickLocColaTelegram only)
+rosservice call SickLocColaTelegram "{cola_ascii_request: 'sRN LocResultState', wait_response_timeout: 1}"      # expected answer: "sRA LocResultState 1"      # 0:disabled, 1:enabled, MSB: error flag # Read state of the result output
+rosservice call SickLocColaTelegram "{cola_ascii_request: 'sRN LocResultPort', wait_response_timeout: 1}"       # expected answer: "sRA LocResultPort 2201"    # tcp port # Read TCP port used for result output
+rosservice call SickLocColaTelegram "{cola_ascii_request: 'sRN LocResultMode', wait_response_timeout: 1}"       # expected answer: "sRA LocResultMode 0"       # 0:stream, 1: poll # Read result mode
+rosservice call SickLocColaTelegram "{cola_ascii_request: 'sRN LocResultEndianness', wait_response_timeout: 1}" # expected answer: "sRA LocResultEndianness 0" # 0: big endian, 1: little endian # Read endianness of result output
+```
+
+See file [test/scripts/send_cola_examples.bash](test/scripts/send_cola_examples.bash) for further examples.
+
+The operations listed above are implemented by specialized ros services defined in folder srv. These services create and 
+transmit the corresponding cola telegram to the controller and converts the parameter.
+
+Request | ros service | Interface definition | Description
+--- | --- | --- | ---
+**States Telegrams**|||
+IsSystemReady            | SickLocIsSystemReady         | [srv/SickLocIsSystemReadySrv.srv](srv/SickLocIsSystemReadySrv.srv)                 | Check if the system is ready
+LocState                 | SickLocState                 | [srv/SickLocStateSrv.srv](srv/SickLocStateSrv.srv)                                 | Read localization state
+LocStartLocalizing       | SickLocStartLocalizing       | [srv/SickLocStartLocalizingSrv.srv](srv/SickLocStartLocalizingSrv.srv)             | Start localization
+LocStop                  | SickLocStop                  | [srv/SickLocStopSrv.srv](srv/SickLocStopSrv.srv)                                   | Stop localization or demo mapping
+LocStopAndSave           | SickLocStopAndSave           | [srv/SickLocStopAndSaveSrv.srv](srv/SickLocStopAndSaveSrv.srv)                     | Stop localization, save settings
+**Result Output Configuration Telegrams**|||
+LocSetResultPort         | SickLocSetResultPort         | [srv/SickLocSetResultPortSrv.srv](srv/SickLocSetResultPortSrv.srv)                 | Set TCP-port for result output (default: 2201)
+LocSetResultMode         | SickLocSetResultMode         | [srv/SickLocSetResultModeSrv.srv](srv/SickLocSetResultModeSrv.srv)                 | Set mode of result output (default: stream)
+LocSetResultPoseEnabled  | SickLocSetResultPoseEnabled  | [srv/SickLocSetResultPoseEnabledSrv.srv](srv/SickLocSetResultPoseEnabledSrv.srv)   | Disable/enable result output
+LocSetResultEndianness   | SickLocSetResultEndianness   | [srv/SickLocSetResultEndiannessSrv.srv](srv/SickLocSetResultEndiannessSrv.srv)     | Set endianness of result output
+LocSetResultPoseInterval | SickLocSetResultPoseInterval | [srv/SickLocSetResultPoseIntervalSrv.srv](srv/SickLocSetResultPoseIntervalSrv.srv) | Set interval of result output
+LocRequestResultData     | SickLocRequestResultData     | [srv/SickLocRequestResultDataSrv.srv](srv/SickLocRequestResultDataSrv.srv)         | If in poll mode, trigger sending the localization result of the next processed scan via TCP interface.
+**SetPose Telegrams**|||
+LocSetPose               | SickLocSetPose               | [srv/SickLocSetPoseSrv.srv](srv/SickLocSetPoseSrv.srv)                             | Initialize vehicle pose
+**Timestamp Telegrams**|||
+LocRequestTimestamp      | SickLocRequestTimestamp      | [srv/SickLocRequestTimestampSrv.srv](srv/SickLocRequestTimestampSrv.srv)           | Query timestamp, see "Time synchronization"
+
+The following examples show how to call these services:
+
+```
+# ROS services for States Telegrams
+rosservice call SickLocIsSystemReady "{}"                    # expected answer: "success: True" # Check if the system is ready
+rosservice call SickLocState "{}"                            # expected answer: "state: 2, success: True" # Read localization state: 0:BOOTING, 1:IDLE, 2:LOCALIZING, 3:DEMO_MAPPING
+rosservice call SickLocStop "{}"                             # expected answer: "success: True" # Stop localization or demo mapping
+rosservice call SickLocStopAndSave "{}"                      # expected answer: "success: True" # Stop localization, save settings
+rosservice call SickLocStartLocalizing  "{}"                 # expected answer: "success: True" # Start localization
+# ROS services for Result Output Configuration Telegrams
+rosservice call SickLocSetResultPort "{port: 2201}"          # expected answer: "success: True" # Set TCP-port for result output
+rosservice call SickLocSetResultMode "{mode: 0}"             # expected answer: "success: True" # Set mode of result output (stream or: poll)
+rosservice call SickLocSetResultPoseEnabled "{enabled: 1}"   # expected answer: "success: True" # Disable/enable result output
+rosservice call SickLocSetResultEndianness "{endianness: 0}" # expected answer: "success: True" # Set endianness of result output
+rosservice call SickLocSetResultPoseInterval "{interval: 1}" # expected answer: "success: True" # Set interval of result output
+rosservice call SickLocRequestResultData "{}"                # expected answer: "success: True" # If in poll mode, trigger sending the localization result of the next processed scan via TCP interface.
+# ROS services for SetPose Telegrams
+rosservice call SickLocSetPose "{posex: 10300, posey: -5200, yaw: 30000, uncertainty: 1000}" # expected answer: "success: True" # Initialize vehicle pose
+# ROS services for Timestamp Telegrams
+rosservice call SickLocRequestTimestamp "{}" # expected reponse: "timestamp_lidar_ms: <uint32>, mean_time_vehicle_ms: <uint64>, delta_time_ms: <uint64>, ..." # Query timestamp, see "Time synchronization"
+```
+
+An initial result output configuration can be set by launch file [launch/sim_loc_driver.launch](launch/sim_loc_driver.launch), too:
+
+```
+    <!-- Initial result output configuration. Unless configuration is activated here, default values are used. -->
+    <!-- Uncomment and set result output configuration if required, otherwise SIM default configuration applies. -->
+    <!--param name="SickLocSetResultPort"         value="2201" / --> <!-- LocSetResultPort: Set TCP-port for result output (default: 2201) -->
+    <!--param name="SickLocSetResultMode"         value="0" / -->    <!-- LocSetResultMode: Set mode of result output (0=stream or 1=poll, default:0) -->
+    <!--param name="SickLocSetResultPoseEnabled"  value="1" / -->    <!-- LocSetResultPoseEnabled: Disable (0) or enable (1) result output (default: 1, enabled) -->
+    <!--param name="SickLocSetResultEndianness"   value="0" / -->    <!-- LocSetResultEndianness: Set endianness of result output (0 = big endian, 1 = little endian, default: 0) -->
+    <!--param name="SickLocSetResultPoseInterval" value="1" / -->    <!-- LocSetResultPoseInterval: Set interval of result output (0-255, interval in number of scans, 1: result with each processed scan, default: 1) -->
+    <!--param name="SickLocRequestResultData"     value="0" / -->    <!-- LocRequestResultData: If in poll mode, trigger sending the localization result of the next processed scan via TCP interface (default: 0) -->
+```
+
+If configured, these parameters are set initially at driver start using the corresponding ros services.
+By default, the result output configuration is not set in the launch file and the SIM configuration applies.
 
 ## Diagnostics
 
@@ -280,7 +402,7 @@ The sick_lidar_localization driver is configured by file [yaml/sim_loc_driver.ya
 
 Parametername | Defaultvalue | Description
 --- | --- | ---
-localization_controller_default_ip_adress | "192.168.0.1" | Default IP adress "192.168.0.1" of the localization controller (if not otherwise set by parameter "localization_controller_ip_adress")
+localization_controller_default_ip_address | "192.168.0.1" | Default IP adress "192.168.0.1" of the localization controller (if not otherwise set by parameter "localization_controller_ip_address")
 result_telegrams_tcp_port | 2201 | TCP port number of the localization controller sending localization results
 cola_telegrams_tcp_port | 2111 | For requests and to transmit settings to the localization controller: IP port number 2111 and 2112 to send telegrams and to request data, SOPAS CoLa-A or CoLa-B protocols
 cola_binary | 0 | 0: send Cola-ASCII (default), 1: send Cola-Binary, 2: toggle between Cola-ASCII and Cola-Binary (test and development only!)
@@ -299,8 +421,8 @@ software_pll_fifo_length | 7 | Length of software pll fifo, default: 7
 time_sync_rate | 0.1 | Frequency to request timestamps from localization controller using ros service "SickLocRequestTimestamp" and to update software pll, default: 0.1
 
 Note: The IP address of the SICK localization controller (192.168.0.1 by default) can be set by commandline argument 
-`localization_controller_ip_adress:=<ip-address>` when starting the driver with 
-`roslaunch sick_lidar_localization sim_loc_driver.launch localization_controller_ip_adress:=<ip-address>`.
+`localization_controller_ip_address:=<ip-address>` when starting the driver with 
+`roslaunch sick_lidar_localization sim_loc_driver.launch localization_controller_ip_address:=<ip-address>`.
 
 ## Testing
 
@@ -312,7 +434,7 @@ cd ~/catkin_ws
 source ./devel/setup.bash
 rostopic echo "/sick_lidar_localization/driver/diagnostic" &
 rostopic echo "/sick_lidar_localization/driver/result_telegrams" &
-roslaunch sick_lidar_localization sim_loc_driver.launch localization_controller_ip_adress:=192.168.0.1
+roslaunch sick_lidar_localization sim_loc_driver.launch localization_controller_ip_address:=192.168.0.1
 ```
 
 Warnings and error messages will be printed in case of failures like unreachable controller, connection losts or 
@@ -349,7 +471,7 @@ cd ~/catkin_ws
 source ./devel/setup.bash
 roslaunch sick_lidar_localization sim_loc_test_server.launch & # start test server to generate result port telegrams
 sleep 3 # make sure ros core and sim_loc_test_server are up and running 
-roslaunch sick_lidar_localization sim_loc_driver.launch localization_controller_ip_adress:=127.0.0.1
+roslaunch sick_lidar_localization sim_loc_driver.launch localization_controller_ip_address:=127.0.0.1
 ```
 
 The sick_lidar_localization ros driver will connect to the local test server, receive random based result port telegrams
@@ -391,6 +513,22 @@ In case of a successful test, the following summary will be displayed (example o
 ```
 MessageCheckThread: check messages thread summary: 599 messages checked, 0 failures.
 VerifierThread: verification thread summary: 585 messages checked, 0 failures.
+```
+
+Use `run_cola_examples.bash` in folder src/sick_lidar_localization/test/scripts to run an automated offline test
+of ros services for SIM configuration:
+
+```console
+cd ~/catkin_ws/src/sick_lidar_localization/test/scripts
+./run_cola_examples.bash
+```
+
+Examples of ros services for SIM configuration will be called and example cola telegrams will be tested offline.
+In case of a successful test, the following summary will be displayed (example output):
+
+```
+MessageCheckThread: check messages thread summary: 1081 messages checked, 0 failures.
+Services and cola telegram verification summary: 86 testcases, 0 failures.
 ```
 
 ## Error simulation and error handling
@@ -462,7 +600,7 @@ source ./devel/setup.bash
 roslaunch sick_lidar_localization sim_loc_test_server.launch demo_circles:=true &
 sleep 3 # make sure ros core and sim_loc_test_server are up and running 
 # Run ros driver, connect to localization controller, receive, convert and publish report telegrams
-roslaunch sick_lidar_localization sim_loc_driver.launch localization_controller_ip_adress:=127.0.0.1 &
+roslaunch sick_lidar_localization sim_loc_driver.launch localization_controller_ip_address:=127.0.0.1 &
 # Visualize PointCloud2 and TF messages by rviz:
 rosrun tf static_transform_publisher 0 0 0 0 0 0 map pointcloud_sick_lidar_localization 10 &
 rosrun rviz rviz &

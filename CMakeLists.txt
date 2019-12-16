@@ -74,6 +74,18 @@ add_service_files(
         FILES
         SickLocColaTelegramSrv.srv
         SickLocRequestTimestampSrv.srv
+        SickLocSetResultModeSrv.srv
+        SickLocSetResultPoseIntervalSrv.srv
+        SickLocStopAndSaveSrv.srv
+        SickLocIsSystemReadySrv.srv
+        SickLocSetPoseSrv.srv
+        SickLocSetResultPortSrv.srv
+        SickLocStartLocalizingSrv.srv
+        SickLocStopSrv.srv
+        SickLocRequestResultDataSrv.srv
+        SickLocSetResultEndiannessSrv.srv
+        SickLocSetResultPoseEnabledSrv.srv
+        SickLocStateSrv.srv
         SickLocTimeSyncSrv.srv
 )
 
@@ -145,8 +157,10 @@ include_directories(
 ## Declare a C++ library
 add_library(sick_localization_lib
         src/client_socket.cpp
+        src/cola_configuration.cpp
         src/cola_converter.cpp
         src/cola_parser.cpp
+        src/cola_services.cpp
         src/cola_transmitter.cpp
         src/driver_check_thread.cpp
         src/driver_monitor.cpp
@@ -175,6 +189,7 @@ add_executable(sim_loc_driver src/driver.cpp)
 add_executable(sim_loc_driver_check src/driver_check.cpp)
 add_executable(sim_loc_time_sync src/time_sync.cpp)
 add_executable(pointcloud_converter src/pointcloud_converter.cpp)
+add_executable(cola_service_node src/cola_service_node.cpp)
 
 ## Executables for test purposes
 add_executable(sim_loc_test_server test/src/test_server.cpp test/src/test_server_thread.cpp)
@@ -214,6 +229,11 @@ add_dependencies(sim_loc_time_sync
         ${catkin_EXPORTED_TARGETS}
         )
 add_dependencies(pointcloud_converter
+        sick_localization_lib
+        ${${PROJECT_NAME}_EXPORTED_TARGETS}
+        ${catkin_EXPORTED_TARGETS}
+        )
+add_dependencies(cola_service_node
         sick_localization_lib
         ${${PROJECT_NAME}_EXPORTED_TARGETS}
         ${catkin_EXPORTED_TARGETS}
@@ -259,6 +279,11 @@ target_link_libraries(pointcloud_converter
         ${Boost_LIBRARIES}
         ${catkin_LIBRARIES}
         )
+target_link_libraries(cola_service_node
+        sick_localization_lib
+        ${Boost_LIBRARIES}
+        ${catkin_LIBRARIES}
+        )
 target_link_libraries(unittest_sim_loc_parser
         sick_localization_lib
         ${Boost_LIBRARIES}
@@ -285,7 +310,7 @@ target_link_libraries(verify_sim_loc_driver
 # )
 
 ## Mark executables and/or libraries for installation
-install(TARGETS sick_localization_lib sim_loc_driver sim_loc_driver_check sim_loc_test_server sim_loc_time_sync pointcloud_converter unittest_sim_loc_parser verify_sim_loc_driver
+install(TARGETS sick_localization_lib sim_loc_driver sim_loc_driver_check sim_loc_test_server sim_loc_time_sync pointcloud_converter cola_service_node unittest_sim_loc_parser verify_sim_loc_driver
         ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
         RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

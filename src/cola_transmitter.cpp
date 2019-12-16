@@ -173,6 +173,7 @@ bool sick_lidar_localization::ColaTransmitter::receive(std::vector<uint8_t> & te
 bool sick_lidar_localization::ColaTransmitter::receive(boost::asio::ip::tcp::socket & socket, std::vector<uint8_t> & telegram, double timeout, ros::Time & receive_timestamp)
 {
   telegram.clear();
+  telegram.reserve(1024);
   try
   {
     std::vector<uint8_t> binETX = sick_lidar_localization::ColaParser::binaryETX();

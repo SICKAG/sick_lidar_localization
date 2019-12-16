@@ -41,7 +41,7 @@ rostopic echo -p "/sick_lidar_localization/driver/diagnostic" | tee -a ~/.ros/lo
 # Run ros driver, connect to localization controller and receive, convert and publish telegrams
 #
 
-roslaunch sick_lidar_localization sim_loc_driver.launch localization_controller_ip_adress:=127.0.0.1 2>&1 | unbuffer -p tee -a ~/.ros/log/sim_loc_driver.log &
+roslaunch sick_lidar_localization sim_loc_driver.launch localization_controller_ip_address:=127.0.0.1 2>&1 | unbuffer -p tee -a ~/.ros/log/sim_loc_driver.log &
 sleep 1 # make sure sim_loc_test_server and sim_loc_driver are up and running 
 
 #
@@ -91,4 +91,6 @@ echo -e "\nsim_loc_driver check and verification summary:"
 grep -i "unittest_sim_loc_parser finished" ./log/*.log
 grep -i "check messages thread summary"    ./log/*.log 
 grep -i "verification thread summary"      ./log/*.log 
+echo -e "\nsick_lidar_localization summary:"
+grep -R "summary" ./log/*
 

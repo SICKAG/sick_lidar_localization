@@ -2,10 +2,10 @@
 <launch>
 
   <!-- Launch sim_loc_driver -->
-  <arg name="localization_controller_ip_adress" default=""/> <!-- IP adress of the localization controller, overwrites default ip address "192.168.0.1" in sim_loc_driver.yaml-->
+  <arg name="localization_controller_ip_address" default=""/> <!-- IP adress of the localization controller, overwrites default ip address "192.168.0.1" in sim_loc_driver.yaml-->
   <rosparam command="load" file="$(find sick_lidar_localization)/yaml/sim_loc_driver.yaml" />
   <node name="sim_loc_driver" pkg="sick_lidar_localization" type="sim_loc_driver" output="screen">
-    <param name="localization_controller_ip_adress" value="$(arg localization_controller_ip_adress)" /> <!-- IP adress of the localization controller, f.e. "192.168.0.1" (default) -->
+    <param name="localization_controller_ip_address" value="$(arg localization_controller_ip_address)" /> <!-- IP adress of the localization controller, f.e. "192.168.0.1" (default) -->
   </node>
 
   <!-- Launch sim_loc_driver_check to monitor sim_loc_driver -->
@@ -16,6 +16,18 @@
 
   <!-- Launch sim_loc_time_sync to provide time synchronization services (SickLocRequestTimestamp and SickLocTimeSync) -->
   <node name="sim_loc_time_sync" pkg="sick_lidar_localization" type="sim_loc_time_sync" output="screen">
+  </node>
+
+  <!-- Launch cola_service_node to provide ros services for States Telegrams, Result Output Configuration Telegrams and SetPose Telegrams -->
+  <node name="cola_service_node" pkg="sick_lidar_localization" type="cola_service_node" output="screen">
+    <!-- Initial result output configuration. Unless configuration is activated here, default values are used. -->
+    <!-- Uncomment and set result output configuration if required, otherwise SIM default configuration applies. -->
+    <!--param name="SickLocSetResultPort"         value="2201" / --> <!-- LocSetResultPort: Set TCP-port for result output (default: 2201) -->
+    <!--param name="SickLocSetResultMode"         value="0" / -->    <!-- LocSetResultMode: Set mode of result output (0=stream or 1=poll, default:0) -->
+    <!--param name="SickLocSetResultPoseEnabled"  value="1" / -->    <!-- LocSetResultPoseEnabled: Disable (0) or enable (1) result output (default: 1, enabled) -->
+    <!--param name="SickLocSetResultEndianness"   value="0" / -->    <!-- LocSetResultEndianness: Set endianness of result output (0 = big endian, 1 = little endian, default: 0) -->
+    <!--param name="SickLocSetResultPoseInterval" value="1" / -->    <!-- LocSetResultPoseInterval: Set interval of result output (0-255, interval in number of scans, 1: result with each processed scan, default: 1) -->
+    <!--param name="SickLocRequestResultData"     value="0" / -->    <!-- LocRequestResultData: If in poll mode, trigger sending the localization result of the next processed scan via TCP interface (default: 0) -->
   </node>
 
   <!-- Launch pointcloud_converter to convert and publish PointCloud2 messages -->

@@ -61,7 +61,42 @@
 #include "sick_lidar_localization/utils.h"
 
 
-uint32_t sick_lidar_localization::TestcaseGenerator::s_u32ResultPoseInterval = 1; ///< result pose interval, i.e. the interval in number of scans (default: 1, i.e. result telegram with each processed scan)
+/*!
+ * result pose interval, i.e. the interval in number of scans (default: 1, i.e. result telegram with each processed scan)
+ */
+uint32_t sick_lidar_localization::TestcaseGenerator::s_u32ResultPoseInterval = 1;
+
+/*!
+ * test server settings, set by sMN or sRN requests
+ */
+std::map<std::string, int32_t> sick_lidar_localization::TestcaseGenerator::s_controller_settings = {
+  {"IsSystemReady", 1},        // 0:false, 1:true (default)
+  {"LocState", 2},             // controller state: 0:BOOTING, 1:IDLE, 2:LOCALIZING, 3:DEMO_MAPPING
+  {"LocResultPort", 2201},     // tcp port for result telegrams (default: 2201)
+  {"LocResultMode", 0},        // 0:stream (default), 1:poll
+  {"LocResultState", 1},       // result output: 0: disabled, 1: enabled
+  {"LocResultEndianness", 0},  // 0: big endian (default), 1: little endian
+  {"LocMapState", 1},          // map state: 0:not active, 1:active
+  {"LocRequestResultData", 1}  // in poll mode, trigger sending the localization result of the next processed scan via TCP interface.
+};
+
+/*!
+ * Returns true, if localization is active (default), otherwise false (localization deactivated)
+ * @return result telegrams are activated (true) or deactivated
+ */
+bool sick_lidar_localization::TestcaseGenerator::LocalizationEnabled(void)
+{
+  return s_controller_settings["LocState"] == 2; // localization on
+}
+
+/*!
+ * Returns true, if result telegrams are activated (i.e. localization on and result telegrams active), otherwise false (result telegrams deactivated)
+ * @return result telegrams are activated (true, default) or deactivated
+ */
+bool sick_lidar_localization::TestcaseGenerator::ResultTelegramsEnabled(void)
+{
+  return LocalizationEnabled() && s_controller_settings["LocResultState"] > 0; // localization on and result telegrams activated, otherwise result telegrams deactivated
+}
 
 /*!
  * Creates and returns a deterministic default testcase for result port telegrams (binary telegrams and SickLocResultPortTelegramMsg)
@@ -222,22 +257,6 @@ sick_lidar_localization::SickLocColaTelegramMsg sick_lidar_localization::Testcas
     return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {hexstr(ticks_ms)});
   }
   
-  // static test server settings (sMN or sRN requests)
-  // tbd: export settings by function LocalizationEnabled(), ResultTelegramsEnabled(), ResultTelegramsBigEndian(),
-  // and use test server settings in test_server_thread to configure result telegrams:
-  // s_controller_settings["LocState"]==2 && s_controller_settings["LocResultState"]>0: localization on and result telegrams activated, otherwise result telegrams deactivated
-  // s_controller_settings["LocResultEndianness"]==0: big endian (default), s_controller_settings["LocResultEndianness"]>0: little endian
-  static std::map<std::string, int32_t> s_controller_settings = {
-    {"IsSystemReady", 1},        // 0:false, 1:true (default)
-    {"LocState", 2},             // controller state: 0:BOOTING, 1:IDLE, 2:LOCALIZING, 3:DEMO_MAPPING
-    {"LocResultPort", 2201},     // tcp port for result telegrams (default: 2201)
-    {"LocResultMode", 0},        // 0:stream (default), 1:poll
-    {"LocResultState", 1},       // result output: 0: disabled, 1: enabled
-    {"LocResultEndianness", 0},  // 0: big endian (default), 1: little endian
-    {"LocMapState", 1},          // map state: 0:not active, 1:active
-    {"LocRequestResultData", 1}  // in poll mode, trigger sending the localization result of the next processed scan via TCP interface.
-  };
-  
   // Set settings from Configuration Telegrams
   if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "LocStartLocalizing")
   {
@@ -257,7 +276,7 @@ sick_lidar_localization::SickLocColaTelegramMsg sick_lidar_localization::Testcas
   if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "LocSetResultPort" && cola_request.parameter.size() == 1)
   {
     s_controller_settings["LocResultPort"] = std::strtol(cola_request.parameter[0].c_str(), 0, 0);
-    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(1)});
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(1), decstr(1)});
   }
   if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "LocSetResultMode" && cola_request.parameter.size() == 1)
   {
@@ -305,7 +324,7 @@ sick_lidar_localization::SickLocColaTelegramMsg sick_lidar_localization::Testcas
     {
       if(cola_request.command_name == iter_settings->first)
       {
-        return sick_lidar_localization::ColaParser::createColaTelegram(response_type, cola_request.command_name, {decstr(iter_settings->second)});
+        return sick_lidar_localization::ColaParser::createColaTelegram(response_type, cola_request.command_name, {hexstr(iter_settings->second)});
       }
     }
   }

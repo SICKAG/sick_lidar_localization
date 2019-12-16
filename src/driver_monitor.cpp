@@ -86,6 +86,7 @@ sick_lidar_localization::DriverMonitor::DriverMonitor(ros::NodeHandle * nh, cons
     m_cola_binary = (cola_binary_mode == 1) ? true : false; //  0: send Cola-ASCII (default), 1: send Cola-Binary, 2: toggle between Cola-ASCII and Cola-Binary (test and development only!)
     ros::param::param<double>("/sick_lidar_localization/driver/monitoring_rate", m_monitoring_rate, m_monitoring_rate); // frequency to monitor driver messages, default: once per second
     ros::param::param<double>("/sick_lidar_localization/driver/monitoring_message_timeout", m_receive_telegrams_timeout, m_receive_telegrams_timeout); // timeout for driver messages, shutdown tcp-sockets and reconnect after message timeout, default: 1 second
+    ros::param::param<double>("/sick_lidar_localization/time_sync/cola_response_timeout", m_cola_response_timeout, m_cola_response_timeout);
     m_initialized = true;
   }
 }
@@ -247,6 +248,64 @@ bool sick_lidar_localization::DriverMonitor::serviceCbColaTelegram(sick_lidar_lo
   return false;
 }
 
+/*!
+ * Returns true, if result telegrams have been received within configured timeout "monitoring_message_timeout".
+ * If no result telegrams have been received within the timeout, the localization status is queried by ros service
+ * "SickLocState". If localization is not activated (LocState != 2), this function returns true (no error).
+ * Otherwise, result telegrams are missing and false is returned (error).
+ */
+bool sick_lidar_localization::DriverMonitor::resultTelegramsReceiveStatusIsOk(void)
+{
+  // Check timestamp of last result telegram
+  if((ros::Time::now() - m_driver_message_recv_timestamp.get()).toSec() <= m_receive_telegrams_timeout)
+    return true; // OK: result telegram received within timeout
+
+  // Call "sRN LocState" and check state of localization (no result telegrams when localization deactivated)
+  sick_lidar_localization::SickLocColaTelegramSrv::Request cola_telegram_request;
+  sick_lidar_localization::SickLocColaTelegramSrv::Response cola_telegram_response;
+  cola_telegram_request.cola_ascii_request = "sRN LocState";
+  cola_telegram_request.wait_response_timeout = m_cola_response_timeout;
+  if(!serviceCbColaTelegram(cola_telegram_request, cola_telegram_response))
+  {
+    ROS_WARN_STREAM("## ERROR DriverMonitor: serviceCbColaTelegram failed, cola request: " << sick_lidar_localization::Utils::flattenToString(cola_telegram_request) << ", cola response: " << sick_lidar_localization::Utils::flattenToString(cola_telegram_response));
+    return false; // Error: localization controller not responding
+  }
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sick_lidar_localization::ColaParser::decodeColaTelegram(cola_telegram_response.cola_ascii_response);
+  if(cola_response.command_name != "LocState" || cola_response.parameter.size() != 1)
+  {
+    ROS_WARN_STREAM("## ERROR DriverMonitor: unexpected cola response from localization controller, cola request: " << sick_lidar_localization::Utils::flattenToString(cola_telegram_request) << ", cola response: " << sick_lidar_localization::Utils::flattenToString(cola_telegram_response));
+    return false; // Error decoding response from localization
+  }
+  if(cola_response.parameter[0] != "2")
+  {
+    ROS_INFO_STREAM("DriverMonitor: localization deactivated, no result telegrams received (cola response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ")");
+    return true; // OK: SickLocState != "2": localization deactivated, no result telegrams send or received
+  }
+
+  // Call "sRN LocResultState" and check state of result output (result telegrams enabled or disabled)
+  cola_telegram_request.cola_ascii_request = "sRN LocResultState";
+  cola_telegram_request.wait_response_timeout = m_cola_response_timeout;
+  if(!serviceCbColaTelegram(cola_telegram_request, cola_telegram_response))
+  {
+    ROS_WARN_STREAM("## ERROR DriverMonitor: serviceCbColaTelegram failed, cola request: " << sick_lidar_localization::Utils::flattenToString(cola_telegram_request) << ", cola response: " << sick_lidar_localization::Utils::flattenToString(cola_telegram_response));
+    return false; // Error: localization controller not responding
+  }
+  cola_response = sick_lidar_localization::ColaParser::decodeColaTelegram(cola_telegram_response.cola_ascii_response);
+  if(cola_response.command_name != "LocResultState" || cola_response.parameter.size() != 1)
+  {
+    ROS_WARN_STREAM("## ERROR DriverMonitor: unexpected cola response from localization controller, cola request: " << sick_lidar_localization::Utils::flattenToString(cola_telegram_request) << ", cola response: " << sick_lidar_localization::Utils::flattenToString(cola_telegram_response));
+    return false; // Error decoding response from localization
+  }
+  if(cola_response.parameter[0] == "0")
+  {
+    ROS_INFO_STREAM("DriverMonitor: result telegrams deactivated, no result telegrams received (cola response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ")");
+    return true; // OK: LocResultState == "0": Result telegrams deactivated
+  }
+    
+  // Timeout error: Localization and result telegrams activated, but no result telegrams received
+  ROS_WARN_STREAM("## ERROR DriverMonitor: Localization and result telegrams activated, timeout while waiting for result telegrams");
+  return false;
+}
 
 /*!
  * Thread callback, implements the monitoring and restarts a DriverThread in case of tcp-errors.
@@ -280,7 +339,7 @@ void sick_lidar_localization::DriverMonitor::runMonitorThreadCb(void)
     && m_monitoring_thread_running
     && driver_thread->isRunning()
     && driver_thread->isConnected()
-    && (ros::Time::now() - m_driver_message_recv_timestamp.get()).toSec() <= m_receive_telegrams_timeout)
+    && resultTelegramsReceiveStatusIsOk())
     {
       monitoring_delay.sleep();
     }

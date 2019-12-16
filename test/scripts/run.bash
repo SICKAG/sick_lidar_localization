@@ -45,7 +45,7 @@ rostopic echo -p "/sick_lidar_localization/driver/diagnostic" | tee -a ~/.ros/lo
 # Run ros driver, connect to localization controller and receive, convert and publish telegrams
 #
 
-roslaunch sick_lidar_localization sim_loc_driver.launch localization_controller_ip_adress:=192.168.0.1 2>&1 | unbuffer -p tee -a ~/.ros/log/sim_loc_driver.log &
+roslaunch sick_lidar_localization sim_loc_driver.launch localization_controller_ip_address:=192.168.0.1 2>&1 | unbuffer -p tee -a ~/.ros/log/sim_loc_driver.log &
 
 #
 # Run online test with localization controller and ros driver for some time, press 'q' to quit test

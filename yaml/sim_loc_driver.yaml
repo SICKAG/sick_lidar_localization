@@ -3,7 +3,7 @@ sick_lidar_localization:
 
   # Driver configuration. See Operation-Instruction-v1.1.0.241R.pdf, page 51, "IP port number and protocol" for default tcp ports.
   driver:
-    localization_controller_default_ip_adress: "192.168.0.1"                   # Default IP adress "192.168.0.1" of the localization controller (if not otherwise set by parameter "localization_controller_ip_adress")
+    localization_controller_default_ip_address: "192.168.0.1"                  # Default IP address "192.168.0.1" of the localization controller (if not otherwise set by parameter "localization_controller_ip_address")
     result_telegrams_tcp_port: 2201                                            # TCP port number of the localization controller sending localization results. To transmit the localization results to the vehicle controller, the localization controller uses IP port number 2201 to send localization results in a single direction to the external vehicle controller.
     cola_telegrams_tcp_port:   2111                                            # For requests and to transmit settings to the localization controller: IP port number 2111 and 2112 to send telegrams and to request data, SOPAS CoLa-A or CoLa-B protocols
     cola_binary: 0                                                             # 0: send Cola-ASCII (default), 1: send Cola-Binary, 2: toggle between Cola-ASCII and Cola-Binary (test and development only!)
