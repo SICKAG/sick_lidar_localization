@@ -1,7 +1,7 @@
 # Quickstart: LiDAR-LOC with SOPASair
 
 SOPASair is used to setup and configure SICK LiDAR Localization. The following quickstart gives a brief overview
-about setup and configuration. See the operation manuals published on https://supportportal.sick.com/Product_notes/lidar-loc-operation-instruction/ 
+about setup and configuration. See the operation manuals published on https://supportportal.sick.com/products/localization/lidar-localization/lidar-loc/ -> Section Product Notes -> LiDAR-LOC Operating Instructions 
 for details and further information.
 
 ## LiDAR-LOC brief setup and configuration with SOPASair
@@ -19,4 +19,3 @@ Run the following steps to setup configure your LiDAR with SIM1000FXA:
 
 Note: Use of Chrome-browser under Windows is highly recommended for LiDAR-LOC configuration with SOPASair. 
 After the initial setup under Windows, SIM1000FXA is ready to be used on ROS/Linux.
-
