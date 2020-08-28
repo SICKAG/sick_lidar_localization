@@ -324,16 +324,9 @@ install(DIRECTORY include/${PROJECT_NAME}/
         )
 
 ## Mark other files for installation (e.g. launch and bag files, etc.)
-install(FILES
-        launch/sim_loc_driver.launch
-        launch/sim_loc_driver_check.launch
-        launch/sim_loc_test_server.launch
-        launch/unittest_sim_loc_parser.launch
-        launch/verify_sim_loc_driver.launch
-        yaml/message_check_demo.yaml
-        yaml/message_check_default.yaml
-        yaml/sim_loc_driver.yaml
-        yaml/sim_loc_test_server.yaml
+install(DIRECTORY
+        launch
+        yaml
         DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
         )
 
