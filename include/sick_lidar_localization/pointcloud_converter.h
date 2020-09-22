@@ -65,13 +65,7 @@
 #include <list>
 #include <string>
 
-#include <ros/ros.h>
-#include <geometry_msgs/Point.h>
-#include <sensor_msgs/PointCloud2.h>
-#include <tf2/LinearMath/Quaternion.h>
-#include <tf2_ros/transform_broadcaster.h>
-#include <geometry_msgs/TransformStamped.h>
-
+#include "sick_lidar_localization/ros_wrapper.h"
 #include "sick_lidar_localization/fifo_buffer.h"
 #include "sick_lidar_localization/result_port_parser.h"
 
@@ -90,7 +84,7 @@ namespace sick_lidar_localization
      * Constructor
      * @param[in] nh ros node handle
      */
-    PointCloudConverter(ros::NodeHandle* nh = 0);
+    PointCloudConverter(ROS::NodePtr nh = 0);
     
     /*!
      * Destructor
@@ -116,6 +110,8 @@ namespace sick_lidar_localization
      * @param[in] msg result telegram message (SickLocResultPortTelegramMsg)
      */
     virtual void messageCbResultPortTelegrams(const sick_lidar_localization::SickLocResultPortTelegramMsg & msg);
+    /*! ROS2 version of function messageCbResultPortTelegrams */
+    virtual void messageCbResultPortTelegramsROS2(const std::shared_ptr<sick_lidar_localization::SickLocResultPortTelegramMsg> msg) { messageCbResultPortTelegrams(*msg); }
   
   protected:
 
@@ -157,11 +153,12 @@ namespace sick_lidar_localization
      * member data
      */
 
+    ROS::NodePtr m_nh; ///< ROS node handle
     sick_lidar_localization::FifoBuffer<sick_lidar_localization::SickLocResultPortTelegramMsg, boost::mutex> m_result_port_telegram_fifo; ///< fifo buffer for result port telegrams from sim_loc_driver
     std::string m_point_cloud_frame_id;      ///< ros frame id of PointCloud2 messages, default: "sick_lidar_localization"
     std::string m_tf_parent_frame_id;        ///< parent frame of tf messages of of vehicles pose (typically frame of the loaded map)
     std::string m_tf_child_frame_id;         ///< child frame of tf messages of of vehicles pose
-    ros::Publisher m_point_cloud_publisher;  ///< ros publisher for PointCloud2 messages
+    sick_lidar_localization::PointCloud2MsgPublisher m_point_cloud_publisher;  ///< ros publisher for PointCloud2 messages
     bool m_converter_thread_running;         ///< true: m_verification_thread is running, otherwise false
     boost::thread* m_converter_thread;       ///< thread to verify sim_loc_driver
     

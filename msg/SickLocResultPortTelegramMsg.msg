@@ -7,7 +7,7 @@
 # Header
 #
 
-Header header                                 # ROS Header with sequence id, timestamp and frame id
+std_msgs/Header header                                 # ROS Header with sequence id, timestamp and frame id
 
 #
 # Result port telegram

@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+
+  <!-- Launch odom_msg_sender.py -->
+  <node name="odom_msg_sender" pkg="sick_lidar_localization" type="odom_msg_sender.py" output="screen">
+  </node>
+
+</launch>
+

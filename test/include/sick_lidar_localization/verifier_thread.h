@@ -86,8 +86,9 @@ namespace sick_lidar_localization
     
     /*!
      * Constructor
+     * @param[in] nh ros node handle
      */
-    VerifierThread();
+    VerifierThread(ROS::NodePtr nh = 0);
     
     /*!
      * Destructor
@@ -111,12 +112,16 @@ namespace sick_lidar_localization
      * @param[in] msg result telegram message (SickLocResultPortTelegramMsg)
      */
     virtual void messageCbResultPortTelegrams(const sick_lidar_localization::SickLocResultPortTelegramMsg & msg);
+    /*! ROS2 version of function messageCbResultPortTelegrams */
+    virtual void messageCbResultPortTelegramsROS2(const std::shared_ptr<sick_lidar_localization::SickLocResultPortTelegramMsg> msg) { messageCbResultPortTelegrams(*msg); }
   
     /*!
      * Callback for testcase messages (SickLocResultPortTestcaseMsg) from sim_loc_test_server.
      * @param[in] msg testcase message (SickLocResultPortTestcaseMsg)
      */
     virtual void messageCbResultPortTestcases(const sick_lidar_localization::SickLocResultPortTestcaseMsg & msg);
+    /*! ROS2 version of function messageCbResultPortTelegrams */
+    virtual void messageCbResultPortTestcasesROS2(const std::shared_ptr<sick_lidar_localization::SickLocResultPortTestcaseMsg> msg) { messageCbResultPortTestcases(*msg); }
     
   protected:
   

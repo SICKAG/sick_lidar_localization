@@ -58,7 +58,7 @@
  *  Copyright 2019 Ing.-Buero Dr. Michael Lehning
  *
  */
-#include <ros/ros.h>
+#include "sick_lidar_localization/ros_wrapper.h"
 #include <cassert>
 #include <boost/algorithm/string.hpp>
 
@@ -101,7 +101,7 @@ sick_lidar_localization::SickLocColaTelegramMsg sick_lidar_localization::ColaPar
   const std::string & command_name, const std::vector<std::string> & parameter)
 {
   sick_lidar_localization::SickLocColaTelegramMsg cola_telegram;
-  cola_telegram.header.stamp = ros::Time::now();
+  cola_telegram.header.stamp = ROS::now();
   cola_telegram.command_type = command_type;
   cola_telegram.command_name = command_name;
   cola_telegram.parameter = parameter;
@@ -229,3 +229,57 @@ sick_lidar_localization::ColaParser::COLA_SOPAS_COMMAND sick_lidar_localization:
   return command_type;
 }
 
+/*!
+ * Converts and returns the parameter of a cola ascii telegram into a numeric value.
+ * @param[in] cola_arg parameter of a cola ascii telegram
+ * @param[in] base numeric base (10 for decimal values, 16 for hex strings or -1 for autodetection with base 10 in case of +/-sign, otherwise hex)
+ * @param[in] default_value default value returned in case of parse errors
+ * @return parameter converted to integer value
+ */
+int32_t sick_lidar_localization::ColaParser::convertColaArg(const std::string & cola_arg, int base, int32_t default_value)
+{
+  try
+  {
+    if(base < 0)
+      base = ((cola_arg.find_first_of("+-") != std::string::npos) ? 10 : 16); // base 10 if +/-sign in cola_arg, otherwise hex
+    return std::stoi(cola_arg, 0, base);
+  }
+  catch(const std::exception & exc)
+  {
+    ROS_WARN_STREAM("## ERROR ColaParser::convertColaArg(" << cola_arg << ") failed, exception " << exc.what());
+  }
+  return default_value;
+}
+
+/*!
+ * Converts and returns the parameter of a cola ascii telegram into a numeric value.
+ * @param[in] cola_arg parameter of a cola ascii telegram
+ * @param[in] base numeric base (10 for decimal values, 16 for hex strings or -1 for autodetection with base 10 in case of +/-sign, otherwise hex)
+ * @param[in] default_value default value returned in case of parse errors
+ * @return parameter converted to integer value
+ */
+uint32_t sick_lidar_localization::ColaParser::convertColaArg(const std::string & cola_arg, int base, uint32_t default_value)
+{
+  try
+  {
+    if(base < 0)
+      base = ((cola_arg.find_first_of("+-") != std::string::npos) ? 10 : 16); // base 10 if +/-sign in cola_arg, otherwise hex
+    return (uint32_t)std::stoul(cola_arg, 0, base);
+  }
+  catch(const std::exception & exc)
+  {
+    ROS_WARN_STREAM("## ERROR ColaParser::convertColaArg(" << cola_arg << ") failed, exception " << exc.what());
+  }
+  return default_value;
+}
+
+/*!
+ * Converts and returns the parameter of a cola ascii response into a boolean value.
+ * @param[in] cola_response_arg parameter of a cola ascii response
+ * @param[in] default_value default value returned in case of parse errors
+ * @return parameter converted to boolean value
+ */
+bool sick_lidar_localization::ColaParser::convertColaResponseBool(const std::string & cola_response_arg, bool default_value)
+{
+  return ((sick_lidar_localization::ColaParser::convertColaArg(cola_response_arg, 10, (default_value ? 1 : 0)) > 0) ? true : false);
+}

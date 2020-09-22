@@ -53,7 +53,7 @@
  *  Copyright 2019 Ing.-Buero Dr. Michael Lehning
  *
  */
-#include <ros/ros.h>
+#include "sick_lidar_localization/ros_wrapper.h"
 
 #include "sick_lidar_localization/cola_parser.h"
 #include "sick_lidar_localization/random_generator.h"
@@ -67,7 +67,7 @@
 uint32_t sick_lidar_localization::TestcaseGenerator::s_u32ResultPoseInterval = 1;
 
 /*!
- * test server settings, set by sMN or sRN requests
+ * test server int32 settings, set by sMN or sRN requests
  */
 std::map<std::string, int32_t> sick_lidar_localization::TestcaseGenerator::s_controller_settings = {
   {"IsSystemReady", 1},        // 0:false, 1:true (default)
@@ -79,6 +79,11 @@ std::map<std::string, int32_t> sick_lidar_localization::TestcaseGenerator::s_con
   {"LocMapState", 1},          // map state: 0:not active, 1:active
   {"LocRequestResultData", 1}  // in poll mode, trigger sending the localization result of the next processed scan via TCP interface.
 };
+
+/*!
+ * test server string settings, set by sMN or sRN requests
+ */
+std::map<std::string, std::string> sick_lidar_localization::TestcaseGenerator::s_controller_settings_str;
 
 /*!
  * Returns true, if localization is active (default), otherwise false (localization deactivated)
@@ -107,7 +112,7 @@ sick_lidar_localization::SickLocResultPortTestcaseMsg sick_lidar_localization::T
   sick_lidar_localization::SickLocResultPortTestcaseMsg testcase;
   
   // ROS Header with sequence id, timestamp and frame id
-  testcase.header.stamp = ros::Time::now();
+  testcase.header.stamp = ROS::now();
   testcase.header.frame_id = "sick_localization_testcase";
 
   // binary encoded result port telegram (default example)
@@ -150,33 +155,33 @@ sick_lidar_localization::SickLocResultPortTestcaseMsg sick_lidar_localization::T
   static sick_lidar_localization::UniformRandomInteger random_covariance_generator(0, INT32_MAX);
   
   // Create default SickLocResultPortTelegramMsg
-  static ros::Time start_time = ros::Time::now();
+  static ROS::Time start_time = ROS::now();
   static sick_lidar_localization::SickLocResultPortTestcaseMsg default_testcase = createDefaultResultPortTestcase();
   sick_lidar_localization::SickLocResultPortTestcaseMsg testcase = default_testcase;
   sick_lidar_localization::SickLocResultPortTelegramMsg & telegram_msg = testcase.telegram_msg;
   
   // Modify SickLocResultPortTelegramMsg with random values
-  telegram_msg.telegram_header.PayloadType = ((random1_generator.generate() > 0) ? 0x06c2 : 0x0642); // Payload type: 0x06c2 = Little Endian, 0x0642 = Big Endian. Size: UInt16 = 2 byte
-  telegram_msg.telegram_header.OrderNumber = (uint32_t)random32_generator.generate();                // Order number of the localization controller. Size: UInt32 = 4 byte
-  telegram_msg.telegram_header.SerialNumber = (uint32_t)random32_generator.generate();               // Serial number of the localization controller. Size: UInt32 = 4 byte
-  for(size_t n = 0; n < telegram_msg.telegram_header.FW_Version.size(); n++)
-    telegram_msg.telegram_header.FW_Version[n] = (uint8_t)random8_generator.generate();              // Software version of the localization controller. Size: 20 × UInt8 = 20 byte
-  telegram_msg.telegram_payload.PoseX = random32_generator.generate();                               // Position X of the vehicle on the map in cartesian global coordinates [mm]. Size: Int32 = 4 byte
-  telegram_msg.telegram_payload.PoseY = random32_generator.generate();                               // Position Y of the vehicle on the map in cartesian global coordinates [mm]. Size: Int32 = 4 byte
-  telegram_msg.telegram_payload.PoseYaw = random_yaw_generator.generate();                           // Orientation (yaw) of the vehicle on the map [mdeg], range -180 to +180 deg assumed. Size: Int32 = 4 byte
-  telegram_msg.telegram_payload.Reserved1 = (uint32_t)random32_generator.generate();                 // Reserved. Size: UInt32 = 4 byte
-  telegram_msg.telegram_payload.Reserved2 = random32_generator.generate();                           // Reserved. Size: Int32 = 4 byte
-  telegram_msg.telegram_payload.Quality = (uint8_t)random_quality_generator.generate();              // Quality of pose [0 … 100], 1 = bad pose quality, 100 = good pose quality. Size: UInt8 = 1 byte
-  telegram_msg.telegram_payload.OutliersRatio = (uint8_t)random_quality_generator.generate();        // Ratio of beams that cannot be assigned to the current reference map [%]. Size: UInt8 = 1 byte
-  telegram_msg.telegram_payload.CovarianceX = random_covariance_generator.generate();                // Covariance c1 of the pose X [mm^2]. Size: Int32 = 4 byte
-  telegram_msg.telegram_payload.CovarianceY = random_covariance_generator.generate();                // Covariance c5 of the pose Y [mm^2]. Size: Int32 = 4 byte
-  telegram_msg.telegram_payload.CovarianceYaw = random_covariance_generator.generate();              // Covariance c9 of the pose Yaw [mdeg^2]. Size: Int32 = 4 byte
-  telegram_msg.telegram_payload.Reserved3 = (((uint64_t)random32_generator.generate() << 32) | (uint64_t)random32_generator.generate()); // Reserved. Size: UInt64 = 8 byte
+  telegram_msg.telegram_header.payloadtype = ((random1_generator.generate() > 0) ? 0x06c2 : 0x0642); // Payload type: 0x06c2 = Little Endian, 0x0642 = Big Endian. Size: UInt16 = 2 byte
+  telegram_msg.telegram_header.ordernumber = (uint32_t)random32_generator.generate();                // Order number of the localization controller. Size: UInt32 = 4 byte
+  telegram_msg.telegram_header.serialnumber = (uint32_t)random32_generator.generate();               // Serial number of the localization controller. Size: UInt32 = 4 byte
+  for(size_t n = 0; n < telegram_msg.telegram_header.fw_version.size(); n++)
+    telegram_msg.telegram_header.fw_version[n] = (uint8_t)random8_generator.generate();              // Software version of the localization controller. Size: 20 × UInt8 = 20 byte
+  telegram_msg.telegram_payload.posex = random32_generator.generate();                               // Position X of the vehicle on the map in cartesian global coordinates [mm]. Size: Int32 = 4 byte
+  telegram_msg.telegram_payload.posey = random32_generator.generate();                               // Position Y of the vehicle on the map in cartesian global coordinates [mm]. Size: Int32 = 4 byte
+  telegram_msg.telegram_payload.poseyaw = random_yaw_generator.generate();                           // Orientation (yaw) of the vehicle on the map [mdeg], range -180 to +180 deg assumed. Size: Int32 = 4 byte
+  telegram_msg.telegram_payload.reserved1 = (uint32_t)random32_generator.generate();                 // Reserved. Size: UInt32 = 4 byte
+  telegram_msg.telegram_payload.reserved2 = random32_generator.generate();                           // Reserved. Size: Int32 = 4 byte
+  telegram_msg.telegram_payload.quality = (uint8_t)random_quality_generator.generate();              // Quality of pose [0 … 100], 1 = bad pose quality, 100 = good pose quality. Size: UInt8 = 1 byte
+  telegram_msg.telegram_payload.outliersratio = (uint8_t)random_quality_generator.generate();        // Ratio of beams that cannot be assigned to the current reference map [%]. Size: UInt8 = 1 byte
+  telegram_msg.telegram_payload.covariancex = random_covariance_generator.generate();                // Covariance c1 of the pose X [mm^2]. Size: Int32 = 4 byte
+  telegram_msg.telegram_payload.covariancey = random_covariance_generator.generate();                // Covariance c5 of the pose Y [mm^2]. Size: Int32 = 4 byte
+  telegram_msg.telegram_payload.covarianceyaw = random_covariance_generator.generate();              // Covariance c9 of the pose Yaw [mdeg^2]. Size: Int32 = 4 byte
+  telegram_msg.telegram_payload.reserved3 = (((uint64_t)random32_generator.generate() << 32) | (uint64_t)random32_generator.generate()); // Reserved. Size: UInt64 = 8 byte
   
   // Update telegram timestamps
-  double delta_time_seconds = (ros::Time::now() - start_time).toSec();
-  telegram_msg.telegram_payload.Timestamp = createTimestampTicksMilliSec();    // Time stamp of the pose [ms]. The time stamp indicates the time at which the pose is calculated. Size: UInt32 = 4 byte
-  telegram_msg.telegram_header.SystemTime += (uint64_t)(delta_time_seconds);   // SystemTime not used. Size: NTP = 8 byte
+  double delta_time_seconds = ROS::seconds(ROS::now() - start_time);
+  telegram_msg.telegram_payload.timestamp = createTimestampTicksMilliSec();    // Time stamp of the pose [ms]. The time stamp indicates the time at which the pose is calculated. Size: UInt32 = 4 byte
+  telegram_msg.telegram_header.systemtime += (uint64_t)(delta_time_seconds);   // SystemTime not used. Size: NTP = 8 byte
   
   // Re-encode the modified result port telegram (SickLocResultPortTelegramMsg)
   sick_lidar_localization::ResultPortParser result_port_parser(testcase.header.frame_id);
@@ -185,11 +190,11 @@ sick_lidar_localization::SickLocResultPortTestcaseMsg sick_lidar_localization::T
   testcase.telegram_msg = result_port_parser.getTelegramMsg();
   
   // Increment telegram counter for next testcase
-  default_testcase.telegram_msg.telegram_header.TelegramCounter += 1; // Telegram counter since last start-up. Size: UInt32 = 4 byte
-  default_testcase.telegram_msg.telegram_payload.ScanCounter += 1;    // Counter of related scan data. Size: UInt32 = 4 byte
+  default_testcase.telegram_msg.telegram_header.telegramcounter += 1; // Telegram counter since last start-up. Size: UInt32 = 4 byte
+  default_testcase.telegram_msg.telegram_payload.scancounter += 1;    // Counter of related scan data. Size: UInt32 = 4 byte
   
   // Update testcase timestamp
-  testcase.header.stamp = ros::Time::now();
+  testcase.header.stamp = ROS::now();
   return testcase;
 }
 
@@ -204,21 +209,21 @@ sick_lidar_localization::SickLocResultPortTestcaseMsg sick_lidar_localization::T
 sick_lidar_localization::SickLocResultPortTestcaseMsg sick_lidar_localization::TestcaseGenerator::createResultPortCircles(double circle_radius, double circle_yaw)
 {
   // Create default SickLocResultPortTelegramMsg
-  static ros::Time start_time = ros::Time::now();
+  static ROS::Time start_time = ROS::now();
   static sick_lidar_localization::SickLocResultPortTestcaseMsg default_testcase = createDefaultResultPortTestcase();
   sick_lidar_localization::SickLocResultPortTestcaseMsg testcase = default_testcase;
   sick_lidar_localization::SickLocResultPortTelegramMsg & telegram_msg = testcase.telegram_msg;
 
   // Set current position and orientation
-  telegram_msg.telegram_payload.PoseX = (int32_t)(1000.0 * circle_radius * std::cos(circle_yaw));  // Position X of the vehicle on the map in cartesian global coordinates [mm]. Size: Int32 = 4 byte
-  telegram_msg.telegram_payload.PoseY = (int32_t)(1000.0 * circle_radius * std::sin(circle_yaw));  // Position Y of the vehicle on the map in cartesian global coordinates [mm]. Size: Int32 = 4 byte
+  telegram_msg.telegram_payload.posex = (int32_t)(1000.0 * circle_radius * std::cos(circle_yaw));  // Position X of the vehicle on the map in cartesian global coordinates [mm]. Size: Int32 = 4 byte
+  telegram_msg.telegram_payload.posey = (int32_t)(1000.0 * circle_radius * std::sin(circle_yaw));  // Position Y of the vehicle on the map in cartesian global coordinates [mm]. Size: Int32 = 4 byte
   double orientation = sick_lidar_localization::Utils::normalizeAngle(circle_yaw + M_PI_2);        // Orienation := circle_yaw + 90 degree
-  telegram_msg.telegram_payload.PoseYaw = (int32_t)(1000.0 * orientation * 180.0 / M_PI);          // Orientation (yaw) of the vehicle on the map [mdeg], range -180 to +180 deg assumed. Size: Int32 = 4 byte
+  telegram_msg.telegram_payload.poseyaw = (int32_t)(1000.0 * orientation * 180.0 / M_PI);          // Orientation (yaw) of the vehicle on the map [mdeg], range -180 to +180 deg assumed. Size: Int32 = 4 byte
   
   // Update telegram timestamps
-  double delta_time_seconds = (ros::Time::now() - start_time).toSec();
-  telegram_msg.telegram_payload.Timestamp = createTimestampTicksMilliSec();             // Time stamp of the pose [ms]. The time stamp indicates the time at which the pose is calculated. Size: UInt32 = 4 byte
-  telegram_msg.telegram_header.SystemTime += (uint64_t)(delta_time_seconds);            // SystemTime not used. Size: NTP = 8 byte
+  double delta_time_seconds = ROS::seconds(ROS::now() - start_time);
+  telegram_msg.telegram_payload.timestamp = createTimestampTicksMilliSec();             // Time stamp of the pose [ms]. The time stamp indicates the time at which the pose is calculated. Size: UInt32 = 4 byte
+  telegram_msg.telegram_header.systemtime += (uint64_t)(delta_time_seconds);            // SystemTime not used. Size: NTP = 8 byte
   
   // Re-encode the modified result port telegram (SickLocResultPortTelegramMsg)
   sick_lidar_localization::ResultPortParser result_port_parser(testcase.header.frame_id);
@@ -227,11 +232,11 @@ sick_lidar_localization::SickLocResultPortTestcaseMsg sick_lidar_localization::T
   testcase.telegram_msg = result_port_parser.getTelegramMsg();
   
   // Increment telegram counter for next testcase
-  default_testcase.telegram_msg.telegram_header.TelegramCounter += 1; // Telegram counter since last start-up. Size: UInt32 = 4 byte
-  default_testcase.telegram_msg.telegram_payload.ScanCounter += 1;    // Counter of related scan data. Size: UInt32 = 4 byte
+  default_testcase.telegram_msg.telegram_header.telegramcounter += 1; // Telegram counter since last start-up. Size: UInt32 = 4 byte
+  default_testcase.telegram_msg.telegram_payload.scancounter += 1;    // Counter of related scan data. Size: UInt32 = 4 byte
   
   // Update testcase timestamp
-  testcase.header.stamp = ros::Time::now();
+  testcase.header.stamp = ROS::now();
   return testcase;
 }
 
@@ -249,11 +254,11 @@ sick_lidar_localization::SickLocColaTelegramMsg sick_lidar_localization::Testcas
   {
     static sick_lidar_localization::UniformRandomInteger time_jitter_network_ms(0, 2);
     // Simulate some network latency
-    ros::Duration(0.001 * time_jitter_network_ms.generate()).sleep();
+    ROS::sleep(0.001 * time_jitter_network_ms.generate());
     // Create current timestamp in ticks
     uint32_t ticks_ms = createTimestampTicksMilliSec();
     // Simulate some network latency
-    ros::Duration(0.001 * time_jitter_network_ms.generate()).sleep();
+    ROS::sleep(0.001 * time_jitter_network_ms.generate());
     return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {hexstr(ticks_ms)});
   }
   
@@ -305,13 +310,244 @@ sick_lidar_localization::SickLocColaTelegramMsg sick_lidar_localization::Testcas
     return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(success?1:0)});
   }
 
-
   if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "LocSetResultPoseInterval" && cola_request.parameter.size() == 1)
   {
     s_u32ResultPoseInterval = std::strtoul(cola_request.parameter[0].c_str(), 0, 0);
     return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(1)});
   }
+
+  /* Start of test server responses for new service requests (release 4 or later) */
+
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "DevSetLidarConfig" && cola_request.parameter.size() == 15)
+  {
+    for(size_t n = 0; n < cola_request.parameter.size(); n++)
+      s_controller_settings_str["DevSetLidarConfig_"+std::to_string(n)] = cola_request.parameter[n];
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(1), decstr(1)});
+  }
   
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "DevGetLidarConfig" && cola_request.parameter.size() == 1)
+  {
+    std::vector<std::string> config_parameter;
+    for(size_t n = 1; n < 15; n++)
+      // if(n != 9)
+        config_parameter.push_back(s_controller_settings_str["DevSetLidarConfig_"+std::to_string(n)]);
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, config_parameter);
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "LocSetMap" && cola_request.parameter.size() == 2)
+  {
+    s_controller_settings_str["LocSetMap"] = cola_request.parameter[1];
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(1), decstr(1)});
+  }
+  
+  if(cola_request.command_name == "LocMap")//if(cola_request.command_type == sick_lidar_localization::ColaParser::sRN && cola_request.command_name == "LocMap" && cola_request.parameter.size() == 0)
+  {
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sRA, cola_request.command_name, {s_controller_settings_str["LocSetMap"]});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sRN && cola_request.command_name == "LocMapState" && cola_request.parameter.size() == 0)
+  {
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(1)});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "LocInitializePose" && cola_request.parameter.size() == 4)
+  {
+    for(size_t n = 0; n < cola_request.parameter.size(); n++)
+      s_controller_settings_str["LocInitializePose_"+std::to_string(n)] = cola_request.parameter[n];
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(1)});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sRN && cola_request.command_name == "LocInitialPose" && cola_request.parameter.size() == 0)
+  {
+    std::vector<std::string> parameter;
+    for(size_t n = 0; n < 4; n++)
+      parameter.push_back(s_controller_settings_str["LocInitializePose_"+std::to_string(n)]);
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, parameter);
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "LocSetPoseQualityCovWeight" && cola_request.parameter.size() == 1)
+  {
+    s_controller_settings_str["LocSetPoseQualityCovWeight"] = cola_request.parameter[0];
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(1)});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sRN && cola_request.command_name == "LocPoseQualityCovWeight" && cola_request.parameter.size() == 0)
+  {
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {s_controller_settings_str["LocSetPoseQualityCovWeight"]});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "LocSetPoseQualityMeanDistWeight" && cola_request.parameter.size() == 1)
+  {
+    s_controller_settings_str["LocSetPoseQualityMeanDistWeight"] = cola_request.parameter[0];
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(1)});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sRN && cola_request.command_name == "LocPoseQualityMeanDistWeight" && cola_request.parameter.size() == 0)
+  {
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {s_controller_settings_str["LocSetPoseQualityMeanDistWeight"]});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "LocSetReflectorsForSupportActive" && cola_request.parameter.size() == 1)
+  {
+    s_controller_settings_str["LocSetReflectorsForSupportActive"] = cola_request.parameter[0];
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(1)});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sRN && cola_request.command_name == "LocReflectorsForSupportActive" && cola_request.parameter.size() == 0)
+  {
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {s_controller_settings_str["LocSetReflectorsForSupportActive"]});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "LocSetOdometryActive" && cola_request.parameter.size() == 1)
+  {
+    s_controller_settings_str["LocSetOdometryActive"] = cola_request.parameter[0];
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(1), decstr(1)});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sRN && cola_request.command_name == "LocOdometryActive" && cola_request.parameter.size() == 0)
+  {
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {s_controller_settings_str["LocSetOdometryActive"]});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "LocSetOdometryPort" && cola_request.parameter.size() == 1)
+  {
+    s_controller_settings_str["LocSetOdometryPort"] = cola_request.parameter[0];
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(1), decstr(1)});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sRN && cola_request.command_name == "LocOdometryPort" && cola_request.parameter.size() == 0)
+  {
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {s_controller_settings_str["LocSetOdometryPort"]});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "LocSetOdometryRestrictYMotion" && cola_request.parameter.size() == 1)
+  {
+    s_controller_settings_str["LocSetOdometryRestrictYMotion"] = cola_request.parameter[0];
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(1)});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sRN && cola_request.command_name == "LocOdometryRestrictYMotion" && cola_request.parameter.size() == 0)
+  {
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {s_controller_settings_str["LocSetOdometryRestrictYMotion"]});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "LocSetAutoStartActive" && cola_request.parameter.size() == 1)
+  {
+    s_controller_settings_str["LocSetAutoStartActive"] = cola_request.parameter[0];
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(1)});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sRN && cola_request.command_name == "LocAutoStartActive" && cola_request.parameter.size() == 0)
+  {
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {s_controller_settings_str["LocSetAutoStartActive"]});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "LocSetAutoStartSavePoseInterval" && cola_request.parameter.size() == 1)
+  {
+    s_controller_settings_str["LocSetAutoStartSavePoseInterval"] = cola_request.parameter[0];
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(1)});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sRN && cola_request.command_name == "LocAutoStartSavePoseInterval" && cola_request.parameter.size() == 0)
+  {
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {s_controller_settings_str["LocSetAutoStartSavePoseInterval"]});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "LocSetRingBufferRecordingActive" && cola_request.parameter.size() == 1)
+  {
+    s_controller_settings_str["LocSetRingBufferRecordingActive"] = cola_request.parameter[0];
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(1)});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sRN && cola_request.command_name == "LocRingBufferRecordingActive" && cola_request.parameter.size() == 0)
+  {
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {s_controller_settings_str["LocSetRingBufferRecordingActive"]});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "DevGetLidarIdent" && cola_request.parameter.size() == 1)
+  {
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {"TestcaseGenerator" + cola_request.parameter[0]});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "DevGetLidarState" && cola_request.parameter.size() == 1)
+  {
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(2), decstr(2), decstr(2)});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "GetSoftwareVersion" && cola_request.parameter.size() == 0)
+  {
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {"1.0"});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "LocAutoStartSavePose" && cola_request.parameter.size() == 0)
+  {
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(1)});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "LocForceUpdate" && cola_request.parameter.size() == 0)
+  {
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(1)});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "LocSaveRingBufferRecording" && cola_request.parameter.size() == 2)
+  {
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(2)});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "LocStartDemoMapping" && cola_request.parameter.size() == 0)
+  {
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(1)});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "ReportUserMessage" && cola_request.parameter.size() == 2)
+  {
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(1)});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "SavePermanent" && cola_request.parameter.size() == 0)
+  {
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(1)});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sRN && cola_request.command_name == "LocResultPort" && cola_request.parameter.size() == 0)
+  {
+    int32_t port = ((s_controller_settings["LocResultPort"]) > 0 ? s_controller_settings["LocResultPort"] : 2201);
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sRA, cola_request.command_name, {hexstr(port)});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sRN && cola_request.command_name == "LocResultMode" && cola_request.parameter.size() == 0)
+  {
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sRA, cola_request.command_name, {decstr(s_controller_settings["LocResultMode"])});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sRN && cola_request.command_name == "LocResultEndianness" && cola_request.parameter.size() == 0)
+  {
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sRA, cola_request.command_name, {decstr(s_controller_settings["LocResultEndianness"])});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sRN && cola_request.command_name == "LocResultState" && cola_request.parameter.size() == 0)
+  {
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sRA, cola_request.command_name, {decstr(s_controller_settings["LocResultState"])});
+  }
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sRN && cola_request.command_name == "LocResultPoseInterval" && cola_request.parameter.size() == 0)
+  {
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sRA, cola_request.command_name, {decstr(s_u32ResultPoseInterval)});
+  }  
+  
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN && cola_request.command_name == "DevSetIMUActive" && cola_request.parameter.size() == 1)
+  {
+    s_controller_settings_str["DevSetIMUActive"] = cola_request.parameter[0];
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sAN, cola_request.command_name, {decstr(1)});
+  }  
+
+  if(cola_request.command_type == sick_lidar_localization::ColaParser::sRN && cola_request.command_name == "DevIMUActive" && cola_request.parameter.size() == 0)
+  {
+    return sick_lidar_localization::ColaParser::createColaTelegram(sick_lidar_localization::ColaParser::sRA, cola_request.command_name, {s_controller_settings_str["DevSetIMUActive"]});
+  }  
+
+  /* End of test server responses for new service requests (release 4 or later) */
+
   // Create sAN responses to sMN requests resp. sRA responses to sRN requests
   if(cola_request.command_type == sick_lidar_localization::ColaParser::sMN || cola_request.command_type == sick_lidar_localization::ColaParser::sRN)
   {
@@ -341,11 +577,13 @@ sick_lidar_localization::SickLocColaTelegramMsg sick_lidar_localization::Testcas
  */
 uint32_t sick_lidar_localization::TestcaseGenerator::createTimestampTicksMilliSec(void)
 {
-  static ros::Time start = ros::Time::now();
+  static ROS::Time start = ROS::now();
   static sick_lidar_localization::UniformRandomInteger time_jitter_ticks_ms(-2, +2);
   // Create current timestamp in ticks
-  ros::Duration timestamp = (ros::Time::now() - start);
-  uint32_t ticks_ms = (((uint64_t)timestamp.sec * 1000 + (uint64_t)timestamp.nsec/1000000 + 1000) & 0xFFFFFFFF);
+  ROS::Duration timestamp = (ROS::now() - start);
+  uint32_t seconds = 0, nanoseconds = 0;
+  ROS::splitTime(timestamp, seconds, nanoseconds);
+  uint32_t ticks_ms = (((uint64_t)seconds * 1000 + (uint64_t)nanoseconds/1000000 + 1000) & 0xFFFFFFFF);
   // Create some jitter, simulation network latency and time drift
   ticks_ms += time_jitter_ticks_ms.generate();
   return ticks_ms;

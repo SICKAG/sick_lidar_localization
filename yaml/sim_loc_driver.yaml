@@ -1,4 +1,4 @@
-# Configuration of ros driver for sick localization.
+# Configuration of ros1 driver for sick localization.
 sick_lidar_localization:
 
   # Driver configuration. See Operation-Instruction-v1.1.0.241R.pdf, page 51, "IP port number and protocol" for default tcp ports.
@@ -18,6 +18,11 @@ sick_lidar_localization:
     point_cloud_frame_id: "pointcloud_sick_lidar_localization"                 # ros frame id of PointCloud2 messages
     tf_parent_frame_id: "tf_demo_map"                                          # parent frame of tf messages of of vehicles pose (typically frame of the loaded map)
     tf_child_frame_id: "tf_sick_lidar_localization"                            # child frame of tf messages of of vehicles pose
+    # Odometry configuration
+    odom_telegrams_udp_port:   3000                                            # Udp port to send odom packages to the localization controller
+    odom_topic:             "/odom"                                            # ROS topic for odometry messages
+    odom_telegrams_bigendian:   1                                              # Send udp odometry telegrams big endian (true) or little endian (false)
+    odom_telegrams_source_id: 100                                              # SourceID of udp odometry telegrams, e.g. vehicle controller 1
 
   # Configuration for time sync service
   time_sync:

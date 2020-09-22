@@ -61,14 +61,7 @@
 #include <vector>
 #include <boost/thread.hpp>
 
-#include "sick_lidar_localization/SickLocColaTelegramSrv.h"
-#include "sick_lidar_localization/SickLocResultPortHeaderMsg.h"
-#include "sick_lidar_localization/SickLocResultPortPayloadMsg.h"
-#include "sick_lidar_localization/SickLocResultPortCrcMsg.h"
-#include "sick_lidar_localization/SickLocResultPortTelegramMsg.h"
-#include "sick_lidar_localization/SickLocResultPortTestcaseMsg.h"
-#include "sick_lidar_localization/SickLocRequestTimestampSrv.h"
-#include "sick_lidar_localization/SickLocTimeSyncSrv.h"
+#include "sick_lidar_localization/ros_wrapper.h"
 
 namespace sick_lidar_localization
 {
@@ -110,7 +103,13 @@ namespace sick_lidar_localization
   {
   public:
     /*! Constructor with optional initialization of  value */
-    SetGet32(const uint32_t & value = 0) : SetGet<uint32_t>(value) {}
+    SetGet32(const uint32_t & value = 0) : SetGet<uint32_t,boost::mutex>(value) {}
+    /*! Increments and returns the value */
+    uint32_t inc(void)
+    {
+      boost::lock_guard<boost::mutex> value_lockguard(m_value_mutex);
+      return ++m_value;
+    }
   };
   
   /*!
@@ -144,6 +143,49 @@ namespace sick_lidar_localization
       return out;
     }
   
+    /** Shortcut to print (msg_header.stamp.sec,msg_header.stamp.nsec) on ROS1 resp. (msg_header.stamp.sec,msg_header.stamp.nanosec) on ROS2 */
+    static std::string flattenToString(const std_msgs::Header* header)
+    {
+      std::stringstream s;
+      s << "header.stamp: " << header->stamp.sec << "." << header->stamp.NSEC;
+      return s.str();
+    }
+    
+    /*!
+     * Shortcut to print a SickLocColaTelegramMsg in flatten format, replacing linefeeds by colon-separators
+     */
+    static std::string flattenToString(const sick_lidar_localization::SickLocColaTelegramMsg & cola_telegram)
+    {
+      std::stringstream s;
+      s << flattenToString(&cola_telegram.header)
+        << ", command_type: " << cola_telegram.command_type
+        << ", command_name: " << cola_telegram.command_name << ", parameter: [";
+      for(size_t n = 0; n < cola_telegram.parameter.size(); n++)
+        s << (n>0?",":"") << cola_telegram.parameter[n];
+      s << "]";
+      std::string out(s.str());
+      flattenString(out);
+      return out;
+    }
+
+    /*!
+     * Shortcut to print a SickLocColaTelegramMsg in flatten format, replacing linefeeds by colon-separators
+     */
+    static std::string flattenToString(const sick_lidar_localization::SickLocResultPortTelegramMsg & telegram)
+    {
+      
+      std::stringstream s;
+      s << flattenToString(&telegram.header)
+        << ", telegram_payload: [posex:" << telegram.telegram_payload.posex << ",posey:" << telegram.telegram_payload.posey << ",poseyaw:" << telegram.telegram_payload.poseyaw
+        << ",scancounter:" << telegram.telegram_payload.scancounter << ",timestamp:" << telegram.telegram_payload.timestamp << ",quality:" << (int)(telegram.telegram_payload.quality&0xFF)
+        << ",covariancex:" << telegram.telegram_payload.covariancex << ",covariancey:" << telegram.telegram_payload.covariancey << ",covarianceyaw:" << telegram.telegram_payload.covarianceyaw
+        << ",outliersratio:" << telegram.telegram_payload.outliersratio << ",errorcode:" << telegram.telegram_payload.errorcode
+        << "], telegram_checksum: " << telegram.telegram_trailer.checksum;
+      std::string out(s.str());
+      flattenString(out);
+      return out;
+    }
+
     /*!
      * Compares two objects by streaming them to strings.
      * Returns true, if string representation of x and y is identical,
@@ -158,15 +200,49 @@ namespace sick_lidar_localization
     }
   
     /*!
+     * Compares two vectors by streaming them to strings.
+     * Returns true, if string representation of x and y is identical,
+     * otherwise false.
+     */
+    template <typename T> static bool identicalByStream(const std::vector<T> & x, const std::vector<T> & y)
+    {
+      if(x.size() == y.size())
+      {
+        for(size_t n = 0; n < x.size(); n++)
+          if(!identicalByStream(x[n], y[n]))
+            return false;
+        return true;
+      }
+      return false;
+    }
+
+    /*!
      * Compares two SickLocResultPortTelegramMsgs by streaming them to strings.
      * Returns true, if string representation of x and y is identical,
      * otherwise false. The message headers with timestamp and frame_id are ignored.
      */
     static bool identicalByStream(const SickLocResultPortTelegramMsg & x, const SickLocResultPortTelegramMsg & y)
     {
+      #if defined __ROS_VERSION && __ROS_VERSION == 1
       return identicalByStream(x.telegram_header, y.telegram_header)
-      && identicalByStream(x.telegram_payload, y.telegram_payload)
-      && identicalByStream(x.telegram_trailer, y.telegram_trailer);
+        && identicalByStream(x.telegram_payload, y.telegram_payload)
+        && identicalByStream(x.telegram_trailer, y.telegram_trailer);
+      #elif defined __ROS_VERSION && __ROS_VERSION == 2
+      return x.telegram_header == y.telegram_header && x.telegram_payload == y.telegram_payload && x.telegram_trailer == y.telegram_trailer;
+      //return x == y;
+      #else
+      return false;
+      #endif
+    }
+
+    /*!
+     * Compares two SickLocColaTelegramMsg by streaming them to strings.
+     * Returns true, if string representation of x and y is identical,
+     * otherwise false. The message headers with timestamp and frame_id are ignored.
+     */
+    static bool identicalByStream(const SickLocColaTelegramMsg & x, const SickLocColaTelegramMsg & y)
+    {
+      return x.command_name == y.command_name && x.command_type == y.command_type && identicalByStream(x.parameter, y.parameter);
     }
   
     /*!

@@ -31,4 +31,11 @@
 *.out
 *.app
 
-test/scripts/log/
+test/ros1_scripts/log/
+test/ros1_scripts/log/cola_examples/
+test/ros1_scripts/log/error_simu/
+test/ros2_scripts/log/
+test/ros2_scripts/log/cola_examples/
+test/ros2_scripts/log/error_simu/
+
+package\.xml

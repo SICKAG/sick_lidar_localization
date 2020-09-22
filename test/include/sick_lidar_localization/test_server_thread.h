@@ -87,7 +87,7 @@ namespace sick_lidar_localization
      * @param[in] ip_port_results ip port for result telegrams, default: 2201
      * @param[in] ip_port_cola ip port for command requests and responses, default: 2111
      */
-    TestServerThread(ros::NodeHandle* nh = 0, int ip_port_results = 2201, int ip_port_cola = 2111);
+    TestServerThread(ROS::NodePtr nh = 0, int ip_port_results = 2201, int ip_port_cola = 2111);
   
     /*!
      * Destructor. Stops the server thread and closes all tcp connections.
@@ -112,6 +112,8 @@ namespace sick_lidar_localization
      * @param[in] msg result telegram message (SickLocResultPortTelegramMsg)
      */
     void messageCbResultPortTelegrams(const sick_lidar_localization::SickLocResultPortTelegramMsg & msg);
+    /*! ROS2 version of function messageCbResultPortTelegrams */
+    virtual void messageCbResultPortTelegramsROS2(const std::shared_ptr<sick_lidar_localization::SickLocResultPortTelegramMsg> msg) { messageCbResultPortTelegrams(*msg); }
     
   protected:
   
@@ -185,7 +187,7 @@ namespace sick_lidar_localization
     virtual void runErrorSimulationThreadCb(void);
 
     /*!
-     * Waits for a given time in seconds, as long as ros::ok() and m_error_simulation_thread_running == true.
+     * Waits for a given time in seconds, as long as ROS::ok() and m_error_simulation_thread_running == true.
      * @param[in] seconds delay in seconds
      */
     void errorSimulationWait(double seconds);
@@ -215,7 +217,7 @@ namespace sick_lidar_localization
     std::list<thread_ptr> m_tcp_worker_threads;              ///< list of tcp worker thread (one thread for each tcp client, generating telegrams)
     boost::mutex m_tcp_worker_threads_mutex;                 ///< mutex to protect m_tcp_worker_threads
     bool m_worker_thread_running;                            ///< true: worker threads started, otherwise false
-    ros::Publisher m_result_testcases_publisher;             ///< ros publisher for testcases with result port telegrams (type SickLocResultPortTestcaseMsg)
+    sick_lidar_localization::SickLocResultPortTestcaseMsgPublisher m_result_testcases_publisher;  ///< ros publisher for testcases with result port telegrams (type SickLocResultPortTestcaseMsg)
     std::string m_result_testcases_frame_id;                 ///< ros frame id of testcase messages (type SickLocResultPortTestcaseMsg), default: "result_testcases"
     bool m_demo_move_in_circles;                             ///< true: simulate a sensor moving in circles, false (default): create random based result port telegrams
   

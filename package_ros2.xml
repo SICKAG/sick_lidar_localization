@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>sick_lidar_localization</name>
+  <version>0.0.0</version>
+  <description>sick_lidar_localization is an open-source project to support the LiDAR-LOC software of the company SICK using the ROS-framework</description>
+
+  <!-- One maintainer tag required, multiple allowed, one person per tag -->
+  <maintainer email="ros.test@lehning.de">rostest</maintainer>
+
+  <!-- One license tag required, multiple allowed, one license per tag -->
+  <!-- Commonly used license strings: -->
+  <!--   BSD, MIT, Boost Software License, GPLv2, GPLv3, LGPLv2.1, LGPLv3 -->
+  <license>Apache</license>
+
+  <!-- Url tags are optional, but multiple are allowed, one per tag -->
+  <!-- Optional attribute type can be: website, bugtracker, or repository -->
+  <url type="website">https://github.com/michael1309/sick_lidar_localization</url>
+
+  <!-- Author tags are optional, multiple are allowed, one per tag -->
+  <!-- Authors do not have to be maintainers, but could be -->
+  <author email="ros.test@lehning.de">Michael Lehning</author>
+
+  <!-- The *depend tags are used to specify dependencies -->
+  
+  <build_depend>rosidl_default_generators</build_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend>tf2</depend>
+  <depend>tf2_ros</depend>
+
+  <exec_depend>rosidl_default_runtime</exec_depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+  
+  <member_of_group>rosidl_interface_packages</member_of_group>   
+
+</package>

@@ -59,11 +59,10 @@
  *  Copyright 2019 Ing.-Buero Dr. Michael Lehning
  *
  */
-#include <ros/ros.h>
+#include "sick_lidar_localization/ros_wrapper.h"
 #include <string>
 #include <vector>
 
-#include "sick_lidar_localization/SickLocDiagnosticMsg.h"
 #include "sick_lidar_localization/driver_thread.h"
 #include "sick_lidar_localization/testcase_generator.h"
 #include "sick_lidar_localization/utils.h"
@@ -75,7 +74,7 @@
  * @param[in] server_adress ip adress of the localization controller, default: 192.168.0.1
  * @param[in] tcp_port tcp port of the localization controller, default: The localization controller uses IP port number 2201 to send localization results
  */
-sick_lidar_localization::DriverThread::DriverThread(ros::NodeHandle * nh, const std::string & server_adress, int tcp_port)
+sick_lidar_localization::DriverThread::DriverThread(ROS::NodePtr nh, const std::string & server_adress, int tcp_port)
 : m_initialized(false), m_tcp_connected(false), m_server_adress(server_adress), m_tcp_port(tcp_port), m_tcp_connection_retry_delay(1.0),
   m_tcp_receiver_thread(0), m_tcp_receiver_thread_running(false),
   m_converter_thread(0), m_converter_thread_running(false),
@@ -86,24 +85,25 @@ sick_lidar_localization::DriverThread::DriverThread(ros::NodeHandle * nh, const 
     // get config parameter
     std::string result_telegrams_topic = "/sick_lidar_localization/driver/result_telegrams"; // default topic to publish result port telegram messages (type SickLocResultPortTelegramMsg)
     std::string diagnostic_topic = "/sick_lidar_localization/driver/diagnostic"; // default topic to publish diagnostic messages (type SickLocDiagnosticMsg)
-    ros::param::param<double>("/sick_lidar_localization/driver/tcp_connection_retry_delay", m_tcp_connection_retry_delay, m_tcp_connection_retry_delay);
-    ros::param::param<std::string>("/sick_lidar_localization/driver/result_telegrams_topic", result_telegrams_topic, result_telegrams_topic);
-    ros::param::param<std::string>("/sick_lidar_localization/driver/result_telegrams_frame_id", m_result_telegrams_frame_id, "sick_lidar_localization");
-    ros::param::param<std::string>("/sick_lidar_localization/driver/diagnostic_topic", diagnostic_topic, diagnostic_topic);
-    ros::param::param<std::string>("/sick_lidar_localization/driver/diagnostic_frame_id", m_diagnostic_frame_id, "sick_lidar_localization");
+    ROS::param<double>(nh, "/sick_lidar_localization/driver/tcp_connection_retry_delay", m_tcp_connection_retry_delay, m_tcp_connection_retry_delay);
+    ROS::param<std::string>(nh, "/sick_lidar_localization/driver/result_telegrams_topic", result_telegrams_topic, result_telegrams_topic);
+    ROS::param<std::string>(nh, "/sick_lidar_localization/driver/result_telegrams_frame_id", m_result_telegrams_frame_id, "sick_lidar_localization");
+    ROS::param<std::string>(nh, "/sick_lidar_localization/driver/diagnostic_topic", diagnostic_topic, diagnostic_topic);
+    ROS::param<std::string>(nh, "/sick_lidar_localization/driver/diagnostic_frame_id", m_diagnostic_frame_id, "sick_lidar_localization");
     int software_pll_fifo_length = 7, time_sync_initial_length = 10;
     double time_sync_rate = 0.1, time_sync_initial_rate = 1.0;
-    ros::param::param<int>("/sick_lidar_localization/time_sync/software_pll_fifo_length", software_pll_fifo_length, software_pll_fifo_length);
-    ros::param::param<double>("/sick_lidar_localization/time_sync/time_sync_rate", time_sync_rate, time_sync_rate);
-    ros::param::param<double>("/sick_lidar_localization/time_sync/time_sync_initial_rate", time_sync_initial_rate, time_sync_initial_rate);
-    ros::param::param<int>("/sick_lidar_localization/time_sync/time_sync_initial_length", time_sync_initial_length, time_sync_initial_length);
+    ROS::param<int>(nh, "/sick_lidar_localization/time_sync/software_pll_fifo_length", software_pll_fifo_length, software_pll_fifo_length);
+    ROS::param<double>(nh, "/sick_lidar_localization/time_sync/time_sync_rate", time_sync_rate, time_sync_rate);
+    ROS::param<double>(nh, "/sick_lidar_localization/time_sync/time_sync_initial_rate", time_sync_initial_rate, time_sync_initial_rate);
+    ROS::param<int>(nh, "/sick_lidar_localization/time_sync/time_sync_initial_length", time_sync_initial_length, time_sync_initial_length);
     assert(software_pll_fifo_length > 0 && time_sync_rate > FLT_EPSILON);
     m_software_pll_expected_initialization_duration = (software_pll_fifo_length / time_sync_initial_rate + 1); // expected initialization time for software pll (system time from lidar ticks not yet available)
     // ros publisher for result port telegram messages (type SickLocResultPortTelegramMsg)
-    m_result_telegrams_publisher = nh->advertise<sick_lidar_localization::SickLocResultPortTelegramMsg>(result_telegrams_topic, 1);
+    m_result_telegrams_publisher = ROS_CREATE_PUBLISHER(nh, sick_lidar_localization::SickLocResultPortTelegramMsg, result_telegrams_topic);
     // ros publisher for diagnostic messages (type SickLocDiagnosticMsg)
-    m_diagnostic_publisher  = nh->advertise<sick_lidar_localization::SickLocDiagnosticMsg>(diagnostic_topic, 1);
-    m_timesync_service_client = nh->serviceClient<sick_lidar_localization::SickLocTimeSyncSrv>("SickLocTimeSync");
+    m_diagnostic_publisher = ROS_CREATE_PUBLISHER(nh, sick_lidar_localization::SickLocDiagnosticMsg, diagnostic_topic);
+    // ros service client for SickLocTimeSync
+    m_timesync_service_client = ROS_CREATE_SRV_CLIENT(nh, sick_lidar_localization::SickLocTimeSyncSrv, "SickLocTimeSync");
     m_initialized = true;
   }
 }
@@ -187,11 +187,11 @@ bool sick_lidar_localization::DriverThread::stop(bool force_shutdown)
 void sick_lidar_localization::DriverThread::publishDiagnosticMessage(const DRIVER_ERROR_CODES & error_code, const std::string & message)
 {
   sick_lidar_localization::SickLocDiagnosticMsg msg;
-  msg.header.stamp = ros::Time::now();
+  msg.header.stamp = ROS::now();
   msg.header.frame_id = m_diagnostic_frame_id;
   msg.error_code = (int32_t)error_code;
   msg.message = message;
-  m_diagnostic_publisher.publish(msg);
+  ROS_PUBLISH(m_diagnostic_publisher, msg);
 }
 
 /*
@@ -231,9 +231,9 @@ void sick_lidar_localization::DriverThread::runReceiverThreadCb(void)
   ROS_INFO_STREAM("DriverThread: receiver thread started");
   try
   {
-    ros::Time diagnostic_msg_published;
+    ROS::Time diagnostic_msg_published;
     // Connect to localization controller
-    while(ros::ok() && m_tcp_receiver_thread_running && !m_tcp_connected)
+    while(ROS::ok() && m_tcp_receiver_thread_running && !m_tcp_connected)
     {
       if(m_tcp_socket.connect(m_ioservice, m_server_adress, m_tcp_port))
       {
@@ -245,18 +245,18 @@ void sick_lidar_localization::DriverThread::runReceiverThreadCb(void)
       {
         publishDiagnosticMessage(NO_TCP_CONNECTION, std::string("sim_loc_driver: no tcp connection to localization controller ") + m_server_adress + ":" + std::to_string(m_tcp_port));
         ROS_WARN_STREAM("DriverThread: no connection to localization controller " << m_server_adress << ":" << m_tcp_port << ", retry in " << m_tcp_connection_retry_delay << " seconds");
-        ros::Duration(m_tcp_connection_retry_delay).sleep();
+        ROS::sleep(m_tcp_connection_retry_delay);
       }
     }
     // Receive binary telegrams from localization controller
     size_t telegram_size = sick_lidar_localization::TestcaseGenerator::createDefaultResultPortTestcase().binary_data.size(); // 106 byte result port telegrams
-    while(ros::ok() && m_tcp_receiver_thread_running && m_tcp_socket.socket().is_open())
+    while(ROS::ok() && m_tcp_receiver_thread_running && m_tcp_socket.socket().is_open())
     {
       size_t bytes_received = 0, bytes_required = telegram_size;
       std::vector<uint8_t> receive_buffer(bytes_required, 0);
       boost::system::error_code errorcode;
       std::string error_info("");
-      while(ros::ok() && m_tcp_receiver_thread_running && m_tcp_socket.socket().is_open() && bytes_received < bytes_required)
+      while(ROS::ok() && m_tcp_receiver_thread_running && m_tcp_socket.socket().is_open() && bytes_received < bytes_required)
       {
         size_t bytes_to_read =  bytes_required - bytes_received;
         bytes_received += boost::asio::read(m_tcp_socket.socket(), boost::asio::buffer(&receive_buffer[bytes_received],bytes_to_read), boost::asio::transfer_exactly(bytes_to_read), errorcode);
@@ -271,20 +271,20 @@ void sick_lidar_localization::DriverThread::runReceiverThreadCb(void)
           }
           error_info = error_info_stream.str();
         }
-        else if( (ros::Time::now() - diagnostic_msg_published).toSec() >= 60)
+        else if( ROS::seconds(ROS::now() - diagnostic_msg_published) >= 60)
         {
           publishDiagnosticMessage(NO_ERROR, std::string("sim_loc_driver: tcp connection established to localization controller ") + m_server_adress + ":" + std::to_string(m_tcp_port));
-          diagnostic_msg_published = ros::Time::now();
+          diagnostic_msg_published = ROS::now();
         }
         if(bytes_received < bytes_required)
-          ros::Duration(0.0001).sleep();
+          ROS::sleep(0.0001);
       }
       // Copy received telegram to fifo
       if(bytes_received >= bytes_required)
       {
         m_fifo_buffer.push(receive_buffer);
         ROS_DEBUG_STREAM("DriverThread: received " << bytes_received << " byte telegram (hex): " << sick_lidar_localization::Utils::toHexString(receive_buffer));
-        ros::Duration(0.0001).sleep();
+        ROS::sleep(0.0001);
       }
     }
   }
@@ -306,10 +306,10 @@ void sick_lidar_localization::DriverThread::runConverterThreadCb(void)
   publishDiagnosticMessage(NO_ERROR, "sim_loc_driver: converter thread started");
   ROS_INFO_STREAM("DriverThread: converter thread started");
   // Decode and publish result port telegrams
-  ros::Time diagnostic_msg_published;
-  ros::Time timestamp_first_telegram;
+  ROS::Time diagnostic_msg_published;
+  ROS::Time timestamp_first_telegram;
   sick_lidar_localization::ResultPortParser result_port_parser(m_result_telegrams_frame_id);
-  while(ros::ok() && m_converter_thread_running)
+  while(ROS::ok() && m_converter_thread_running)
   {
     m_fifo_buffer.waitForElement(); // Wait for at least one element in the fifo buffer
     if(!m_fifo_buffer.empty())
@@ -333,35 +333,50 @@ void sick_lidar_localization::DriverThread::runConverterThreadCb(void)
           result_telegram.vehicle_time_valid = false;
           result_telegram.vehicle_time_sec = 0;
           result_telegram.vehicle_time_nsec = 0;
-          if(timestamp_first_telegram.sec <= 0)
-            timestamp_first_telegram = ros::Time::now();
+          if(ROS::secondsSinceStart(timestamp_first_telegram) < FLT_EPSILON)
+            timestamp_first_telegram = ROS::now();
+
+#if defined __ROS_VERSION && __ROS_VERSION == 1
           sick_lidar_localization::SickLocTimeSyncSrv time_sync_msg;
-          time_sync_msg.request.timestamp_lidar_ms = result_telegram.telegram_payload.Timestamp;
-          if (m_timesync_service_client.call(time_sync_msg) && time_sync_msg.response.vehicle_time_valid)
+          sick_lidar_localization::SickLocTimeSyncSrv::Request* time_sync_msg_request = &time_sync_msg.request;
+          sick_lidar_localization::SickLocTimeSyncSrv::Response* time_sync_msg_response = &time_sync_msg.response;
+#elif defined __ROS_VERSION && __ROS_VERSION == 2
+          std::shared_ptr<sick_lidar_localization::SickLocTimeSyncSrv::Request> time_sync_msg_request = std::make_shared<sick_lidar_localization::SickLocTimeSyncSrv::Request>();
+#endif  
+          time_sync_msg_request->timestamp_lidar_ms = result_telegram.telegram_payload.timestamp;
+#if defined __ROS_VERSION && __ROS_VERSION == 1
+          bool service_call_ok = m_timesync_service_client.call(time_sync_msg);
+#elif defined __ROS_VERSION && __ROS_VERSION == 2
+          auto service_future = m_timesync_service_client->async_send_request(time_sync_msg_request);
+          auto future_status = service_future.wait_for(std::chrono::seconds(1)); // wait for the response
+          bool service_call_ok = (future_status == std::future_status::ready); // service successfully completed
+          std::shared_ptr<sick_lidar_localization::SickLocTimeSyncSrv::Response> time_sync_msg_response = (service_call_ok ? (service_future.get()) : (std::make_shared<sick_lidar_localization::SickLocTimeSyncSrv::Response>()));
+#endif
+          if (service_call_ok && time_sync_msg_response->vehicle_time_valid)
           {
-            result_telegram.vehicle_time_valid = time_sync_msg.response.vehicle_time_valid;
-            result_telegram.vehicle_time_sec = time_sync_msg.response.vehicle_time_sec;
-            result_telegram.vehicle_time_nsec = time_sync_msg.response.vehicle_time_nsec;
-            ROS_DEBUG_STREAM("sim_loc_driver: Lidar ticks: " << result_telegram.telegram_payload.Timestamp << ", Systemtime by pll: " << result_telegram.vehicle_time_sec << "." << result_telegram.vehicle_time_sec);
+            result_telegram.vehicle_time_valid = time_sync_msg_response->vehicle_time_valid;
+            result_telegram.vehicle_time_sec = time_sync_msg_response->vehicle_time_sec;
+            result_telegram.vehicle_time_nsec = time_sync_msg_response->vehicle_time_nsec;
+            ROS_DEBUG_STREAM("sim_loc_driver: Lidar ticks: " << result_telegram.telegram_payload.timestamp << ", Systemtime by pll: " << result_telegram.vehicle_time_sec << "." << result_telegram.vehicle_time_sec);
           }
-          else if((ros::Time::now() - timestamp_first_telegram).toSec() <= m_software_pll_expected_initialization_duration) // software pll still initializing
+          else if(ROS::seconds(ROS::now() - timestamp_first_telegram) <= m_software_pll_expected_initialization_duration) // software pll still initializing
             ROS_DEBUG_STREAM("sim_loc_driver: no system time from ticks, software pll still initializing");
           else // time sync error
-            ROS_WARN_STREAM("## ERROR sim_loc_driver: service \"SickLocTimeSync\" failed, could not get system time from ticks");
+            ROS_WARN_STREAM("## ERROR sim_loc_driver: service \"SickLocTimeSync\" failed, could not get system time from ticks (" << __FILE__ << ":" << __LINE__ << ")");
           // Publish the decoded result port telegram (type SickLocResultPortTelegramMsg)
-          m_result_telegrams_publisher.publish(result_telegram);
+          ROS_PUBLISH(m_result_telegrams_publisher, result_telegram);
           ROS_INFO_STREAM("DriverThread: result telegram received " << sick_lidar_localization::Utils::toHexString(binary_telegram) << ", published " << sick_lidar_localization::Utils::flattenToString(result_telegram));
-          if( (ros::Time::now() - diagnostic_msg_published).toSec() >= 60)
+          if( ROS::seconds(ROS::now() - diagnostic_msg_published) >= 60)
           {
             publishDiagnosticMessage(NO_ERROR, "sim_loc_driver: status okay, receiving and publishing result telegrams");
-            diagnostic_msg_published = ros::Time::now();
+            diagnostic_msg_published = ROS::now();
           }
         }
       }
     }
     else
     {
-      ros::Duration(0.001).sleep();
+      ROS::sleep(0.001);
     }
   }
   m_converter_thread_running = false;

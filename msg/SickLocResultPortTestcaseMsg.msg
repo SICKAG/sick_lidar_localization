@@ -4,6 +4,6 @@
 # and ros message format of type SickLocResultPortTelegramMsg (published by sim_loc_driver).
 # See chapter 5.9 ("About result port telegrams") of the operation manual for further details.
 
-Header header                             # ROS Header with sequence id, timestamp and frame id
+std_msgs/Header header                             # ROS Header with sequence id, timestamp and frame id
 uint8[]                      binary_data  # binary encoded result port telegram
 SickLocResultPortTelegramMsg telegram_msg # decoded result port telegram

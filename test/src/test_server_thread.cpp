@@ -55,7 +55,7 @@
  *  Copyright 2019 Ing.-Buero Dr. Michael Lehning
  *
  */
-#include <ros/ros.h>
+#include "sick_lidar_localization/ros_wrapper.h"
 
 #include "sick_lidar_localization/cola_parser.h"
 #include "sick_lidar_localization/cola_transmitter.h"
@@ -70,7 +70,7 @@
  * @param[in] ip_port_results ip port for result telegrams, default: 2201
  * @param[in] ip_port_cola ip port for command requests and responses, default: 2111
  */
-sick_lidar_localization::TestServerThread::TestServerThread(ros::NodeHandle* nh, int ip_port_results, int ip_port_cola)
+sick_lidar_localization::TestServerThread::TestServerThread(ROS::NodePtr nh, int ip_port_results, int ip_port_cola)
 : m_ip_port_results(ip_port_results), m_ip_port_cola(ip_port_cola), m_ioservice(),
   m_tcp_connection_thread_results(0), m_tcp_connection_thread_cola(0),
   m_tcp_connection_thread_running(false), m_worker_thread_running(false),
@@ -84,13 +84,20 @@ sick_lidar_localization::TestServerThread::TestServerThread(ros::NodeHandle* nh,
   if(nh)
   {
     std::string result_testcases_topic = "/sick_lidar_localization/test_server/result_testcases"; // default topic to publish testcases with result port telegrams (type SickLocResultPortTestcaseMsg)
-    ros::param::param<double>("/sick_lidar_localization/test_server/result_telegrams_rate", m_result_telegram_rate, m_result_telegram_rate);
-    ros::param::param<std::string>("/sick_lidar_localization/test_server/result_testcases_topic", result_testcases_topic, result_testcases_topic);
-    ros::param::param<std::string>("/sick_lidar_localization/test_server/result_testcases_frame_id", m_result_testcases_frame_id, "result_testcases");
-    ros::param::param<bool>("/sim_loc_test_server/demo_circles", m_demo_move_in_circles, m_demo_move_in_circles);
-    ros::param::param<bool>("/sim_loc_test_server/error_simulation", m_error_simulation_enabled, m_error_simulation_enabled);
+    ROS::param<double>(nh, "/sick_lidar_localization/test_server/result_telegrams_rate", m_result_telegram_rate, m_result_telegram_rate);
+    ROS::param<std::string>(nh, "/sick_lidar_localization/test_server/result_testcases_topic", result_testcases_topic, result_testcases_topic);
+    ROS::param<std::string>(nh, "/sick_lidar_localization/test_server/result_testcases_frame_id", m_result_testcases_frame_id, "result_testcases");
+    ROS::param<bool>(nh, "/sim_loc_test_server/demo_circles", m_demo_move_in_circles, m_demo_move_in_circles);
+    ROS::param<bool>(nh, "/sim_loc_test_server/error_simulation", m_error_simulation_enabled, m_error_simulation_enabled);
+    std::string sim_loc_test_server_demo_circles, sim_loc_test_server_error_simulation;
+    ROS::param<std::string>(nh, "/system/test_server/demo_circles", sim_loc_test_server_demo_circles, sim_loc_test_server_demo_circles);
+    ROS::param<std::string>(nh, "/system/test_server/error_simulation", sim_loc_test_server_error_simulation, sim_loc_test_server_error_simulation);
+    if(!sim_loc_test_server_demo_circles.empty())
+      m_demo_move_in_circles = std::atoi(sim_loc_test_server_demo_circles.c_str()) > 0;
+    if(!sim_loc_test_server_error_simulation.empty())
+      m_error_simulation_enabled = std::atoi(sim_loc_test_server_error_simulation.c_str()) > 0;
     // ros publisher for testcases with result port telegrams (type SickLocResultPortTestcaseMsg)
-    m_result_testcases_publisher = nh->advertise<sick_lidar_localization::SickLocResultPortTestcaseMsg>(result_testcases_topic, 1);
+    m_result_testcases_publisher = ROS_CREATE_PUBLISHER(nh, sick_lidar_localization::SickLocResultPortTestcaseMsg, result_testcases_topic);
   }
 }
 
@@ -116,10 +123,13 @@ bool sick_lidar_localization::TestServerThread::start(void)
     m_error_simulation_thread_running = true;
     m_error_simulation_thread =  new boost::thread(&sick_lidar_localization::TestServerThread::runErrorSimulationThreadCb, this);
   }
+  else if(m_demo_move_in_circles)
+  {
+    ROS_INFO_STREAM("TestServerThread: running in demo mode (moving in circles, no error simulation).");
+  }
   else
   {
-    ROS_INFO_STREAM("TestServerThread: running in normal mode, no error simulation.");
-    
+    ROS_INFO_STREAM("TestServerThread: running in normal mode (no error simulation).");
   }
   // Start and run 3 threads to create sockets for new tcp clients on ip ports 2201 (results), 2111 (requests) and 2112 (responses)
   m_tcp_connection_thread_running = true;
@@ -282,11 +292,11 @@ void sick_lidar_localization::TestServerThread::runConnectionThreadColaCb(void)
 template<typename Callable>void sick_lidar_localization::TestServerThread::runConnectionThreadGenericCb(boost::asio::ip::tcp::acceptor & tcp_acceptor_results, int ip_port_results, Callable thread_function_cb)
 {
   ROS_INFO_STREAM("TestServerThread: connection thread started");
-  while(ros::ok() && m_tcp_connection_thread_running && tcp_acceptor_results.is_open())
+  while(ROS::ok() && m_tcp_connection_thread_running && tcp_acceptor_results.is_open())
   {
     if(m_error_simulation_flag.get() == DONT_LISTEN) // error simulation: testserver does not open listening port
     {
-      ros::Duration(0.1).sleep();
+      ROS::sleep(0.1);
       continue;
     }
     // normal mode: listen to tcp port, accept and connect to new tcp clients
@@ -297,7 +307,7 @@ template<typename Callable>void sick_lidar_localization::TestServerThread::runCo
     tcp_acceptor_results.listen();
     if(m_error_simulation_flag.get() == DONT_LISTEN || m_error_simulation_flag.get() == DONT_ACCECPT) // error simulation: testserver does not does not accecpt tcp clients
     {
-      ros::Duration(0.1).sleep();
+      ROS::sleep(0.1);
       continue;
     }
     tcp_acceptor_results.accept(*tcp_client_socket, errorcode); // normal mode: accept new tcp client
@@ -338,10 +348,9 @@ void sick_lidar_localization::TestServerThread::runWorkerThreadResultCb(boost::a
   sick_lidar_localization::UniformRandomInteger random_length(1, 512);
   sick_lidar_localization::UniformRandomInteger random_integer(0, INT_MAX);
   double circle_yaw = 0;
-  while(ros::ok() && m_worker_thread_running && p_socket && p_socket->is_open())
+  while(ROS::ok() && m_worker_thread_running && p_socket && p_socket->is_open())
   {
-    ros::Duration send_telegrams_delay((double)sick_lidar_localization::TestcaseGenerator::ResultPoseInterval() / m_result_telegram_rate);
-    send_telegrams_delay.sleep();
+    ROS::sleep((double)sick_lidar_localization::TestcaseGenerator::ResultPoseInterval() / m_result_telegram_rate);
     boost::system::error_code error_code;
     if (m_error_simulation_flag.get() == DONT_SEND) // error simulation: testserver does not send any telegrams
     {
@@ -392,9 +401,9 @@ void sick_lidar_localization::TestServerThread::runWorkerThreadResultCb(boost::a
         ROS_DEBUG_STREAM("TestServerThread for result telegrams: send binary result port telegram " << sick_lidar_localization::Utils::toHexString(testcase.binary_data));
       }
       // publish testcases (SickLocResultPortTestcaseMsg, i.e. binary telegram and SickLocResultPortTelegramMsg messages) for test and verification of sim_loc_driver
-      testcase.header.stamp = ros::Time::now();
+      testcase.header.stamp = ROS::now();
       testcase.header.frame_id = m_result_testcases_frame_id;
-      m_result_testcases_publisher.publish(testcase);
+      ROS_PUBLISH(m_result_testcases_publisher, testcase);
     }
   }
   closeSocket(p_socket);
@@ -413,11 +422,11 @@ void sick_lidar_localization::TestServerThread::runWorkerThreadColaCb(boost::asi
   sick_lidar_localization::UniformRandomInteger random_generator(0,255);
   sick_lidar_localization::UniformRandomInteger random_length(1, 128);
   sick_lidar_localization::UniformRandomAsciiString random_ascii;
-  while(ros::ok() && m_worker_thread_running && p_socket && p_socket->is_open())
+  while(ROS::ok() && m_worker_thread_running && p_socket && p_socket->is_open())
   {
     // Read command request from tcp client
     ServerColaRequest request;
-    ros::Time receive_timestamp;
+    ROS::Time receive_timestamp;
     if(sick_lidar_localization::ColaTransmitter::receive(*p_socket, request.telegram_data, 1, receive_timestamp))
     {
       if (m_error_simulation_flag.get() == DONT_SEND) // error simulation: testserver does not send any telegrams
@@ -456,28 +465,28 @@ void sick_lidar_localization::TestServerThread::runWorkerThreadColaCb(boost::asi
       if(cola_binary)
         binary_response = sick_lidar_localization::ColaAsciiBinaryConverter::ColaAsciiToColaBinary(binary_response);
       ROS_INFO_STREAM("TestServerThread: sending cola response " << ascii_response << (cola_binary ? " (Cola-Binary)" : " (Cola-ASCII)"));
-      ros::Time send_timestamp;
+      ROS::Time send_timestamp;
       if (!sick_lidar_localization::ColaTransmitter::send(*p_socket, binary_response, send_timestamp))
       {
         ROS_WARN_STREAM("TestServerThread: failed to send cola response, ColaTransmitter::send() returned false, data hexdump: " << sick_lidar_localization::Utils::toHexString(binary_response));
       }
     }
-    ros::Duration(0.0001).sleep();
+    ROS::sleep(0.0001);
   }
   closeSocket(p_socket);
   ROS_INFO_STREAM("TestServerThread: worker thread for command requests finished");
 }
 
 /*!
- * Waits for a given time in seconds, as long as ros::ok() and m_error_simulation_thread_running == true.
+ * Waits for a given time in seconds, as long as ROS::ok() and m_error_simulation_thread_running == true.
  * @param[in] seconds delay in seconds
  */
 void sick_lidar_localization::TestServerThread::errorSimulationWait(double seconds)
 {
-  ros::Time starttime = ros::Time::now();
-  while(ros::ok() && m_error_simulation_thread_running && (ros::Time::now() - starttime).toSec() < seconds)
+  ROS::Time starttime = ROS::now();
+  while(ROS::ok() && m_error_simulation_thread_running && ROS::seconds(ROS::now() - starttime) < seconds)
   {
-    ros::Duration(0.001).sleep();
+    ROS::sleep(0.001);
   }
 }
 
@@ -489,15 +498,15 @@ void sick_lidar_localization::TestServerThread::errorSimulationWait(double secon
  */
 bool sick_lidar_localization::TestServerThread::errorSimulationWaitForTelegramReceived(double timeout_seconds, sick_lidar_localization::SickLocResultPortTelegramMsg & telegram_msg)
 {
-  ros::Time starttime = ros::Time::now();
-  while(ros::ok() && m_error_simulation_thread_running)
+  ROS::Time starttime = ROS::now();
+  while(ROS::ok() && m_error_simulation_thread_running)
   {
     telegram_msg = m_last_telegram_received.get();
-    if(telegram_msg.header.stamp > starttime)
+    if(ROS::timeFromHeader(&telegram_msg.header) > starttime)
       return true; // new telegram received
-    if((ros::Time::now() - starttime).toSec() >= timeout_seconds)
+    if(ROS::seconds(ROS::now() - starttime) >= timeout_seconds)
       return false; // timeout
-    ros::Duration(0.001).sleep();
+    ROS::sleep(0.001);
   }
   return false;
 }
@@ -529,7 +538,7 @@ void sick_lidar_localization::TestServerThread::runErrorSimulationThreadCb(void)
   m_error_simulation_flag.set(DONT_LISTEN);
   ROS_INFO_STREAM("TestServerThread: 2. error simulation testcase: server not responding, not listening, no tcp connections accepted.");
   m_worker_thread_running = false;
-  ros::Duration(1.0 / m_result_telegram_rate).sleep();
+  ROS::sleep(1.0 / m_result_telegram_rate);
   closeTcpConnections(true);
   errorSimulationWait(10);
   m_error_simulation_flag.set(NO_ERROR);
@@ -548,7 +557,7 @@ void sick_lidar_localization::TestServerThread::runErrorSimulationThreadCb(void)
   m_error_simulation_flag.set(DONT_ACCECPT);
   ROS_INFO_STREAM("TestServerThread: 3. error simulation testcase: server not responding, listening on port " << m_ip_port_results << ", but accepting no tcp clients");
   m_worker_thread_running = false;
-  ros::Duration(1.0 / m_result_telegram_rate).sleep();
+  ROS::sleep(1.0 / m_result_telegram_rate);
   closeTcpConnections(true);
   errorSimulationWait(10);
   m_error_simulation_flag.set(NO_ERROR);
@@ -611,5 +620,5 @@ void sick_lidar_localization::TestServerThread::runErrorSimulationThreadCb(void)
   ROS_INFO_STREAM("TestServerThread: error simulation thread finished");
   ROS_INFO_STREAM("TestServerThread: error simulation summary: " << (number_testcases - number_testcases_failed) << " of " << number_testcases<< " testcases passed, " << number_testcases_failed << " failures.");
   ROS_INFO_STREAM("TestServerThread: exit with ros::shutdown()");
-  ros::shutdown();
+  ROS::shutdown();
 }

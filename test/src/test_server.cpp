@@ -57,7 +57,7 @@
  *  Copyright 2019 Ing.-Buero Dr. Michael Lehning
  *
  */
-#include <ros/ros.h>
+#include "sick_lidar_localization/ros_wrapper.h"
 #include <string>
 #include <vector>
 
@@ -67,27 +67,33 @@
 int main(int argc, char** argv)
 {
   // Ros configuration and initialization
-  ros::init(argc, argv, "sim_loc_test_server");
-  ros::NodeHandle nh;
+  ROS::init(argc, argv, "sim_loc_test_server");
+  ROS::NodePtr nh = ROS::createNode("sim_loc_test_server");
   ROS_INFO_STREAM("sim_loc_test_server started.");
   
   // Create a server to simulate a localization controller, incl. a listener thread to accept tcp connections
   int tcp_port_results = 2201; // Default: The localization controller uses IP port number 2201 to send localization results
   int tcp_port_cola = 2111;    // For requests and to transmit settings to the localization controller: IP port number 2111 and 2112 to send telegrams and to request data, SOPAS CoLa-A or CoLa-B protocols
-  ros::param::param<int>("/sick_lidar_localization/test_server/result_telegrams_tcp_port", tcp_port_results, tcp_port_results);
-  ros::param::param<int>("/sick_lidar_localization/test_server/cola_telegrams_tcp_port", tcp_port_cola, tcp_port_cola);
-  sick_lidar_localization::TestServerThread test_server_thread(&nh, tcp_port_results, tcp_port_cola);
+  ROS::param<int>(nh, "/sick_lidar_localization/test_server/result_telegrams_tcp_port", tcp_port_results, tcp_port_results);
+  ROS::param<int>(nh, "/sick_lidar_localization/test_server/cola_telegrams_tcp_port", tcp_port_cola, tcp_port_cola);
+  sick_lidar_localization::TestServerThread test_server_thread(nh, tcp_port_results, tcp_port_cola);
   
   // Subscribe to sim_loc_driver messages to monitor sim_loc_driver in error simulation mode
   std::string result_telegrams_topic = "/sick_lidar_localization/driver/result_telegrams";      // default topic to publish result port telegram messages (type SickLocResultPortTelegramMsg)
-  ros::param::param<std::string>("/sick_lidar_localization/driver/result_telegrams_topic", result_telegrams_topic, result_telegrams_topic);
-  ros::Subscriber result_telegram_subscriber = nh.subscribe(result_telegrams_topic, 1, &sick_lidar_localization::TestServerThread::messageCbResultPortTelegrams, &test_server_thread);
+  ROS::param<std::string>(nh, "/sick_lidar_localization/driver/result_telegrams_topic", result_telegrams_topic, result_telegrams_topic);
+#if defined __ROS_VERSION && __ROS_VERSION == 1
+  sick_lidar_localization::SickLocResultPortTelegramMsgSubscriber result_telegram_subscriber 
+    = ROS_CREATE_SUBSCRIBER(nh, sick_lidar_localization::SickLocResultPortTelegramMsg, result_telegrams_topic, &sick_lidar_localization::TestServerThread::messageCbResultPortTelegrams, &test_server_thread);
+#elif defined __ROS_VERSION && __ROS_VERSION == 2
+  sick_lidar_localization::SickLocResultPortTelegramMsgSubscriber result_telegram_subscriber
+    = ROS_CREATE_SUBSCRIBER(nh, sick_lidar_localization::SickLocResultPortTelegramMsg, result_telegrams_topic, &sick_lidar_localization::TestServerThread::messageCbResultPortTelegramsROS2, &test_server_thread);
+#endif
   
   // Start simulation of a localization controller
   test_server_thread.start();
 
   // Run ros event loop
-  ros::spin();
+  ROS::spin(nh);
   
   // Cleanup and exit
   std::cout << "sim_loc_test_server finished." << std::endl;
@@ -95,5 +101,6 @@ int main(int argc, char** argv)
   test_server_thread.stop();
   std::cout << "sim_loc_test_server exits." << std::endl;
   ROS_INFO_STREAM("sim_loc_test_server exits.");
+  ROS::deleteNode(nh);
   return 0;
 }

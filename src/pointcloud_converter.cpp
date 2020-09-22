@@ -56,36 +56,43 @@
  *  Copyright 2019 Ing.-Buero Dr. Michael Lehning
  *
  */
-#include <ros/ros.h>
+#include "sick_lidar_localization/ros_wrapper.h"
 
 #include "sick_lidar_localization/pointcloud_converter.h"
 
 int main(int argc, char** argv)
 {
   // Ros configuration and initialization
-  ros::init(argc, argv, "pointcloud_converter");
-  ros::NodeHandle nh;
+  ROS::init(argc, argv, "pointcloud_converter");
+  ROS::NodePtr nh = ROS::createNode("pointcloud_converter");
   ROS_INFO_STREAM("pointcloud_converter started.");
   
   std::string result_telegrams_topic = "/sick_lidar_localization/driver/result_telegrams"; // default topic to publish result port telegram messages (type SickLocResultPortTelegramMsg)
-  ros::param::param<std::string>("/sick_lidar_localization/driver/result_telegrams_topic", result_telegrams_topic, result_telegrams_topic);
+  ROS::param<std::string>(nh, "/sick_lidar_localization/driver/result_telegrams_topic", result_telegrams_topic, result_telegrams_topic);
   
   // Init verifier to compare and check sim_loc_driver and sim_loc_test_server messages
-  sick_lidar_localization::PointCloudConverter pointcloud_converter(&nh);
+  sick_lidar_localization::PointCloudConverter pointcloud_converter(nh);
   
   // Subscribe to sim_loc_driver messages
-  ros::Subscriber result_telegram_subscriber = nh.subscribe(result_telegrams_topic, 1, &sick_lidar_localization::PointCloudConverter::messageCbResultPortTelegrams, &pointcloud_converter);
+#if defined __ROS_VERSION && __ROS_VERSION == 1
+  sick_lidar_localization::SickLocResultPortTelegramMsgSubscriber result_telegram_subscriber 
+    = ROS_CREATE_SUBSCRIBER(nh, sick_lidar_localization::SickLocResultPortTelegramMsg, result_telegrams_topic, &sick_lidar_localization::PointCloudConverter::messageCbResultPortTelegrams, &pointcloud_converter);
+#elif defined __ROS_VERSION && __ROS_VERSION == 2
+  sick_lidar_localization::SickLocResultPortTelegramMsgSubscriber result_telegram_subscriber 
+    = ROS_CREATE_SUBSCRIBER(nh, sick_lidar_localization::SickLocResultPortTelegramMsg, result_telegrams_topic, &sick_lidar_localization::PointCloudConverter::messageCbResultPortTelegramsROS2, &pointcloud_converter);
+#endif
  
   // Start pointcloud converter thread
   pointcloud_converter.start();
   
   // Run ros event loop
-  ros::spin();
+  ROS::spin(nh);
   
   std::cout << "pointcloud_converter finished." << std::endl;
   ROS_INFO_STREAM("pointcloud_converter finished.");
   pointcloud_converter.stop();
   std::cout << "pointcloud_converter exits." << std::endl;
   ROS_INFO_STREAM("pointcloud_converter exits.");
+  ROS::deleteNode(nh);
   return 0;
 }

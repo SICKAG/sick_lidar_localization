@@ -63,41 +63,50 @@
  *  Copyright 2019 Ing.-Buero Dr. Michael Lehning
  *
  */
-#include <ros/ros.h>
+#include "sick_lidar_localization/ros_wrapper.h"
 
 #include "sick_lidar_localization/verifier_thread.h"
 
 int main(int argc, char** argv)
 {
   // Ros configuration and initialization
-  ros::init(argc, argv, "verify_sim_loc_driver");
-  ros::NodeHandle nh;
+  ROS::init(argc, argv, "verify_sim_loc_driver");
+  ROS::NodePtr nh = ROS::createNode("verify_sim_loc_driver");
   ROS_INFO_STREAM("verify_sim_loc_driver started.");
   
   std::string result_telegrams_topic = "/sick_lidar_localization/driver/result_telegrams";      // default topic to publish result port telegram messages (type SickLocResultPortTelegramMsg)
   std::string result_testcases_topic = "/sick_lidar_localization/test_server/result_testcases"; // default topic to publish testcases with result port telegrams (type SickLocResultPortTestcaseMsg)
-  ros::param::param<std::string>("/sick_lidar_localization/driver/result_telegrams_topic", result_telegrams_topic, result_telegrams_topic);
-  ros::param::param<std::string>("/sick_lidar_localization/test_server/result_testcases_topic", result_testcases_topic, result_testcases_topic);
+  ROS::param<std::string>(nh, "/sick_lidar_localization/driver/result_telegrams_topic", result_telegrams_topic, result_telegrams_topic);
+  ROS::param<std::string>(nh, "/sick_lidar_localization/test_server/result_testcases_topic", result_testcases_topic, result_testcases_topic);
   
   // Init verifier to compare and check sim_loc_driver and sim_loc_test_server messages
-  sick_lidar_localization::VerifierThread verifier;
+  sick_lidar_localization::VerifierThread verifier(nh);
   
-  // Subscribe to sim_loc_driver messages
-  ros::Subscriber result_telegram_subscriber = nh.subscribe(result_telegrams_topic, 1, &sick_lidar_localization::VerifierThread::messageCbResultPortTelegrams, &verifier);
-  
-  // Subscribe to sim_loc_test_server messages
-  ros::Subscriber testcase_subscriber = nh.subscribe(result_testcases_topic, 1, &sick_lidar_localization::VerifierThread::messageCbResultPortTestcases, &verifier);
-  
+  // Subscribe to sim_loc_driver messages and sim_loc_test_server messages
+#if defined __ROS_VERSION && __ROS_VERSION == 1
+  sick_lidar_localization::SickLocResultPortTelegramMsgSubscriber result_telegram_subscriber 
+    = ROS_CREATE_SUBSCRIBER(nh, sick_lidar_localization::SickLocResultPortTelegramMsg, result_telegrams_topic, &sick_lidar_localization::VerifierThread::messageCbResultPortTelegrams, &verifier);
+  sick_lidar_localization::SickLocResultPortTestcaseMsgSubscriber testcase_subscriber
+    = ROS_CREATE_SUBSCRIBER(nh, sick_lidar_localization::SickLocResultPortTestcaseMsg, result_testcases_topic, &sick_lidar_localization::VerifierThread::messageCbResultPortTestcases, &verifier);
+#elif defined __ROS_VERSION && __ROS_VERSION == 2
+  sick_lidar_localization::SickLocResultPortTelegramMsgSubscriber result_telegram_subscriber
+    = ROS_CREATE_SUBSCRIBER(nh, sick_lidar_localization::SickLocResultPortTelegramMsg, result_telegrams_topic, &sick_lidar_localization::VerifierThread::messageCbResultPortTelegramsROS2, &verifier);
+  sick_lidar_localization::SickLocResultPortTestcaseMsgSubscriber testcase_subscriber
+    = ROS_CREATE_SUBSCRIBER(nh, sick_lidar_localization::SickLocResultPortTestcaseMsg, result_testcases_topic, &sick_lidar_localization::VerifierThread::messageCbResultPortTestcasesROS2, &verifier);
+#endif
+
+
   // Start verification thread
   verifier.start();
   
   // Run ros event loop
-  ros::spin();
+  ROS::spin(nh);
   
   std::cout << "verify_sim_loc_driver finished." << std::endl;
   ROS_INFO_STREAM("verify_sim_loc_driver finished.");
   verifier.stop();
   std::cout << "verify_sim_loc_driver exits." << std::endl;
   ROS_INFO_STREAM("verify_sim_loc_driver exits.");
+  ROS::deleteNode(nh);
   return 0;
 }

@@ -56,7 +56,7 @@
  *  Copyright 2019 Ing.-Buero Dr. Michael Lehning
  *
  */
-#include <ros/ros.h>
+#include "sick_lidar_localization/ros_wrapper.h"
 #include <sstream>
 #include <string.h>
 
@@ -198,7 +198,7 @@ std::vector<uint8_t> sick_lidar_localization::ColaAsciiBinaryConverter::ColaAsci
             uint8_t val = static_cast<uint8_t>(std::stoul(parameter.substr(m - 1, 2), 0, 16) & 0xFF);
             binary_payload.push_back(val);
           }
-          catch (const std::exception exc)
+          catch (const std::exception & exc)
           {
             ROS_ERROR_STREAM("## ERROR in ColaAsciiToColaBinary(): can't convert parameter value " << parameter.substr(m - 1, 2) << " to hex, exception " << exc.what());
             return cola_binary;

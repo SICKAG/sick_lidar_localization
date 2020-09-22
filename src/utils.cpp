@@ -53,7 +53,7 @@
  *
  */
 
-#include <ros/ros.h>
+#include "sick_lidar_localization/ros_wrapper.h"
 #include <string>
 #include <vector>
 #include <boost/algorithm/hex.hpp>

@@ -90,7 +90,7 @@ namespace sick_lidar_localization
      * @param[in] server_adress ip adress of the localization controller, default: 192.168.0.1
      * @param[in] tcp_port tcp port of the localization controller, default: The localization controller uses IP port number 2201 to send localization results
      */
-    DriverThread(ros::NodeHandle * nh = 0, const std::string & server_adress = "192.168.0.1", int tcp_port = 2201);
+    DriverThread(ROS::NodePtr nh = 0, const std::string & server_adress = "192.168.0.1", int tcp_port = 2201);
     
     /*!
      * Destructor. Stops the driver thread and closes all tcp connections.
@@ -170,9 +170,9 @@ namespace sick_lidar_localization
     boost::thread* m_converter_thread;                      ///< thread to convert and publish localization data
     bool m_converter_thread_running;                        ///< true: m_converter_thread is running, otherwise false
     sick_lidar_localization::FifoBuffer<std::vector<uint8_t>, boost::mutex> m_fifo_buffer; ///< fifo buffer to transfer data from receiver thread to converter thread
-    ros::Publisher m_result_telegrams_publisher;            ///< ros publisher for result port telegram messages (type SickLocResultPortTelegramMsg)
+    sick_lidar_localization::SickLocResultPortTelegramMsgPublisher m_result_telegrams_publisher;            ///< ros publisher for result port telegram messages (type SickLocResultPortTelegramMsg)
     std::string m_result_telegrams_frame_id;                ///< ros frame id of result port telegram messages (type SickLocResultPortTelegramMsg), default: "sick_lidar_localization"
-    ros::ServiceClient m_timesync_service_client;           ///< client to call ros service "SickLocTimeSync" to calculate system time from ticks by software pll
+    sick_lidar_localization::SickLocTimeSyncSrvClient m_timesync_service_client;  ///< client to call ros service "SickLocTimeSync" to calculate system time from ticks by software pll
     double m_software_pll_expected_initialization_duration; ///< expected initialization time for software pll (system time from lidar ticks not yet available)
   
     /*
@@ -194,8 +194,8 @@ namespace sick_lidar_localization
      */
     void publishDiagnosticMessage(const DRIVER_ERROR_CODES & error_code, const std::string & message);
     
-    ros::Publisher m_diagnostic_publisher;              ///< ros publisher for diagnostic messages (type SickLocDiagnosticMsg)
-    std::string m_diagnostic_frame_id;                  ///< ros frame id of diagnostic messages (type SickLocDiagnosticMsg), default: "sick_lidar_localization"
+    sick_lidar_localization::SickLocDiagnosticMsgPublisher m_diagnostic_publisher; ///< ros publisher for diagnostic messages (type SickLocDiagnosticMsg)
+    std::string m_diagnostic_frame_id;                                             ///< ros frame id of diagnostic messages (type SickLocDiagnosticMsg), default: "sick_lidar_localization"
     
   }; // class DriverThread
   

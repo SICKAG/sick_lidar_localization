@@ -7,5 +7,5 @@
 # * Initial value = 0xFFFF
 # See chapter 5.9 ("About result port telegrams") of the operation manual for further details.
 
-uint16 Checksum # CRC16-CCITT over length of header (52 bytes) and payload (52 bytes) without 2 bytes of this trailer. Size: UInt16 = 2 byte
+uint16 checksum # CRC16-CCITT over length of header (52 bytes) and payload (52 bytes) without 2 bytes of this trailer. Size: UInt16 = 2 byte
 

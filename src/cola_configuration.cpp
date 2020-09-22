@@ -56,15 +56,17 @@
  *  Copyright 2019 Ing.-Buero Dr. Michael Lehning
  *
  */
-#include <ros/ros.h>
+#include "sick_lidar_localization/ros_wrapper.h"
 
 #include "sick_lidar_localization/cola_configuration.h"
 
 /*!
  * Constructor
+ * @param[in] nh ros node handle
+ * @param[in] cola_services cola service callbacks (converts requests to cola telegrams, sends the cola telegrams and decodes the response from localization server)
  */
-sick_lidar_localization::ColaConfiguration::ColaConfiguration(ros::NodeHandle* nh)
-: m_nh(nh), m_configuration_thread_running(false), m_configuration_thread(0)
+sick_lidar_localization::ColaConfiguration::ColaConfiguration(ROS::NodePtr nh, sick_lidar_localization::ColaServices* cola_services)
+: m_nh(nh), m_cola_services(cola_services), m_configuration_thread_running(false), m_configuration_thread(0)
 {
 }
 
@@ -124,69 +126,87 @@ void sick_lidar_localization::ColaConfiguration::runConfigurationThreadCb(void)
     {"SickLocRequestResultData",     -1}  // "LocRequestResultData" value="0": If in poll mode, trigger sending the localization result of the next processed scan via TCP interface (default: 0)
   };
   double retry_delay = 1.0;
-  ros::param::param<double>("/sick_lidar_localization/driver/tcp_connection_retry_delay", retry_delay, retry_delay);
+  ROS::param<double>(m_nh, "/sick_lidar_localization/driver/tcp_connection_retry_delay", retry_delay, retry_delay);
   ROS_INFO_STREAM("ColaConfiguration: configuration thread started");
-  if(ros::ok() && m_nh && m_configuration_thread_running)
+  if(ROS::ok() && m_nh && m_configuration_thread_running)
   {
     for(std::map<std::string, int>::iterator iter_config = sim_configuration_map.begin(); iter_config != sim_configuration_map.end(); iter_config++)
     {
-      ros::param::param<int>(std::string("/cola_service_node/") + iter_config->first, iter_config->second, iter_config->second);
+      ROS::param<int>(m_nh, std::string("/cola_service_node/") + iter_config->first, iter_config->second, iter_config->second);
       if(iter_config->second >= 0)
         ROS_INFO_STREAM("ColaConfiguration: \"" << iter_config->first << "\": " << iter_config->second);
     }
   }
   
   // Transmit SickLocSetResultPort setting to localization
-  if(sim_configuration_map["SickLocSetResultPort"] >= 0 && ros::ok() && m_nh && m_configuration_thread_running)
+  while(sim_configuration_map["SickLocSetResultPort"] >= 0 && ROS::ok() && m_nh && m_cola_services && m_configuration_thread_running)
   {
-    ros::ServiceClient service_client = m_nh->serviceClient<sick_lidar_localization::SickLocSetResultPortSrv>("SickLocSetResultPort");
-    sick_lidar_localization::SickLocSetResultPortSrv service_telegram;
-    service_telegram.request.port = sim_configuration_map["SickLocSetResultPort"];
-    callService(service_telegram, service_client, retry_delay);
+    sick_lidar_localization::SickLocSetResultPortSrv::Request service_request;
+    sick_lidar_localization::SickLocSetResultPortSrv::Response service_response;
+    service_request.port = sim_configuration_map["SickLocSetResultPort"];
+    if(m_cola_services->serviceCbLocSetResultPort(service_request, service_response) && service_response.success)
+      break; // service request successfull
+    ROS_WARN_STREAM("## ERROR ColaConfiguration: service call type " << typeid(service_request).name() << " failed, retrying");
+    ROS::sleep(retry_delay);
   }
   
   // Transmit SickLocSetResultMode setting to localization
-  if(sim_configuration_map["SickLocSetResultMode"] >= 0 && ros::ok() && m_nh && m_configuration_thread_running)
+  while(sim_configuration_map["SickLocSetResultMode"] >= 0 && ROS::ok() && m_nh && m_cola_services && m_configuration_thread_running)
   {
-    ros::ServiceClient service_client = m_nh->serviceClient<sick_lidar_localization::SickLocSetResultModeSrv>("SickLocSetResultMode");
-    sick_lidar_localization::SickLocSetResultModeSrv service_telegram;
-    service_telegram.request.mode = sim_configuration_map["SickLocSetResultMode"];
-    callService(service_telegram, service_client, retry_delay);
+    sick_lidar_localization::SickLocSetResultModeSrv::Request service_request;
+    sick_lidar_localization::SickLocSetResultModeSrv::Response service_response;
+    service_request.mode = sim_configuration_map["SickLocSetResultMode"];
+    if(m_cola_services->serviceCbLocSetResultMode(service_request, service_response) && service_response.success)
+      break; // service request successfull
+    ROS_WARN_STREAM("## ERROR ColaConfiguration: service call type " << typeid(service_request).name() << " failed, retrying");
+    ROS::sleep(retry_delay);
   }
   
   // Transmit SickLocSetResultPoseEnabled setting to localization
-  if(sim_configuration_map["SickLocSetResultPoseEnabled"] >= 0 && ros::ok() && m_nh && m_configuration_thread_running)
+  while(sim_configuration_map["SickLocSetResultPoseEnabled"] >= 0 && ROS::ok() && m_nh && m_cola_services && m_configuration_thread_running)
   {
-    ros::ServiceClient service_client = m_nh->serviceClient<sick_lidar_localization::SickLocSetResultPoseEnabledSrv>("SickLocSetResultPoseEnabled");
-    sick_lidar_localization::SickLocSetResultPoseEnabledSrv service_telegram;
-    service_telegram.request.enabled = sim_configuration_map["SickLocSetResultPoseEnabled"];
-    callService(service_telegram, service_client, retry_delay);
+    sick_lidar_localization::SickLocSetResultPoseEnabledSrv::Request service_request;
+    sick_lidar_localization::SickLocSetResultPoseEnabledSrv::Response service_response;
+    service_request.enabled = sim_configuration_map["SickLocSetResultPoseEnabled"];
+    if(m_cola_services->serviceCbLocSetResultPoseEnabled(service_request, service_response) && service_response.success)
+      break; // service request successfull
+    ROS_WARN_STREAM("## ERROR ColaConfiguration: service call type " << typeid(service_request).name() << " failed, retrying");
+    ROS::sleep(retry_delay);
   }
   
   // Transmit SickLocSetResultEndianness setting to localization
-  if(sim_configuration_map["SickLocSetResultEndianness"] >= 0 && ros::ok() && m_nh && m_configuration_thread_running)
+  while(sim_configuration_map["SickLocSetResultEndianness"] >= 0 && ROS::ok() && m_nh && m_cola_services && m_configuration_thread_running)
   {
-    ros::ServiceClient service_client = m_nh->serviceClient<sick_lidar_localization::SickLocSetResultEndiannessSrv>("SickLocSetResultEndianness");
-    sick_lidar_localization::SickLocSetResultEndiannessSrv service_telegram;
-    service_telegram.request.endianness = sim_configuration_map["SickLocSetResultEndianness"];
-    callService(service_telegram, service_client, retry_delay);
+    sick_lidar_localization::SickLocSetResultEndiannessSrv::Request service_request;
+    sick_lidar_localization::SickLocSetResultEndiannessSrv::Response service_response;
+    service_request.endianness = sim_configuration_map["SickLocSetResultEndianness"];
+    if(m_cola_services->serviceCbLocSetResultEndianness(service_request, service_response) && service_response.success)
+      break; // service request successfull
+    ROS_WARN_STREAM("## ERROR ColaConfiguration: service call type " << typeid(service_request).name() << " failed, retrying");
+    ROS::sleep(retry_delay);
   }
   
   // Transmit SickLocSetResultEndianness setting to localization
-  if(sim_configuration_map["SickLocSetResultPoseInterval"] >= 0 && ros::ok() && m_nh && m_configuration_thread_running)
+  while(sim_configuration_map["SickLocSetResultPoseInterval"] >= 0 && ROS::ok() && m_nh && m_cola_services && m_configuration_thread_running)
   {
-    ros::ServiceClient service_client = m_nh->serviceClient<sick_lidar_localization::SickLocSetResultPoseIntervalSrv>("SickLocSetResultPoseInterval");
-    sick_lidar_localization::SickLocSetResultPoseIntervalSrv service_telegram;
-    service_telegram.request.interval = sim_configuration_map["SickLocSetResultPoseInterval"];
-    callService(service_telegram, service_client, retry_delay);
+    sick_lidar_localization::SickLocSetResultPoseIntervalSrv::Request service_request;
+    sick_lidar_localization::SickLocSetResultPoseIntervalSrv::Response service_response;
+    service_request.interval = sim_configuration_map["SickLocSetResultPoseInterval"];
+    if(m_cola_services->serviceCbLocSetResultPoseInterval(service_request, service_response) && service_response.success)
+      break; // service request successfull
+    ROS_WARN_STREAM("## ERROR ColaConfiguration: service call type " << typeid(service_request).name() << " failed, retrying");
+    ROS::sleep(retry_delay);
   }
   
   // Transmit SickLocSetResultEndianness setting to localization
-  if(sim_configuration_map["SickLocRequestResultData"] > 0 && ros::ok() && m_nh && m_configuration_thread_running)
+  while(sim_configuration_map["SickLocRequestResultData"] > 0 && ROS::ok() && m_nh && m_cola_services && m_configuration_thread_running)
   {
-    ros::ServiceClient service_client = m_nh->serviceClient<sick_lidar_localization::SickLocRequestResultDataSrv>("SickLocRequestResultData");
-    sick_lidar_localization::SickLocRequestResultDataSrv service_telegram;
-    callService(service_telegram, service_client, retry_delay);
+    sick_lidar_localization::SickLocRequestResultDataSrv::Request service_request;
+    sick_lidar_localization::SickLocRequestResultDataSrv::Response service_response;
+    if(m_cola_services->serviceCbLocRequestResultData(service_request, service_response) && service_response.success)
+      break; // service request successfull
+    ROS_WARN_STREAM("## ERROR ColaConfiguration: service call type " << typeid(service_request).name() << " failed, retrying");
+    ROS::sleep(retry_delay);
   }
   
   m_configuration_thread_running = false;

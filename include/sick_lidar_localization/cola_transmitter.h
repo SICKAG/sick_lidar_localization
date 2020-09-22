@@ -100,7 +100,7 @@ namespace sick_lidar_localization
      * @param[out] send_timestamp send timestamp in seconds (ros timestamp immediately before tcp send)
      * @return true on success, false on failure
      */
-    virtual bool send(const std::vector<uint8_t> & data, ros::Time & send_timestamp);
+    virtual bool send(const std::vector<uint8_t> & data, ROS::Time & send_timestamp);
   
     /*!
      * Send data to the localization server.
@@ -109,7 +109,7 @@ namespace sick_lidar_localization
      * @param[out] send_timestamp send timestamp in seconds (ros timestamp immediately before tcp send)
      * @return true on success, false on failure
      */
-    static bool send(boost::asio::ip::tcp::socket & socket, const std::vector<uint8_t> & data, ros::Time & send_timestamp);
+    static bool send(boost::asio::ip::tcp::socket & socket, const std::vector<uint8_t> & data, ROS::Time & send_timestamp);
     
     /*!
      * Receive a cola telegram from the localization server.
@@ -118,7 +118,7 @@ namespace sick_lidar_localization
      * @param[out] receive_timestamp receive timestamp in seconds (ros timestamp immediately after first response byte received)
      * @return true on success, false on failure (connection error or timeout)
      */
-    virtual bool receive(std::vector<uint8_t> & telegram, double timeout, ros::Time & receive_timestamp);
+    virtual bool receive(std::vector<uint8_t> & telegram, double timeout, ROS::Time & receive_timestamp);
   
     /*!
      * Receive a cola telegram from a socket.
@@ -128,7 +128,7 @@ namespace sick_lidar_localization
      * @param[out] receive_timestamp receive timestamp in seconds (ros timestamp immediately after first response byte received)
      * @return true on success, false on failure (connection error or timeout)
      */
-    static bool receive(boost::asio::ip::tcp::socket & socket, std::vector<uint8_t> & telegram, double timeout,ros::Time & receive_timestamp);
+    static bool receive(boost::asio::ip::tcp::socket & socket, std::vector<uint8_t> & telegram, double timeout,ROS::Time & receive_timestamp);
   
     /*!
      * Starts a thread to receive response telegrams from the localization server.
@@ -153,7 +153,7 @@ namespace sick_lidar_localization
      * @param[out] receive_timestamp receive timestamp in seconds (ros timestamp immediately after first response byte received)
      * @return true on success, false on failure (connection error or timeout)
      */
-    virtual bool waitPopResponse(std::vector<uint8_t> & telegram, double timeout, ros::Time & receive_timestamp);
+    virtual bool waitPopResponse(std::vector<uint8_t> & telegram, double timeout, ROS::Time & receive_timestamp);
   
   protected:
   
@@ -164,10 +164,10 @@ namespace sick_lidar_localization
     class ColaResponseContainer
     {
     public:
-      ColaResponseContainer(const std::vector<uint8_t> & data = std::vector<uint8_t>(),const ros::Time & timestamp = ros::Time::now())
+      ColaResponseContainer(const std::vector<uint8_t> & data = std::vector<uint8_t>(),const ROS::Time & timestamp = ROS::now())
       : telegram_data(data), receive_timestamp(timestamp) {} ///< Constructor
       std::vector<uint8_t> telegram_data; ///< received telegram_data (Cola-Ascii or Cola-Binary)
-      ros::Time receive_timestamp;        ///< receive timestamp in seconds (ros timestamp immediately after first response byte received)
+      ROS::Time receive_timestamp;        ///< receive timestamp in seconds (ros timestamp immediately after first response byte received)
     };
   
     /*!

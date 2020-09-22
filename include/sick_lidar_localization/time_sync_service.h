@@ -85,6 +85,8 @@
 #ifndef __SIM_LOC_TIME_SYNC_SERVICE_H_INCLUDED
 #define __SIM_LOC_TIME_SYNC_SERVICE_H_INCLUDED
 
+#include "sick_lidar_localization/cola_parser.h"
+#include "sick_lidar_localization/driver_monitor.h"
 #include "sick_lidar_localization/utils.h"
 
 namespace sick_lidar_localization
@@ -102,7 +104,7 @@ namespace sick_lidar_localization
     /*!
      * Constructor
      */
-    TimeSyncService(ros::NodeHandle* nh = 0);
+    TimeSyncService(ROS::NodePtr nh = 0, sick_lidar_localization::DriverMonitor* driver_monitor = 0);
     
     /*!
      * Destructor
@@ -135,6 +137,11 @@ namespace sick_lidar_localization
      * @return true on success, false in case of errors.
      */
     virtual bool serviceCbRequestTimestamp(sick_lidar_localization::SickLocRequestTimestampSrv::Request & service_request, sick_lidar_localization::SickLocRequestTimestampSrv::Response & service_response);
+    /*! ROS2 version of function serviceCbRequestTimestamp */
+    virtual bool serviceCbRequestTimestampROS2(std::shared_ptr<sick_lidar_localization::SickLocRequestTimestampSrv::Request> service_request, std::shared_ptr<sick_lidar_localization::SickLocRequestTimestampSrv::Response> service_response)
+    {
+      return serviceCbRequestTimestamp(*service_request, *service_response);
+    }
   
     /*!
      * Callback for service messages (SickLocTimeSync). Calculates the system time of a vehicle pose from lidar ticks,
@@ -149,6 +156,11 @@ namespace sick_lidar_localization
      * @return true on success, false in case of errors (software pll still in initialization phase or communication error).
      */
     virtual bool serviceCbTimeSync(sick_lidar_localization::SickLocTimeSyncSrv::Request & time_sync_request, sick_lidar_localization::SickLocTimeSyncSrv::Response & time_sync_response);
+    /*! ROS2 version of function serviceCbTimeSync */
+    virtual bool serviceCbTimeSyncROS2(std::shared_ptr<sick_lidar_localization::SickLocTimeSyncSrv::Request> time_sync_request, std::shared_ptr<sick_lidar_localization::SickLocTimeSyncSrv::Response> time_sync_response)
+    {
+      return serviceCbTimeSync(*time_sync_request, *time_sync_response);
+    }
   
     /*!
      * Thread callback, runs time synchronization, calls ros service "SickLocRequestTimestamp" each 10 seconds
@@ -170,21 +182,23 @@ namespace sick_lidar_localization
      */
     bool isSoftwarePllInitialized(void);
     
-    ros::ServiceServer m_timestamp_service_server; ///< provides ros service "SickLocRequestTimestamp" to send a LocRequestTimestamp, receive the response and to calculate the time offset
-    ros::ServiceServer m_timesync_service_server;  ///< provides ros service "SickLocTimeSync" to calculate system time from ticks by software pll
-    ros::ServiceClient m_cola_service_client;      ///< client to call ros service "SickLocColaTelegram" to send cola telegrams and receive cola responses from localization controller
+    ROS::NodePtr m_nh; ///< ros node handle
+    sick_lidar_localization::DriverMonitor* m_driver_monitor;                             ///< implements the cola telegram services
+    sick_lidar_localization::SickLocRequestTimestampSrvServer m_timestamp_service_server; ///< provides ros service "SickLocRequestTimestamp" to send a LocRequestTimestamp, receive the response and to calculate the time offset
+    sick_lidar_localization::SickLocTimeSyncSrvServer m_timesync_service_server;          ///< provides ros service "SickLocTimeSync" to calculate system time from ticks by software pll
+    sick_lidar_localization::SickLocColaTelegramSrvClient m_cola_service_client;          ///< client to call ros service "SickLocColaTelegram" to send cola telegrams and receive cola responses from localization controller
+    // sick_lidar_localization::SickLocRequestTimestampSrvClient m_request_timestamp_client; ///< client to call ros service "SickLocRequestTimestamp"
     bool m_time_sync_thread_running;               ///< true: m_time_sync_thread is running, otherwise false
     boost::thread* m_time_sync_thread;             ///< thread to synchronize timestamps, runs the software pll
     bool m_cola_binary;                            ///< false: send Cola-ASCII (default), true: send Cola-Binary
     int m_cola_binary_mode;                        ///< 0: send Cola-ASCII (default), 1: send Cola-Binary, 2: toggle between Cola-ASCII and Cola-Binary (test and development only!)
     int m_software_pll_fifo_length;                ///< length of software pll fifo, default: 7
-    ros::Rate m_time_sync_rate;                    ///< frequency to request timestamps using ros service "SickLocRequestTimestamp" and to update software pll, default: 0.1 (LocRequestTimestamp queries every 10 seconds)
-    ros::Rate m_time_sync_initial_rate;            ///< frequency to request timestamps and to update software pll during initialization phase, default: 1.0 (LocRequestTimestamp queries every second)
+    double m_time_sync_rate;                       ///< frequency to request timestamps using ros service "SickLocRequestTimestamp" and to update software pll, default: 0.1 (LocRequestTimestamp queries every 10 seconds)
+    double m_time_sync_initial_rate;               ///< frequency to request timestamps and to update software pll during initialization phase, default: 1.0 (LocRequestTimestamp queries every second)
     int m_time_sync_initial_length;                ///< length of initialization phase with LocRequestTimestamps every second, default: 10 (i.e. 10 LocRequestTimestamp queries every second after start, otherwise LocRequestTimestamp queries every 10 seconds)
     double m_cola_response_timeout;                ///< Timeout in seconds for cola responses from localization controller, default: 1
-    ros::ServiceClient m_request_timestamp_client; ///< client to call ros service "SickLocRequestTimestamp"
     boost::mutex m_software_pll_mutex;             ///< mutex to protect access to software pll used in service "SickLocTimeSync
-  
+    boost::mutex m_service_cb_mutex;               ///< mutex to protect serviceCbRequestTimestamp (one service request at a time)
   
   }; // class TimeSyncService
   

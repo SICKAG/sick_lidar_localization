@@ -6,7 +6,6 @@
  * "SickLocState"                 | srv/SickLocStateSrv.srv                 | "sRN LocState"                                       | Read localization state
  * "SickLocStartLocalizing"       | srv/SickLocStartLocalizingSrv.srv       | "sMN LocStartLocalizing"                             | Start localization
  * "SickLocStop"                  | srv/SickLocStopSrv.srv                  | "sMN LocStop"                                        | Stop localization or demo mapping
- * "SickLocStopAndSave"           | srv/SickLocStopAndSaveSrv.srv           | "sMN LocStopAndSave"                                 | Stop localization, save settings
  * "SickLocSetResultPort"         | srv/SickLocSetResultPortSrv.srv         | "sMN LocSetResultPort <port>"                        | Set TCP-port for result output (default: 2201)
  * "SickLocSetResultMode"         | srv/SickLocSetResultModeSrv.srv         | "sMN LocSetResultMode <mode>"                        | Set mode of result output (default: stream)
  * "SickLocSetResultPoseEnabled"  | srv/SickLocSetResultPoseEnabledSrv.srv  | "sMN LocSetResultPoseEnabled <enabled>"              | Disable/enable result output
@@ -68,33 +67,125 @@
  *  Copyright 2019 Ing.-Buero Dr. Michael Lehning
  *
  */
-#include <ros/ros.h>
-
+#include "sick_lidar_localization/ros_wrapper.h"
+#include "sick_lidar_localization/cola_encoder.h"
 #include "sick_lidar_localization/cola_services.h"
 
 /*!
  * Constructor
  */
-sick_lidar_localization::ColaServices::ColaServices(ros::NodeHandle *nh) : m_cola_response_timeout(1.0)
+sick_lidar_localization::ColaServices::ColaServices(ROS::NodePtr nh, sick_lidar_localization::DriverMonitor* driver_monitor) : m_nh(nh), m_driver_monitor(driver_monitor), m_cola_response_timeout(1.0)
 {
   if(nh)
   {
-    ros::param::param<double>("/sick_lidar_localization/time_sync/cola_response_timeout", m_cola_response_timeout, m_cola_response_timeout);
-    // Advertise ros services
-    m_service_server.push_back(nh->advertiseService("SickLocIsSystemReady", &sick_lidar_localization::ColaServices::serviceCbIsSystemReady, this));
-    m_service_server.push_back(nh->advertiseService("SickLocState", &sick_lidar_localization::ColaServices::serviceCbLocState, this));
-    m_service_server.push_back(nh->advertiseService("SickLocStartLocalizing", &sick_lidar_localization::ColaServices::serviceCbLocStartLocalizing, this));
-    m_service_server.push_back(nh->advertiseService("SickLocStop", &sick_lidar_localization::ColaServices::serviceCbLocStop, this));
-    m_service_server.push_back(nh->advertiseService("SickLocStopAndSave", &sick_lidar_localization::ColaServices::serviceCbLocStopAndSave, this));
-    m_service_server.push_back(nh->advertiseService("SickLocSetResultPort", &sick_lidar_localization::ColaServices::serviceCbLocSetResultPort, this));
-    m_service_server.push_back(nh->advertiseService("SickLocSetResultMode", &sick_lidar_localization::ColaServices::serviceCbLocSetResultMode, this));
-    m_service_server.push_back(nh->advertiseService("SickLocSetResultPoseEnabled", &sick_lidar_localization::ColaServices::serviceCbLocSetResultPoseEnabled, this));
-    m_service_server.push_back(nh->advertiseService("SickLocSetResultEndianness", &sick_lidar_localization::ColaServices::serviceCbLocSetResultEndianness, this));
-    m_service_server.push_back(nh->advertiseService("SickLocSetResultPoseInterval", &sick_lidar_localization::ColaServices::serviceCbLocSetResultPoseInterval, this));
-    m_service_server.push_back(nh->advertiseService("SickLocRequestResultData", &sick_lidar_localization::ColaServices::serviceCbLocRequestResultData, this));
-    m_service_server.push_back(nh->advertiseService("SickLocSetPose", &sick_lidar_localization::ColaServices::serviceCbLocSetPose, this));
+    ROS::param<double>(nh, "/sick_lidar_localization/time_sync/cola_response_timeout", m_cola_response_timeout, m_cola_response_timeout);
+    
+    // Advertise ros services supported by release 3 and later
+#if defined __ROS_VERSION && __ROS_VERSION == 1
+    m_srv_server_01 = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocIsSystemReadySrv, "SickLocIsSystemReady",&sick_lidar_localization::ColaServices::serviceCbIsSystemReady, this);
+    m_srv_server_02 = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocStateSrv, "SickLocState",&sick_lidar_localization::ColaServices::serviceCbLocState, this);
+    m_srv_server_03 = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocStartLocalizingSrv, "SickLocStartLocalizing",&sick_lidar_localization::ColaServices::serviceCbLocStartLocalizing, this);
+    m_srv_server_04 = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocStopSrv, "SickLocStop",&sick_lidar_localization::ColaServices::serviceCbLocStop, this);
+    m_srv_server_06 = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocSetResultPortSrv, "SickLocSetResultPort",&sick_lidar_localization::ColaServices::serviceCbLocSetResultPort, this);
+    m_srv_server_07 = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocSetResultModeSrv, "SickLocSetResultMode",&sick_lidar_localization::ColaServices::serviceCbLocSetResultMode, this);
+    m_srv_server_08 = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocSetResultPoseEnabledSrv, "SickLocSetResultPoseEnabled",&sick_lidar_localization::ColaServices::serviceCbLocSetResultPoseEnabled, this);
+    m_srv_server_09 = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocSetResultEndiannessSrv, "SickLocSetResultEndianness",&sick_lidar_localization::ColaServices::serviceCbLocSetResultEndianness, this);
+    m_srv_server_10 = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocSetResultPoseIntervalSrv, "SickLocSetResultPoseInterval",&sick_lidar_localization::ColaServices::serviceCbLocSetResultPoseInterval, this);
+    m_srv_server_11 = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocRequestResultDataSrv, "SickLocRequestResultData",&sick_lidar_localization::ColaServices::serviceCbLocRequestResultData, this);
+    m_srv_server_12 = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocSetPoseSrv, "SickLocSetPose",&sick_lidar_localization::ColaServices::serviceCbLocSetPose, this);
+#elif defined __ROS_VERSION && __ROS_VERSION == 2
+    m_srv_server_01 = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocIsSystemReadySrv, "SickLocIsSystemReady",&sick_lidar_localization::ColaServices::serviceCbIsSystemReadyROS2, this);
+    m_srv_server_02 = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocStateSrv, "SickLocState",&sick_lidar_localization::ColaServices::serviceCbLocStateROS2, this);
+    m_srv_server_03 = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocStartLocalizingSrv, "SickLocStartLocalizing",&sick_lidar_localization::ColaServices::serviceCbLocStartLocalizingROS2, this);
+    m_srv_server_04 = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocStopSrv, "SickLocStop",&sick_lidar_localization::ColaServices::serviceCbLocStopROS2, this);
+    m_srv_server_06 = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocSetResultPortSrv, "SickLocSetResultPort",&sick_lidar_localization::ColaServices::serviceCbLocSetResultPortROS2, this);
+    m_srv_server_07 = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocSetResultModeSrv, "SickLocSetResultMode",&sick_lidar_localization::ColaServices::serviceCbLocSetResultModeROS2, this);
+    m_srv_server_08 = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocSetResultPoseEnabledSrv, "SickLocSetResultPoseEnabled",&sick_lidar_localization::ColaServices::serviceCbLocSetResultPoseEnabledROS2, this);
+    m_srv_server_09 = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocSetResultEndiannessSrv, "SickLocSetResultEndianness",&sick_lidar_localization::ColaServices::serviceCbLocSetResultEndiannessROS2, this);
+    m_srv_server_10 = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocSetResultPoseIntervalSrv, "SickLocSetResultPoseInterval",&sick_lidar_localization::ColaServices::serviceCbLocSetResultPoseIntervalROS2, this);
+    m_srv_server_11 = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocRequestResultDataSrv, "SickLocRequestResultData",&sick_lidar_localization::ColaServices::serviceCbLocRequestResultDataROS2, this);
+    m_srv_server_12 = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocSetPoseSrv, "SickLocSetPose",&sick_lidar_localization::ColaServices::serviceCbLocSetPoseROS2, this);
+#endif   
+    // Advertise ros services supported by release 4 and later
+#if defined __ROS_VERSION && __ROS_VERSION == 1
+     m_SickDevSetLidarConfigSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickDevSetLidarConfigSrv, "SickDevSetLidarConfig", &sick_lidar_localization::ColaServices::serviceCbDevSetLidarConfig, this);
+     m_SickDevGetLidarConfigSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickDevGetLidarConfigSrv, "SickDevGetLidarConfig", &sick_lidar_localization::ColaServices::serviceCbDevGetLidarConfig, this);
+     m_SickLocSetMapSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocSetMapSrv, "SickLocSetMap", &sick_lidar_localization::ColaServices::serviceCbLocSetMap, this);
+     m_SickLocMapSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocMapSrv, "SickLocMap", &sick_lidar_localization::ColaServices::serviceCbLocMap, this);
+     m_SickLocMapStateSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocMapStateSrv, "SickLocMapState", &sick_lidar_localization::ColaServices::serviceCbLocMapState, this);
+     m_SickLocInitializePoseSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocInitializePoseSrv, "SickLocInitializePose", &sick_lidar_localization::ColaServices::serviceCbLocInitializePose, this);
+     m_SickLocInitialPoseSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocInitialPoseSrv, "SickLocInitialPose", &sick_lidar_localization::ColaServices::serviceCbLocInitialPose, this);
+     m_SickLocSetReflectorsForSupportActiveSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocSetReflectorsForSupportActiveSrv, "SickLocSetReflectorsForSupportActive", &sick_lidar_localization::ColaServices::serviceCbLocSetReflectorsForSupportActive, this);
+     m_SickLocReflectorsForSupportActiveSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocReflectorsForSupportActiveSrv, "SickLocReflectorsForSupportActive", &sick_lidar_localization::ColaServices::serviceCbLocReflectorsForSupportActive, this);
+     m_SickLocSetOdometryActiveSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocSetOdometryActiveSrv, "SickLocSetOdometryActive", &sick_lidar_localization::ColaServices::serviceCbLocSetOdometryActive, this);
+     m_SickLocOdometryActiveSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocOdometryActiveSrv, "SickLocOdometryActive", &sick_lidar_localization::ColaServices::serviceCbLocOdometryActive, this);
+     m_SickLocSetOdometryPortSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocSetOdometryPortSrv, "SickLocSetOdometryPort", &sick_lidar_localization::ColaServices::serviceCbLocSetOdometryPort, this);
+     m_SickLocOdometryPortSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocOdometryPortSrv, "SickLocOdometryPort", &sick_lidar_localization::ColaServices::serviceCbLocOdometryPort, this);
+     m_SickLocSetOdometryRestrictYMotionSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocSetOdometryRestrictYMotionSrv, "SickLocSetOdometryRestrictYMotion", &sick_lidar_localization::ColaServices::serviceCbLocSetOdometryRestrictYMotion, this);
+     m_SickLocOdometryRestrictYMotionSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocOdometryRestrictYMotionSrv, "SickLocOdometryRestrictYMotion", &sick_lidar_localization::ColaServices::serviceCbLocOdometryRestrictYMotion, this);
+     m_SickLocSetAutoStartActiveSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocSetAutoStartActiveSrv, "SickLocSetAutoStartActive", &sick_lidar_localization::ColaServices::serviceCbLocSetAutoStartActive, this);
+     m_SickLocAutoStartActiveSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocAutoStartActiveSrv, "SickLocAutoStartActive", &sick_lidar_localization::ColaServices::serviceCbLocAutoStartActive, this);
+     m_SickLocSetAutoStartSavePoseIntervalSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocSetAutoStartSavePoseIntervalSrv, "SickLocSetAutoStartSavePoseInterval", &sick_lidar_localization::ColaServices::serviceCbLocSetAutoStartSavePoseInterval, this);
+     m_SickLocAutoStartSavePoseIntervalSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocAutoStartSavePoseIntervalSrv, "SickLocAutoStartSavePoseInterval", &sick_lidar_localization::ColaServices::serviceCbLocAutoStartSavePoseInterval, this);
+     m_SickLocSetRingBufferRecordingActiveSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocSetRingBufferRecordingActiveSrv, "SickLocSetRingBufferRecordingActive", &sick_lidar_localization::ColaServices::serviceCbLocSetRingBufferRecordingActive, this);
+     m_SickLocRingBufferRecordingActiveSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocRingBufferRecordingActiveSrv, "SickLocRingBufferRecordingActive", &sick_lidar_localization::ColaServices::serviceCbLocRingBufferRecordingActive, this);
+     m_SickDevGetLidarIdentSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickDevGetLidarIdentSrv, "SickDevGetLidarIdent", &sick_lidar_localization::ColaServices::serviceCbDevGetLidarIdent, this);
+     m_SickDevGetLidarStateSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickDevGetLidarStateSrv, "SickDevGetLidarState", &sick_lidar_localization::ColaServices::serviceCbDevGetLidarState, this);
+     m_SickGetSoftwareVersionSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickGetSoftwareVersionSrv, "SickGetSoftwareVersion", &sick_lidar_localization::ColaServices::serviceCbGetSoftwareVersion, this);
+     m_SickLocAutoStartSavePoseSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocAutoStartSavePoseSrv, "SickLocAutoStartSavePose", &sick_lidar_localization::ColaServices::serviceCbLocAutoStartSavePose, this);
+     m_SickLocForceUpdateSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocForceUpdateSrv, "SickLocForceUpdate", &sick_lidar_localization::ColaServices::serviceCbLocForceUpdate, this);
+     m_SickLocSaveRingBufferRecordingSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocSaveRingBufferRecordingSrv, "SickLocSaveRingBufferRecording", &sick_lidar_localization::ColaServices::serviceCbLocSaveRingBufferRecording, this);
+     m_SickLocStartDemoMappingSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocStartDemoMappingSrv, "SickLocStartDemoMapping", &sick_lidar_localization::ColaServices::serviceCbLocStartDemoMapping, this);
+     m_SickReportUserMessageSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickReportUserMessageSrv, "SickReportUserMessage", &sick_lidar_localization::ColaServices::serviceCbReportUserMessage, this);
+     m_SickSavePermanentSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickSavePermanentSrv, "SickSavePermanent", &sick_lidar_localization::ColaServices::serviceCbSavePermanent, this);
+     m_SickLocResultPortSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocResultPortSrv, "SickLocResultPort", &sick_lidar_localization::ColaServices::serviceCbLocResultPort, this);
+     m_SickLocResultModeSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocResultModeSrv, "SickLocResultMode", &sick_lidar_localization::ColaServices::serviceCbLocResultMode, this);
+     m_SickLocResultEndiannessSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocResultEndiannessSrv, "SickLocResultEndianness", &sick_lidar_localization::ColaServices::serviceCbLocResultEndianness, this);
+     m_SickLocResultStateSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocResultStateSrv, "SickLocResultState", &sick_lidar_localization::ColaServices::serviceCbLocResultState, this);
+     m_SickLocResultPoseIntervalSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocResultPoseIntervalSrv, "SickLocResultPoseInterval", &sick_lidar_localization::ColaServices::serviceCbLocResultPoseInterval, this);
+     m_SickDevSetIMUActiveSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickDevSetIMUActiveSrv, "SickDevSetIMUActive", &sick_lidar_localization::ColaServices::serviceCbDevSetIMUActive, this);
+     m_SickDevIMUActiveSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickDevIMUActiveSrv, "SickDevIMUActive", &sick_lidar_localization::ColaServices::serviceCbDevIMUActive, this);
+#elif defined __ROS_VERSION && __ROS_VERSION == 2
+     m_SickDevSetLidarConfigSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickDevSetLidarConfigSrv, "SickDevSetLidarConfig", &sick_lidar_localization::ColaServices::serviceCbDevSetLidarConfigROS2, this);
+     m_SickDevGetLidarConfigSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickDevGetLidarConfigSrv, "SickDevGetLidarConfig", &sick_lidar_localization::ColaServices::serviceCbDevGetLidarConfigROS2, this);
+     m_SickLocSetMapSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocSetMapSrv, "SickLocSetMap", &sick_lidar_localization::ColaServices::serviceCbLocSetMapROS2, this);
+     m_SickLocMapSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocMapSrv, "SickLocMap", &sick_lidar_localization::ColaServices::serviceCbLocMapROS2, this);
+     m_SickLocMapStateSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocMapStateSrv, "SickLocMapState", &sick_lidar_localization::ColaServices::serviceCbLocMapStateROS2, this);
+     m_SickLocInitializePoseSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocInitializePoseSrv, "SickLocInitializePose", &sick_lidar_localization::ColaServices::serviceCbLocInitializePoseROS2, this);
+     m_SickLocInitialPoseSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocInitialPoseSrv, "SickLocInitialPose", &sick_lidar_localization::ColaServices::serviceCbLocInitialPoseROS2, this);
+     m_SickLocSetReflectorsForSupportActiveSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocSetReflectorsForSupportActiveSrv, "SickLocSetReflectorsForSupportActive", &sick_lidar_localization::ColaServices::serviceCbLocSetReflectorsForSupportActiveROS2, this);
+     m_SickLocReflectorsForSupportActiveSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocReflectorsForSupportActiveSrv, "SickLocReflectorsForSupportActive", &sick_lidar_localization::ColaServices::serviceCbLocReflectorsForSupportActiveROS2, this);
+     m_SickLocSetOdometryActiveSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocSetOdometryActiveSrv, "SickLocSetOdometryActive", &sick_lidar_localization::ColaServices::serviceCbLocSetOdometryActiveROS2, this);
+     m_SickLocOdometryActiveSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocOdometryActiveSrv, "SickLocOdometryActive", &sick_lidar_localization::ColaServices::serviceCbLocOdometryActiveROS2, this);
+     m_SickLocSetOdometryPortSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocSetOdometryPortSrv, "SickLocSetOdometryPort", &sick_lidar_localization::ColaServices::serviceCbLocSetOdometryPortROS2, this);
+     m_SickLocOdometryPortSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocOdometryPortSrv, "SickLocOdometryPort", &sick_lidar_localization::ColaServices::serviceCbLocOdometryPortROS2, this);
+     m_SickLocSetOdometryRestrictYMotionSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocSetOdometryRestrictYMotionSrv, "SickLocSetOdometryRestrictYMotion", &sick_lidar_localization::ColaServices::serviceCbLocSetOdometryRestrictYMotionROS2, this);
+     m_SickLocOdometryRestrictYMotionSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocOdometryRestrictYMotionSrv, "SickLocOdometryRestrictYMotion", &sick_lidar_localization::ColaServices::serviceCbLocOdometryRestrictYMotionROS2, this);
+     m_SickLocSetAutoStartActiveSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocSetAutoStartActiveSrv, "SickLocSetAutoStartActive", &sick_lidar_localization::ColaServices::serviceCbLocSetAutoStartActiveROS2, this);
+     m_SickLocAutoStartActiveSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocAutoStartActiveSrv, "SickLocAutoStartActive", &sick_lidar_localization::ColaServices::serviceCbLocAutoStartActiveROS2, this);
+     m_SickLocSetAutoStartSavePoseIntervalSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocSetAutoStartSavePoseIntervalSrv, "SickLocSetAutoStartSavePoseInterval", &sick_lidar_localization::ColaServices::serviceCbLocSetAutoStartSavePoseIntervalROS2, this);
+     m_SickLocAutoStartSavePoseIntervalSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocAutoStartSavePoseIntervalSrv, "SickLocAutoStartSavePoseInterval", &sick_lidar_localization::ColaServices::serviceCbLocAutoStartSavePoseIntervalROS2, this);
+     m_SickLocSetRingBufferRecordingActiveSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocSetRingBufferRecordingActiveSrv, "SickLocSetRingBufferRecordingActive", &sick_lidar_localization::ColaServices::serviceCbLocSetRingBufferRecordingActiveROS2, this);
+     m_SickLocRingBufferRecordingActiveSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocRingBufferRecordingActiveSrv, "SickLocRingBufferRecordingActive", &sick_lidar_localization::ColaServices::serviceCbLocRingBufferRecordingActiveROS2, this);
+     m_SickDevGetLidarIdentSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickDevGetLidarIdentSrv, "SickDevGetLidarIdent", &sick_lidar_localization::ColaServices::serviceCbDevGetLidarIdentROS2, this);
+     m_SickDevGetLidarStateSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickDevGetLidarStateSrv, "SickDevGetLidarState", &sick_lidar_localization::ColaServices::serviceCbDevGetLidarStateROS2, this);
+     m_SickGetSoftwareVersionSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickGetSoftwareVersionSrv, "SickGetSoftwareVersion", &sick_lidar_localization::ColaServices::serviceCbGetSoftwareVersionROS2, this);
+     m_SickLocAutoStartSavePoseSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocAutoStartSavePoseSrv, "SickLocAutoStartSavePose", &sick_lidar_localization::ColaServices::serviceCbLocAutoStartSavePoseROS2, this);
+     m_SickLocForceUpdateSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocForceUpdateSrv, "SickLocForceUpdate", &sick_lidar_localization::ColaServices::serviceCbLocForceUpdateROS2, this);
+     m_SickLocSaveRingBufferRecordingSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocSaveRingBufferRecordingSrv, "SickLocSaveRingBufferRecording", &sick_lidar_localization::ColaServices::serviceCbLocSaveRingBufferRecordingROS2, this);
+     m_SickLocStartDemoMappingSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocStartDemoMappingSrv, "SickLocStartDemoMapping", &sick_lidar_localization::ColaServices::serviceCbLocStartDemoMappingROS2, this);
+     m_SickReportUserMessageSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickReportUserMessageSrv, "SickReportUserMessage", &sick_lidar_localization::ColaServices::serviceCbReportUserMessageROS2, this);
+     m_SickSavePermanentSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickSavePermanentSrv, "SickSavePermanent", &sick_lidar_localization::ColaServices::serviceCbSavePermanentROS2, this);
+     m_SickLocResultPortSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocResultPortSrv, "SickLocResultPort", &sick_lidar_localization::ColaServices::serviceCbLocResultPortROS2, this);
+     m_SickLocResultModeSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocResultModeSrv, "SickLocResultMode", &sick_lidar_localization::ColaServices::serviceCbLocResultModeROS2, this);
+     m_SickLocResultEndiannessSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocResultEndiannessSrv, "SickLocResultEndianness", &sick_lidar_localization::ColaServices::serviceCbLocResultEndiannessROS2, this);
+     m_SickLocResultStateSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocResultStateSrv, "SickLocResultState", &sick_lidar_localization::ColaServices::serviceCbLocResultStateROS2, this);
+     m_SickLocResultPoseIntervalSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocResultPoseIntervalSrv, "SickLocResultPoseInterval", &sick_lidar_localization::ColaServices::serviceCbLocResultPoseIntervalROS2, this);
+     m_SickDevSetIMUActiveSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickDevSetIMUActiveSrv, "SickDevSetIMUActive", &sick_lidar_localization::ColaServices::serviceCbDevSetIMUActiveROS2, this);
+     m_SickDevIMUActiveSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickDevIMUActiveSrv, "SickDevIMUActive", &sick_lidar_localization::ColaServices::serviceCbDevIMUActiveROS2, this);
+#endif // __ROS_VERSION
     // Clients for ros services "SickLocColaTelegram"
-    m_service_client = nh->serviceClient<sick_lidar_localization::SickLocColaTelegramSrv>("SickLocColaTelegram");
+    m_service_client = ROS_CREATE_SRV_CLIENT(nh, sick_lidar_localization::SickLocColaTelegramSrv, "SickLocColaTelegram");
   }
 }
 
@@ -113,62 +204,43 @@ sick_lidar_localization::ColaServices::~ColaServices()
  */
 sick_lidar_localization::SickLocColaTelegramMsg sick_lidar_localization::ColaServices::sendColaTelegram(const std::string & cola_ascii_request)
 {
+  boost::lock_guard<boost::mutex> service_cb_lockguard(m_service_cb_mutex); // one service request at a time
+#if defined __ROS_VERSION && __ROS_VERSION == 1
   sick_lidar_localization::SickLocColaTelegramSrv cola_telegram;
-  sick_lidar_localization::SickLocColaTelegramMsg cola_response;
-  cola_telegram.request.cola_ascii_request = cola_ascii_request;
-  cola_telegram.request.wait_response_timeout = m_cola_response_timeout;
+  sick_lidar_localization::SickLocColaTelegramSrv::Request* cola_telegram_request = &cola_telegram.request;
+  sick_lidar_localization::SickLocColaTelegramSrv::Response* cola_telegram_response = &cola_telegram.response;
+#elif defined __ROS_VERSION && __ROS_VERSION == 2
+  std::shared_ptr<sick_lidar_localization::SickLocColaTelegramSrv::Request> cola_telegram_request = std::make_shared<sick_lidar_localization::SickLocColaTelegramSrv::Request>();
+  std::shared_ptr<sick_lidar_localization::SickLocColaTelegramSrv::Response> cola_telegram_response = std::make_shared<sick_lidar_localization::SickLocColaTelegramSrv::Response>();
+#endif  
+  cola_telegram_request->cola_ascii_request = cola_ascii_request;
+  cola_telegram_request->wait_response_timeout = m_cola_response_timeout;
   try
   {
-    // Send cola telegram using ros service "SickLocColaTelegram", receive response from localization server
-    if (!m_service_client.call(cola_telegram) || cola_telegram.response.cola_ascii_response.empty())
+    ROS::Time start_request_timestamp = ROS::now();
+    if(m_driver_monitor == 0)
     {
-      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(): calling ros service \"SickLocColaTelegram\" failed with request: "
-        << sick_lidar_localization::Utils::flattenToString(cola_telegram.request) << " response: " << sick_lidar_localization::Utils::flattenToString(cola_telegram.response));
-      return cola_response;
+      ROS_ERROR_STREAM("## ERROR ColaServices::sendColaTelegram(): ColaServices not initialized (driver_monitor == 0, " << __FILE__ << ":" << __LINE__ << ")");
+      return sick_lidar_localization::SickLocColaTelegramMsg();
     }
-    ROS_DEBUG_STREAM("ColaServices::sendColaTelegram(): request " << sick_lidar_localization::Utils::flattenToString(cola_telegram.request)
-      << " response: " << sick_lidar_localization::Utils::flattenToString(cola_telegram.response) << " succesfull.");
+    bool service_call_ok = m_driver_monitor->serviceCbColaTelegram(*cola_telegram_request, *cola_telegram_response);
+    if (!service_call_ok || cola_telegram_response->cola_ascii_response.empty())
+    {
+       ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(): calling ros service \"SickLocColaTelegram\" failed with request: \"" 
+        << cola_telegram_request->cola_ascii_request << "\", response: \"" << cola_telegram_response->cola_ascii_response << "\"" << " after "
+        << ROS::seconds(ROS::now() - start_request_timestamp) << " sec (timeout: " << m_cola_response_timeout << " sec, " << __FILE__ << ":" << __LINE__ << ")");
+      return sick_lidar_localization::SickLocColaTelegramMsg();
+    }
+    ROS_DEBUG_STREAM("ColaServices::sendColaTelegram(): request \"" << cola_telegram_request->cola_ascii_request
+      << "\", response: \"" << cola_telegram_response->cola_ascii_response << "\" succesfull.");
     // Decode and return response
-    return sick_lidar_localization::ColaParser::decodeColaTelegram(cola_telegram.response.cola_ascii_response);
+    return sick_lidar_localization::ColaParser::decodeColaTelegram(cola_telegram_response->cola_ascii_response);
   }
   catch(const std::exception & exc)
   {
-    ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << sick_lidar_localization::Utils::flattenToString(cola_telegram.request)
-      << "): cola response " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", exception " << exc.what());
+    ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_telegram_request->cola_ascii_request << ") failed, exception " << exc.what());
   }
-  return cola_response;
-}
-
-/*!
- * Converts and returns the parameter of a cola ascii telegram into a numeric value.
- * @param[in] cola_arg parameter of a cola ascii telegram
- * @param[in] base numeric base (10 for decimal values or 16 for hex strings)
- * @param[in] default_value default value returned in case of parse errors
- * @return parameter converted to integer value
- */
-int32_t sick_lidar_localization::ColaServices::convertColaArg(const std::string & cola_arg, int base, int32_t default_value)
-{
-  try
-  {
-    return std::stoi(cola_arg, 0, base);
-  }
-  catch(const std::exception & exc)
-  {
-    ROS_WARN_STREAM("## ERROR ColaServices::convertColaArg(" << cola_arg << ") failed, exception " << exc.what());
-  }
-  return default_value;
-  
-}
-
-/*!
- * Converts and returns the parameter of a cola ascii response into a boolean value.
- * @param[in] cola_response_arg parameter of a cola ascii response
- * @param[in] default_value default value returned in case of parse errors
- * @return parameter converted to boolean value
- */
-bool sick_lidar_localization::ColaServices::convertColaResponseBool(const std::string & cola_response_arg, bool default_value)
-{
-  return ((convertColaArg(cola_response_arg, 10, (default_value ? 1 : 0)) > 0) ? true : false);
+  return sick_lidar_localization::SickLocColaTelegramMsg();
 }
 
 /*!
@@ -203,7 +275,7 @@ bool sick_lidar_localization::ColaServices::serviceCbLocState(
   sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
   if(cola_response.command_name == "LocState" && cola_response.parameter.size() == 1)
   {
-    service_response.state = convertColaArg(cola_response.parameter[0], 10, -1);
+    service_response.state = sick_lidar_localization::ColaParser::convertColaArg(cola_response.parameter[0], 10, -1);
     service_response.success = (service_response.state != -1);
     return true;
   }
@@ -242,21 +314,6 @@ bool sick_lidar_localization::ColaServices::serviceCbLocStop(
 }
 
 /*!
- * Callback for service messages (SickLocStopAndSaveSrv, Stop localization, save settings).
- * Sends a cola telegram "sMN LocStopAndSave" and receives the response from localization controller
- * using ros service "SickLocColaTelegramSrv".
- * @param[in] service_request ros service request to localization controller
- * @param[out] service_response service response from localization controller
- * @return true on success, false in case of errors.
- */
-bool sick_lidar_localization::ColaServices::serviceCbLocStopAndSave(
-  sick_lidar_localization::SickLocStopAndSaveSrv::Request &service_request,
-  sick_lidar_localization::SickLocStopAndSaveSrv::Response &service_response)
-{
-  return serviceCbWithSuccessResponse("sMN", "LocStopAndSave", "", service_response);
-}
-
-/*!
  * Callback for service messages (SickLocSetResultPortSrv, Set TCP-port for result output, default: 2201).
  * Sends a cola telegram "Set mode of result output (default: stream" and receives the response from localization controller
  * using ros service "SickLocColaTelegramSrv".
@@ -274,12 +331,11 @@ bool sick_lidar_localization::ColaServices::serviceCbLocSetResultPort(
   sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
   if(cola_response.command_name == "LocSetResultPort" && cola_response.parameter.size() > 0) // parameter[0]: Set Result (1: success)
   {
-    service_response.success = convertColaResponseBool(cola_response.parameter[0], false);
+    service_response.success = sick_lidar_localization::ColaParser::convertColaResponseBool(cola_response.parameter[0], false);
     return true;
   }
   ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(\"" << cola_ascii << "\") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
   return false;
-  
 }
 
 /*!
@@ -372,4 +428,965 @@ bool sick_lidar_localization::ColaServices::serviceCbLocSetPose(
   std::stringstream cola_args;
   cola_args << std::showpos << service_request.posex << " " << service_request.posey << " " << service_request.yaw << " " << service_request.uncertainty;
   return serviceCbWithSuccessResponse("sMN", "LocSetPose", cola_args.str(), service_response);
+}
+
+/*!
+ * Callback for service "SickDevSetLidarConfigSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbDevSetLidarConfig(sick_lidar_localization::SickDevSetLidarConfigSrv::Request& service_request, sick_lidar_localization::SickDevSetLidarConfigSrv::Response& service_response)
+{
+  service_response.set = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "DevSetLidarConfig" && cola_response.parameter.size() > 0)
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.set)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickDevGetLidarConfigSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbDevGetLidarConfig(sick_lidar_localization::SickDevGetLidarConfigSrv::Request& service_request, sick_lidar_localization::SickDevGetLidarConfigSrv::Response& service_response)
+{
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "DevGetLidarConfig" && cola_response.parameter.size() > 0)
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response))
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickLocSetMapSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbLocSetMap(sick_lidar_localization::SickLocSetMapSrv::Request& service_request, sick_lidar_localization::SickLocSetMapSrv::Response& service_response)
+{
+  service_response.set = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "LocSetMap" && cola_response.parameter.size() > 0)
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.set)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickLocMapSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbLocMap(sick_lidar_localization::SickLocMapSrv::Request& service_request, sick_lidar_localization::SickLocMapSrv::Response& service_response)
+{
+  service_response.success = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "LocMap" && cola_response.parameter.size() > 0)
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.success)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickLocMapStateSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbLocMapState(sick_lidar_localization::SickLocMapStateSrv::Request& service_request, sick_lidar_localization::SickLocMapStateSrv::Response& service_response)
+{
+  service_response.success = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "LocMapState" && cola_response.parameter.size() > 0)
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.success)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickLocInitializePoseSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbLocInitializePose(sick_lidar_localization::SickLocInitializePoseSrv::Request& service_request, sick_lidar_localization::SickLocInitializePoseSrv::Response& service_response)
+{
+  service_response.success = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "LocInitializePose" && cola_response.parameter.size() > 0)
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.success)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickLocInitialPoseSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbLocInitialPose(sick_lidar_localization::SickLocInitialPoseSrv::Request& service_request, sick_lidar_localization::SickLocInitialPoseSrv::Response& service_response)
+{
+  service_response.success = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "LocInitialPose")
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.success)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickLocSetReflectorsForSupportActiveSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbLocSetReflectorsForSupportActive(sick_lidar_localization::SickLocSetReflectorsForSupportActiveSrv::Request& service_request, sick_lidar_localization::SickLocSetReflectorsForSupportActiveSrv::Response& service_response)
+{
+  service_response.success = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "LocSetReflectorsForSupportActive" && cola_response.parameter.size() > 0)
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.success)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickLocReflectorsForSupportActiveSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbLocReflectorsForSupportActive(sick_lidar_localization::SickLocReflectorsForSupportActiveSrv::Request& service_request, sick_lidar_localization::SickLocReflectorsForSupportActiveSrv::Response& service_response)
+{
+  service_response.success = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "LocReflectorsForSupportActive" && cola_response.parameter.size() > 0)
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.success)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickLocSetOdometryActiveSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbLocSetOdometryActive(sick_lidar_localization::SickLocSetOdometryActiveSrv::Request& service_request, sick_lidar_localization::SickLocSetOdometryActiveSrv::Response& service_response)
+{
+  service_response.set = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "LocSetOdometryActive" && cola_response.parameter.size() > 0)
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.set)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickLocOdometryActiveSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbLocOdometryActive(sick_lidar_localization::SickLocOdometryActiveSrv::Request& service_request, sick_lidar_localization::SickLocOdometryActiveSrv::Response& service_response)
+{
+  service_response.success = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "LocOdometryActive" && cola_response.parameter.size() > 0)
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.success)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickLocSetOdometryPortSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbLocSetOdometryPort(sick_lidar_localization::SickLocSetOdometryPortSrv::Request& service_request, sick_lidar_localization::SickLocSetOdometryPortSrv::Response& service_response)
+{
+  service_response.set = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "LocSetOdometryPort" && cola_response.parameter.size() > 0)
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.set)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickLocOdometryPortSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbLocOdometryPort(sick_lidar_localization::SickLocOdometryPortSrv::Request& service_request, sick_lidar_localization::SickLocOdometryPortSrv::Response& service_response)
+{
+  service_response.success = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "LocOdometryPort" && cola_response.parameter.size() > 0)
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.success)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickLocSetOdometryRestrictYMotionSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbLocSetOdometryRestrictYMotion(sick_lidar_localization::SickLocSetOdometryRestrictYMotionSrv::Request& service_request, sick_lidar_localization::SickLocSetOdometryRestrictYMotionSrv::Response& service_response)
+{
+  service_response.success = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "LocSetOdometryRestrictYMotion" && cola_response.parameter.size() > 0)
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.success)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickLocOdometryRestrictYMotionSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbLocOdometryRestrictYMotion(sick_lidar_localization::SickLocOdometryRestrictYMotionSrv::Request& service_request, sick_lidar_localization::SickLocOdometryRestrictYMotionSrv::Response& service_response)
+{
+  service_response.success = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "LocOdometryRestrictYMotion" && cola_response.parameter.size() > 0)
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.success)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickLocSetAutoStartActiveSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbLocSetAutoStartActive(sick_lidar_localization::SickLocSetAutoStartActiveSrv::Request& service_request, sick_lidar_localization::SickLocSetAutoStartActiveSrv::Response& service_response)
+{
+  service_response.success = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "LocSetAutoStartActive" && cola_response.parameter.size() > 0)
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.success)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickLocAutoStartActiveSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbLocAutoStartActive(sick_lidar_localization::SickLocAutoStartActiveSrv::Request& service_request, sick_lidar_localization::SickLocAutoStartActiveSrv::Response& service_response)
+{
+  service_response.success = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "LocAutoStartActive" && cola_response.parameter.size() > 0)
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.success)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickLocSetAutoStartSavePoseIntervalSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbLocSetAutoStartSavePoseInterval(sick_lidar_localization::SickLocSetAutoStartSavePoseIntervalSrv::Request& service_request, sick_lidar_localization::SickLocSetAutoStartSavePoseIntervalSrv::Response& service_response)
+{
+  service_response.success = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "LocSetAutoStartSavePoseInterval" && cola_response.parameter.size() > 0)
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.success)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickLocAutoStartSavePoseIntervalSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbLocAutoStartSavePoseInterval(sick_lidar_localization::SickLocAutoStartSavePoseIntervalSrv::Request& service_request, sick_lidar_localization::SickLocAutoStartSavePoseIntervalSrv::Response& service_response)
+{
+  service_response.success = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "LocAutoStartSavePoseInterval" && cola_response.parameter.size() > 0)
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.success)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickLocSetRingBufferRecordingActiveSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbLocSetRingBufferRecordingActive(sick_lidar_localization::SickLocSetRingBufferRecordingActiveSrv::Request& service_request, sick_lidar_localization::SickLocSetRingBufferRecordingActiveSrv::Response& service_response)
+{
+  service_response.success = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "LocSetRingBufferRecordingActive" && cola_response.parameter.size() > 0)
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.success)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickLocRingBufferRecordingActiveSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbLocRingBufferRecordingActive(sick_lidar_localization::SickLocRingBufferRecordingActiveSrv::Request& service_request, sick_lidar_localization::SickLocRingBufferRecordingActiveSrv::Response& service_response)
+{
+  service_response.success = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "LocRingBufferRecordingActive" && cola_response.parameter.size() > 0)
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.success)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickDevGetLidarIdentSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbDevGetLidarIdent(sick_lidar_localization::SickDevGetLidarIdentSrv::Request& service_request, sick_lidar_localization::SickDevGetLidarIdentSrv::Response& service_response)
+{
+  service_response.success = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "DevGetLidarIdent" && cola_response.parameter.size() > 0)
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.success)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickDevGetLidarStateSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbDevGetLidarState(sick_lidar_localization::SickDevGetLidarStateSrv::Request& service_request, sick_lidar_localization::SickDevGetLidarStateSrv::Response& service_response)
+{
+  service_response.success = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "DevGetLidarState" && cola_response.parameter.size() > 0)
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.success)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickGetSoftwareVersionSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbGetSoftwareVersion(sick_lidar_localization::SickGetSoftwareVersionSrv::Request& service_request, sick_lidar_localization::SickGetSoftwareVersionSrv::Response& service_response)
+{
+  service_response.success = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "GetSoftwareVersion")
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.success)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickLocAutoStartSavePoseSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbLocAutoStartSavePose(sick_lidar_localization::SickLocAutoStartSavePoseSrv::Request& service_request, sick_lidar_localization::SickLocAutoStartSavePoseSrv::Response& service_response)
+{
+  service_response.success = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "LocAutoStartSavePose")
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.success)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickLocForceUpdateSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbLocForceUpdate(sick_lidar_localization::SickLocForceUpdateSrv::Request& service_request, sick_lidar_localization::SickLocForceUpdateSrv::Response& service_response)
+{
+  service_response.success = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "LocForceUpdate")
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.success)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickLocSaveRingBufferRecordingSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbLocSaveRingBufferRecording(sick_lidar_localization::SickLocSaveRingBufferRecordingSrv::Request& service_request, sick_lidar_localization::SickLocSaveRingBufferRecordingSrv::Response& service_response)
+{
+  service_response.success = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "LocSaveRingBufferRecording" && cola_response.parameter.size() > 0)
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.success)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickLocStartDemoMappingSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbLocStartDemoMapping(sick_lidar_localization::SickLocStartDemoMappingSrv::Request& service_request, sick_lidar_localization::SickLocStartDemoMappingSrv::Response& service_response)
+{
+  service_response.success = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "LocStartDemoMapping")
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.success)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickReportUserMessageSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbReportUserMessage(sick_lidar_localization::SickReportUserMessageSrv::Request& service_request, sick_lidar_localization::SickReportUserMessageSrv::Response& service_response)
+{
+  service_response.success = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "ReportUserMessage" && cola_response.parameter.size() > 0)
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.success)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickSavePermanentSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbSavePermanent(sick_lidar_localization::SickSavePermanentSrv::Request& service_request, sick_lidar_localization::SickSavePermanentSrv::Response& service_response)
+{
+  service_response.success = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "SavePermanent")
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.success)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickLocResultPortSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbLocResultPort(sick_lidar_localization::SickLocResultPortSrv::Request& service_request, sick_lidar_localization::SickLocResultPortSrv::Response& service_response)
+{
+  service_response.success = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "LocResultPort")
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.success)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickLocResultModeSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbLocResultMode(sick_lidar_localization::SickLocResultModeSrv::Request& service_request, sick_lidar_localization::SickLocResultModeSrv::Response& service_response)
+{
+  service_response.success = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "LocResultMode")
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.success)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickLocResultEndiannessSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbLocResultEndianness(sick_lidar_localization::SickLocResultEndiannessSrv::Request& service_request, sick_lidar_localization::SickLocResultEndiannessSrv::Response& service_response)
+{
+  service_response.success = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "LocResultEndianness")
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.success)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickLocResultStateSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbLocResultState(sick_lidar_localization::SickLocResultStateSrv::Request& service_request, sick_lidar_localization::SickLocResultStateSrv::Response& service_response)
+{
+  service_response.success = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "LocResultState")
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.success)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickLocResultPoseIntervalSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbLocResultPoseInterval(sick_lidar_localization::SickLocResultPoseIntervalSrv::Request& service_request, sick_lidar_localization::SickLocResultPoseIntervalSrv::Response& service_response)
+{
+  service_response.success = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "LocResultPoseInterval")
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.success)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickDevSetIMUActiveSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbDevSetIMUActive(sick_lidar_localization::SickDevSetIMUActiveSrv::Request& service_request, sick_lidar_localization::SickDevSetIMUActiveSrv::Response& service_response)
+{
+  service_response.success = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "DevSetIMUActive" && cola_response.parameter.size() > 0)
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.success)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
+}
+
+/*!
+ * Callback for service "SickDevIMUActiveSrv"
+ * Converts the service request to cola telegram, sends the telegram to the localization controller and receives the response
+ * Uses ros service "SickLocColaTelegramSrv"
+ * @param[in] service_request ros service request to localization controller
+ * @param[out] service_response service response from localization controller
+ * @return true on success, false in case of errors (negative response from localization controller, timeout, service or communication error).
+ */
+bool sick_lidar_localization::ColaServices::serviceCbDevIMUActive(sick_lidar_localization::SickDevIMUActiveSrv::Request& service_request, sick_lidar_localization::SickDevIMUActiveSrv::Response& service_response)
+{
+  service_response.success = false;
+  std::string cola_ascii = sick_lidar_localization::ColaEncoder::encodeServiceRequest(service_request);
+  sick_lidar_localization::SickLocColaTelegramMsg cola_response = sendColaTelegram(cola_ascii);
+  if (cola_response.command_name == "DevIMUActive")
+  {
+    if (!sick_lidar_localization::ColaEncoder::parseServiceResponse(cola_response, service_response) || !service_response.success)
+    {
+      ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ", ColaConverter::parseServiceResponse() failed.");
+      return false;
+    }
+    return true;
+  }
+  ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(" << cola_ascii << ") failed, invalid response: " << sick_lidar_localization::Utils::flattenToString(cola_response));
+  return false;
 }

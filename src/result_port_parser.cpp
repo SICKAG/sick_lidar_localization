@@ -54,7 +54,7 @@
  *
  */
 #include <stdexcept>
-#include <ros/ros.h>
+#include "sick_lidar_localization/ros_wrapper.h"
 
 #include "crc16ccitt_false.h"
 #include "sick_lidar_localization/result_port_parser.h"
@@ -191,37 +191,37 @@ size_t sick_lidar_localization::ResultPortParser::decodeResultPortHeader(const s
   size_t bytes_decoded = 0;
 
   // Decode MagicWord: Magic word SICK (0x53 0x49 0x43 0x4B). Size: 4 × UInt8 = 4 byte
-  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_header.MagicWord, "Header.MagicWord");
-  PARSE_ASSERT(telegram_header.MagicWord == 0x5349434B, std::string("ResultPortParser::decodeResultPortHeader(): invalid Header.MagicWord ") + std::to_string(telegram_header.MagicWord));
+  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_header.magicword, "Header.MagicWord");
+  PARSE_ASSERT(telegram_header.magicword == 0x5349434B, std::string("ResultPortParser::decodeResultPortHeader(): invalid Header.MagicWord ") + std::to_string(telegram_header.magicword));
 
   // Decode Length: Length of telegram incl. header, payload, and trailer. Size: UInt32 = 4 byte
-  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_header.Length, "Header.Length");
-  PARSE_ASSERT(telegram_header.Length == 106, std::string("ResultPortParser::decodeResultPortHeader(): invalid Header.Length ") + std::to_string(telegram_header.Length));
+  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_header.length, "Header.Length");
+  PARSE_ASSERT(telegram_header.length == 106, std::string("ResultPortParser::decodeResultPortHeader(): invalid Header.Length ") + std::to_string(telegram_header.length));
 
   // Decode PayloadType: Payload type 0x06c2 = Little Endian, 0x0642 = Big Endian. Size: UInt16 = 2 byte
-  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_header.PayloadType, "Header.PayloadType");
-  PARSE_ASSERT(telegram_header.PayloadType == 0x06c2 || telegram_header.PayloadType == 0x0642, std::string("ResultPortParser::decodeResultPortHeader(): invalid PayloadType ") + std::to_string(telegram_header.PayloadType));
-  m_little_endian_payload = isLittleEndianPayload(telegram_header.PayloadType);
+  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_header.payloadtype, "Header.PayloadType");
+  PARSE_ASSERT(telegram_header.payloadtype == 0x06c2 || telegram_header.payloadtype == 0x0642, std::string("ResultPortParser::decodeResultPortHeader(): invalid PayloadType ") + std::to_string(telegram_header.payloadtype));
+  m_little_endian_payload = isLittleEndianPayload(telegram_header.payloadtype);
   
   
   // Decode PayloadVersion: Version of PayloadType structure. Size: UInt16 = 2 byte
-  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_header.PayloadVersion, "Header.PayloadVersion");
+  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_header.payloadversion, "Header.PayloadVersion");
   
   // Decode OrderNumber: Order number of the localization controller. Size: UInt32 = 4 byte
-  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_header.OrderNumber, "Header.OrderNumber");
+  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_header.ordernumber, "Header.OrderNumber");
   
   // Decode SerialNumber: Serial number of the localization controller. Size: UInt32 = 4 byte
-  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_header.SerialNumber, "Header.SerialNumber");
+  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_header.serialnumber, "Header.SerialNumber");
   
   // Decode FW_Version: Software version of the localization controller. Size: 20 × UInt8 = 20 byte
-  telegram_header.FW_Version = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-  bytes_decoded += copyBytesToArray(binary_data, start_byte + bytes_decoded, telegram_header.FW_Version, "Header.FW_Version");
+  telegram_header.fw_version = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+  bytes_decoded += copyBytesToArray(binary_data, start_byte + bytes_decoded, telegram_header.fw_version, "Header.FW_Version");
   
   // Decode TelegramCounter: Telegram counter since last start-up. Size: UInt32 = 4 byte
-  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_header.TelegramCounter, "Header.TelegramCounter");
+  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_header.telegramcounter, "Header.TelegramCounter");
   
   // Decode SystemTime: Not used. Size: NTP = 8 byte
-  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_header.SystemTime, "Header.SystemTime");
+  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_header.systemtime, "Header.SystemTime");
   
   PARSE_ASSERT(bytes_decoded == 52, std::string("ResultPortParser::decodeResultPortHeader(): ") + std::to_string(bytes_decoded) + " bytes decoded, expected 52 byte");
   return bytes_decoded;
@@ -240,48 +240,48 @@ size_t sick_lidar_localization::ResultPortParser::decodeResultPortPayload(const 
   size_t bytes_decoded = 0;
   
   // Decode ErrorCode: ErrorCode 0: OK, ErrorCode 1: UNKNOWNERROR. Size: UInt16 = 2 byte
-  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_payload.ErrorCode, "Payload.ErrorCode", m_little_endian_payload);
+  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_payload.errorcode, "Payload.ErrorCode", m_little_endian_payload);
   
   // Decode ScanCounter: Counter of related scan data. Size: UInt32 = 4 byte
-  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_payload.ScanCounter, "Payload.ScanCounter", m_little_endian_payload);
+  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_payload.scancounter, "Payload.ScanCounter", m_little_endian_payload);
   
   // Decode Timestamp: Time stamp of the pose [ms]. The time stamp indicates the time at which the pose is calculated. Size: UInt32 = 4 byte
-  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_payload.Timestamp, "Payload.Timestamp", m_little_endian_payload);
+  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_payload.timestamp, "Payload.Timestamp", m_little_endian_payload);
   
   // Decode PoseX: Position X of the vehicle on the map in cartesian global coordinates [mm]. Size: Int32 = 4 byte
-  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_payload.PoseX, "Payload.PoseX", m_little_endian_payload);
+  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_payload.posex, "Payload.PoseX", m_little_endian_payload);
   
   // Decode PoseY: Position Y of the vehicle on the map in cartesian global coordinates [mm]. Size: Int32 = 4 byte
-  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_payload.PoseY, "Payload.PoseY", m_little_endian_payload);
+  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_payload.posey, "Payload.PoseY", m_little_endian_payload);
   
   // Decode PoseYaw: Orientation (yaw) of the vehicle on the map [mdeg] Size: Int32 = 4 byte
-  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_payload.PoseYaw, "Payload.PoseYaw", m_little_endian_payload);
+  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_payload.poseyaw, "Payload.PoseYaw", m_little_endian_payload);
   
   // Decode Reserved1: Reserved. Size: UInt32 = 4 byte
-  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_payload.Reserved1, "Payload.Reserved1", m_little_endian_payload);
+  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_payload.reserved1, "Payload.Reserved1", m_little_endian_payload);
   
   // Decode Reserved2: Reserved. Size: Int32 = 4 byte
-  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_payload.Reserved2, "Payload.Reserved2", m_little_endian_payload);
+  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_payload.reserved2, "Payload.Reserved2", m_little_endian_payload);
   
   // Decode Quality: Quality of pose [0 … 100], 1 = bad pose quality, 100 = good pose quality. Size: UInt8 = 1 byte
-  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_payload.Quality, "Payload.Quality", m_little_endian_payload);
-  PARSE_ASSERT(telegram_payload.Quality >= 0 && telegram_payload.Quality <= 100, std::string("ResultPortParser::decodeResultPortPayload(): invalid Payload.Quality ") + std::to_string(telegram_payload.Quality));
+  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_payload.quality, "Payload.Quality", m_little_endian_payload);
+  PARSE_ASSERT(telegram_payload.quality >= 0 && telegram_payload.quality <= 100, std::string("ResultPortParser::decodeResultPortPayload(): invalid Payload.Quality ") + std::to_string(telegram_payload.quality));
   
   // Decode OutliersRatio: Ratio of beams that cannot be assigned to the current reference map [%]. Size: UInt8 = 1 byte
-  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_payload.OutliersRatio, "Payload.OutliersRatio", m_little_endian_payload);
-  PARSE_ASSERT(telegram_payload.OutliersRatio >= 0 && telegram_payload.OutliersRatio <= 100, std::string("ResultPortParser::decodeResultPortPayload(): invalid Payload.OutliersRatio ") + std::to_string(telegram_payload.OutliersRatio));
+  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_payload.outliersratio, "Payload.OutliersRatio", m_little_endian_payload);
+  PARSE_ASSERT(telegram_payload.outliersratio >= 0 && telegram_payload.outliersratio <= 100, std::string("ResultPortParser::decodeResultPortPayload(): invalid Payload.OutliersRatio ") + std::to_string(telegram_payload.outliersratio));
   
   // Decode CovarianceX: Covariance c1 of the pose X [mm^2]. Size: Int32 = 4 byte
-  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_payload.CovarianceX, "Payload.CovarianceX", m_little_endian_payload);
+  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_payload.covariancex, "Payload.CovarianceX", m_little_endian_payload);
   
   // Decode CovarianceY: Covariance c5 of the pose Y [mm^2]. Size: Int32 = 4 byte
-  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_payload.CovarianceY, "Payload.", m_little_endian_payload);
+  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_payload.covariancey, "Payload.", m_little_endian_payload);
   
   // Decode CovarianceYaw: Covariance c9 of the pose Yaw [mdeg^2]. Size: Int32 = 4 byte
-  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_payload.CovarianceYaw, "Payload.CovarianceYaw", m_little_endian_payload);
+  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_payload.covarianceyaw, "Payload.CovarianceYaw", m_little_endian_payload);
   
   // Decode Reserved3: Reserved. Size: UInt64 = 8 byte
-  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_payload.Reserved3, "Payload.Reserved3", m_little_endian_payload);
+  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_payload.reserved3, "Payload.Reserved3", m_little_endian_payload);
   
   PARSE_ASSERT(bytes_decoded == 52, std::string("ResultPortParser::decodeResultPortPayload(): ") + std::to_string(bytes_decoded) + " bytes decoded, expected 52 byte");
   return bytes_decoded;
@@ -300,7 +300,7 @@ size_t sick_lidar_localization::ResultPortParser::decodeResultPortTrailer(const 
   size_t bytes_decoded = 0;
   
   // Decode Checksum: CRC16-CCITT over length of header (52 bytes) and payload (52 bytes) without 2 bytes of this trailer. Size: UInt16 = 2 byte
-  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_trailer.Checksum, "Payload.Checksum");
+  bytes_decoded += copyBytesToValue(binary_data, start_byte + bytes_decoded, telegram_trailer.checksum, "Payload.Checksum");
   
   PARSE_ASSERT(bytes_decoded == 2, std::string("ResultPortParser::decodeResultPortTrailer(): ") + std::to_string(bytes_decoded) + " bytes decoded, expected 2 byte");
   return bytes_decoded;
@@ -317,7 +317,7 @@ bool sick_lidar_localization::ResultPortParser::decode(const std::vector<uint8_t
   {
     size_t bytes_decoded = 0;
     PARSE_ASSERT(binary_data.size() >= 106, std::string("ResultPortParser::decode(): ") + std::to_string(binary_data.size()) + " byte binary data, expected 106 byte result port telegram");
-    m_result_port_telegram.header.stamp = ros::Time::now();
+    m_result_port_telegram.header.stamp = ROS::now();
     m_result_port_telegram.header.frame_id = m_publish_frame_id;
   
     // Decode result port header
@@ -328,13 +328,13 @@ bool sick_lidar_localization::ResultPortParser::decode(const std::vector<uint8_t
   
     // Decode result port crc
     bytes_decoded += decodeResultPortTrailer(binary_data, bytes_decoded, m_result_port_telegram.telegram_trailer);
-    PARSE_ASSERT(bytes_decoded == m_result_port_telegram.telegram_header.Length, std::string("ResultPortParser::decode(): ") + std::to_string(bytes_decoded) + " bytes decoded, expected " + std::to_string(m_result_port_telegram.telegram_header.Length) + " byte (telegram_header.Length))");
+    PARSE_ASSERT(bytes_decoded == m_result_port_telegram.telegram_header.length, std::string("ResultPortParser::decode(): ") + std::to_string(bytes_decoded) + " bytes decoded, expected " + std::to_string(m_result_port_telegram.telegram_header.length) + " byte (telegram_header.Length))");
   
     // Verify Checksum := CRC16-CCITT over length of header (52 bytes) and payload (52 bytes) without 2 bytes of this trailer. Size: UInt16 = 2 byte
     // Checksum details (See chapter 5.9 "About result port telegrams" of the operation manual for further details):
     // Width: 16 bits, Initial value = 0xFFFF, Truncated polynomial: 0x1021 CRC polynomials with orders of x16 + x12 + x5 + 1 (counted without the leading '1' bit)
     uint16_t checksum = computeChecksum(binary_data);
-    PARSE_ASSERT(checksum == m_result_port_telegram.telegram_trailer.Checksum, std::string("ResultPortParser::decode(): invalid checksum ") + std::to_string(m_result_port_telegram.telegram_trailer.Checksum) + " decoded, expected checksum " + std::to_string(checksum));
+    PARSE_ASSERT(checksum == m_result_port_telegram.telegram_trailer.checksum, std::string("ResultPortParser::decode(): invalid checksum ") + std::to_string(m_result_port_telegram.telegram_trailer.checksum) + " decoded, expected checksum " + std::to_string(checksum));
   
     return true;
   }
@@ -377,16 +377,16 @@ template<typename T> void sick_lidar_localization::ResultPortParser::encodePushV
  */
 void sick_lidar_localization::ResultPortParser::encodeResultPortHeader(const sick_lidar_localization::SickLocResultPortHeaderMsg & telegram_header, std::vector<uint8_t> & binary_data)
 {
-  encodePushValue(telegram_header.MagicWord, binary_data);
-  encodePushValue(telegram_header.Length, binary_data);
-  encodePushValue(telegram_header.PayloadType, binary_data);
-  encodePushValue(telegram_header.PayloadVersion, binary_data);
-  encodePushValue(telegram_header.OrderNumber, binary_data);
-  encodePushValue(telegram_header.SerialNumber, binary_data);
-  for (size_t n = 0; n < telegram_header.FW_Version.size(); n++)
-    binary_data.push_back(telegram_header.FW_Version[n]);
-  encodePushValue(telegram_header.TelegramCounter, binary_data);
-  encodePushValue(telegram_header.SystemTime, binary_data);
+  encodePushValue(telegram_header.magicword, binary_data);
+  encodePushValue(telegram_header.length, binary_data);
+  encodePushValue(telegram_header.payloadtype, binary_data);
+  encodePushValue(telegram_header.payloadversion, binary_data);
+  encodePushValue(telegram_header.ordernumber, binary_data);
+  encodePushValue(telegram_header.serialnumber, binary_data);
+  for (size_t n = 0; n < telegram_header.fw_version.size(); n++)
+    binary_data.push_back(telegram_header.fw_version[n]);
+  encodePushValue(telegram_header.telegramcounter, binary_data);
+  encodePushValue(telegram_header.systemtime, binary_data);
 }
 
 /*
@@ -396,20 +396,20 @@ void sick_lidar_localization::ResultPortParser::encodeResultPortHeader(const sic
  */
 void sick_lidar_localization::ResultPortParser::encodeResultPortPayload(const sick_lidar_localization::SickLocResultPortPayloadMsg & telegram_payload, std::vector<uint8_t> & binary_data)
 {
-  encodePushValue(telegram_payload.ErrorCode, binary_data, m_little_endian_payload);
-  encodePushValue(telegram_payload.ScanCounter, binary_data, m_little_endian_payload);
-  encodePushValue(telegram_payload.Timestamp, binary_data, m_little_endian_payload);
-  encodePushValue(telegram_payload.PoseX, binary_data, m_little_endian_payload);
-  encodePushValue(telegram_payload.PoseY, binary_data, m_little_endian_payload);
-  encodePushValue(telegram_payload.PoseYaw, binary_data, m_little_endian_payload);
-  encodePushValue(telegram_payload.Reserved1, binary_data, m_little_endian_payload);
-  encodePushValue(telegram_payload.Reserved2, binary_data, m_little_endian_payload);
-  encodePushValue(telegram_payload.Quality, binary_data, m_little_endian_payload);
-  encodePushValue(telegram_payload.OutliersRatio, binary_data, m_little_endian_payload);
-  encodePushValue(telegram_payload.CovarianceX, binary_data, m_little_endian_payload);
-  encodePushValue(telegram_payload.CovarianceY, binary_data, m_little_endian_payload);
-  encodePushValue(telegram_payload.CovarianceYaw, binary_data, m_little_endian_payload);
-  encodePushValue(telegram_payload.Reserved3, binary_data, m_little_endian_payload);
+  encodePushValue(telegram_payload.errorcode, binary_data, m_little_endian_payload);
+  encodePushValue(telegram_payload.scancounter, binary_data, m_little_endian_payload);
+  encodePushValue(telegram_payload.timestamp, binary_data, m_little_endian_payload);
+  encodePushValue(telegram_payload.posex, binary_data, m_little_endian_payload);
+  encodePushValue(telegram_payload.posey, binary_data, m_little_endian_payload);
+  encodePushValue(telegram_payload.poseyaw, binary_data, m_little_endian_payload);
+  encodePushValue(telegram_payload.reserved1, binary_data, m_little_endian_payload);
+  encodePushValue(telegram_payload.reserved2, binary_data, m_little_endian_payload);
+  encodePushValue(telegram_payload.quality, binary_data, m_little_endian_payload);
+  encodePushValue(telegram_payload.outliersratio, binary_data, m_little_endian_payload);
+  encodePushValue(telegram_payload.covariancex, binary_data, m_little_endian_payload);
+  encodePushValue(telegram_payload.covariancey, binary_data, m_little_endian_payload);
+  encodePushValue(telegram_payload.covarianceyaw, binary_data, m_little_endian_payload);
+  encodePushValue(telegram_payload.reserved3, binary_data, m_little_endian_payload);
 }
 
 /*
@@ -430,11 +430,11 @@ std::vector<uint8_t> sick_lidar_localization::ResultPortParser::encode(void)
 {
   std::vector<uint8_t> binary_data;
   binary_data.reserve(106);
-  m_little_endian_payload = isLittleEndianPayload(m_result_port_telegram.telegram_header.PayloadType);
+  m_little_endian_payload = isLittleEndianPayload(m_result_port_telegram.telegram_header.payloadtype);
   encodeResultPortHeader(m_result_port_telegram.telegram_header, binary_data);
   encodeResultPortPayload(m_result_port_telegram.telegram_payload, binary_data);
   uint16_t checksum = computeChecksum(binary_data, false);
-  m_result_port_telegram.telegram_trailer.Checksum = checksum;
+  m_result_port_telegram.telegram_trailer.checksum = checksum;
   encodeResultPortTrailer(checksum, binary_data);
   return binary_data;
 }

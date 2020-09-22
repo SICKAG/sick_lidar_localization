@@ -65,10 +65,7 @@
 #include <string>
 #include <vector>
 
-#include "sick_lidar_localization/SickLocResultPortHeaderMsg.h"
-#include "sick_lidar_localization/SickLocResultPortPayloadMsg.h"
-#include "sick_lidar_localization/SickLocResultPortCrcMsg.h"
-#include "sick_lidar_localization/SickLocResultPortTelegramMsg.h"
+#include "sick_lidar_localization/ros_wrapper.h"
 #include "sick_lidar_localization/fifo_buffer.h"
 
 namespace sick_lidar_localization
@@ -85,8 +82,9 @@ namespace sick_lidar_localization
     /*!
      * Constructor, reads the configuration parameter incl. the
      * min and max allowed values in sim_loc_driver messages.
+     * @param[in] nh ros node handle
      */
-    MessageCheckThread();
+    MessageCheckThread(ROS::NodePtr nh = 0);
     
     /*!
      * Destructor
@@ -110,6 +108,8 @@ namespace sick_lidar_localization
      * @param[in] msg result telegram message (SickLocResultPortTelegramMsg)
      */
     virtual void messageCbResultPortTelegrams(const sick_lidar_localization::SickLocResultPortTelegramMsg & msg);
+    /*! ROS2 version of function messageCbResultPortTelegrams */
+    virtual void messageCbResultPortTelegramsROS2(const std::shared_ptr<sick_lidar_localization::SickLocResultPortTelegramMsg> msg) { messageCbResultPortTelegrams(*msg); }
     
   protected:
     
@@ -121,10 +121,11 @@ namespace sick_lidar_localization
 
     /*!
      * Reads and returns a result port telegram from yaml configuration file.
+     * @param[in] nh ros node handle
      * @param[in] param_section section name in yaml configuration file, f.e. "/sick_lidar_localization/sim_loc_driver_check/result_telegram_min_values"
      * @return result port telegram with values initialized from yaml file.
      */
-    sick_lidar_localization::SickLocResultPortTelegramMsg readYamlResultPortTelegram(const std::string param_section);
+    sick_lidar_localization::SickLocResultPortTelegramMsg readYamlResultPortTelegram(ROS::NodePtr nh, const std::string param_section);
 
     /*!
      * Checks a result telegram messages (SickLocResultPortTelegramMsg) against min and max values.
@@ -153,7 +154,7 @@ namespace sick_lidar_localization
     double m_vehicle_time_delta_max;                        ///< max. allowed time diff in seconds between vehicle time (system time from ticks by software pll) and ros::Time::now()
     bool m_vehicle_time_check_enabled;                      ///< true: check of vehicle time is enabled (default), false in case of simulated network errors (LocRequestTimestamp not available)
     double m_software_pll_expected_initialization_duration; ///< expected initialization time for software pll (system time from lidar ticks not yet available)
-    ros::Time m_timestamp_valid_telegram;      ///< timestamp of a telegram with valid vehicle time
+    ROS::Time m_timestamp_valid_telegram;      ///< timestamp of a telegram with valid vehicle time
     bool m_message_check_thread_running;       ///< true: m_message_check_thread is running, otherwise false
     boost::thread* m_message_check_thread;     ///< thread to check sim_loc_driver messages
     double m_message_check_frequency;          ///< frequency to check sim_loc_driver messages (default: 100)

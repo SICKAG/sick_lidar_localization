@@ -56,9 +56,8 @@
 #ifndef __SIM_LOC_TESTCASE_GENERATOR_H_INCLUDED
 #define __SIM_LOC_TESTCASE_GENERATOR_H_INCLUDED
 
+#include "sick_lidar_localization/ros_wrapper.h"
 #include "sick_lidar_localization/result_port_parser.h"
-#include "sick_lidar_localization/SickLocColaTelegramMsg.h"
-#include "sick_lidar_localization/SickLocResultPortTestcaseMsg.h"
 
 namespace sick_lidar_localization
 {
@@ -158,7 +157,8 @@ namespace sick_lidar_localization
     static uint32_t createTimestampTicksMilliSec(void);
   
     static uint32_t s_u32ResultPoseInterval; ///< result pose interval, i.e. the interval in number of scans (default: 1, i.e. result telegram with each processed scan)
-    static std::map<std::string, int32_t> s_controller_settings; ///< test server settings, set by sMN or sRN requests
+    static std::map<std::string, int32_t> s_controller_settings; ///< test server int32 settings, set by sMN or sRN requests
+    static std::map<std::string, std::string> s_controller_settings_str; ///< test server string settings, set by sMN or sRN requests
     
   }; // class TestcaseGenerator
   

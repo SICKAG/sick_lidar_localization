@@ -54,7 +54,7 @@
  *
  */
 
-#include <ros/ros.h>
+#include "sick_lidar_localization/ros_wrapper.h"
 
 #include "sick_lidar_localization/cola_parser.h"
 #include "sick_lidar_localization/cola_transmitter.h"
@@ -117,7 +117,7 @@ bool sick_lidar_localization::ColaTransmitter::close(void)
  * @param[out] send_timestamp send timestamp in seconds (ros timestamp immediately before tcp send)
  * @return true on success, false on failure
  */
-bool sick_lidar_localization::ColaTransmitter::send(const std::vector<uint8_t> & data, ros::Time & send_timestamp)
+bool sick_lidar_localization::ColaTransmitter::send(const std::vector<uint8_t> & data, ROS::Time & send_timestamp)
 {
   return send(m_tcp_socket.socket(), data, send_timestamp);
 }
@@ -129,14 +129,14 @@ bool sick_lidar_localization::ColaTransmitter::send(const std::vector<uint8_t> &
  * @param[out] send_timestamp send timestamp in seconds (ros timestamp immediately before tcp send)
  * @return true on success, false on failure
  */
-bool sick_lidar_localization::ColaTransmitter::send(boost::asio::ip::tcp::socket & socket, const std::vector<uint8_t> & data, ros::Time & send_timestamp)
+bool sick_lidar_localization::ColaTransmitter::send(boost::asio::ip::tcp::socket & socket, const std::vector<uint8_t> & data, ROS::Time & send_timestamp)
 {
   try
   {
-    if (ros::ok() && socket.is_open())
+    if (ROS::ok() && socket.is_open())
     {
       boost::system::error_code errorcode;
-      send_timestamp = ros::Time::now();
+      send_timestamp = ROS::now();
       size_t bytes_written = boost::asio::write(socket, boost::asio::buffer(data.data(), data.size()), boost::asio::transfer_exactly(data.size()), errorcode);
       if (!errorcode && bytes_written == data.size())
         return true;
@@ -157,7 +157,7 @@ bool sick_lidar_localization::ColaTransmitter::send(boost::asio::ip::tcp::socket
  * @param[out] receive_timestamp receive timestamp in seconds (ros timestamp immediately after first response byte received)
  * @return true on success, false on failure
  */
-bool sick_lidar_localization::ColaTransmitter::receive(std::vector<uint8_t> & telegram, double timeout, ros::Time & receive_timestamp)
+bool sick_lidar_localization::ColaTransmitter::receive(std::vector<uint8_t> & telegram, double timeout, ROS::Time & receive_timestamp)
 {
   return receive(m_tcp_socket.socket(), telegram, timeout, receive_timestamp);
 }
@@ -170,15 +170,15 @@ bool sick_lidar_localization::ColaTransmitter::receive(std::vector<uint8_t> & te
  * @param[out] receive_timestamp receive timestamp in seconds (ros timestamp immediately after first response byte received)
  * @return true on success, false on failure
  */
-bool sick_lidar_localization::ColaTransmitter::receive(boost::asio::ip::tcp::socket & socket, std::vector<uint8_t> & telegram, double timeout, ros::Time & receive_timestamp)
+bool sick_lidar_localization::ColaTransmitter::receive(boost::asio::ip::tcp::socket & socket, std::vector<uint8_t> & telegram, double timeout, ROS::Time & receive_timestamp)
 {
   telegram.clear();
   telegram.reserve(1024);
   try
   {
     std::vector<uint8_t> binETX = sick_lidar_localization::ColaParser::binaryETX();
-    ros::Time start_time = ros::Time::now();
-    while (ros::ok() && socket.is_open())
+    ROS::Time start_time = ROS::now();
+    while (ROS::ok() && socket.is_open())
     {
       // Read 1 byte
       uint8_t byte_received = 0;
@@ -187,11 +187,11 @@ bool sick_lidar_localization::ColaTransmitter::receive(boost::asio::ip::tcp::soc
       if (socket.available() > 0 && boost::asio::read(socket, boost::asio::buffer(&byte_received, 1), boost::asio::transfer_exactly(1), errorcode) > 0 && !errorcode)
       {
         if (telegram.empty())
-          receive_timestamp = ros::Time::now(); // timestamp after first byte received
+          receive_timestamp = ROS::now(); // timestamp after first byte received
         telegram.push_back(byte_received);
       }
       else
-        ros::Duration(0.0001).sleep();
+        ROS::sleep(0.0001);
       // Check for "<ETX>" (message completed) and return if received data ends with "<ETX>"
       bool is_binary_cola = sick_lidar_localization::ColaAsciiBinaryConverter::IsColaBinary(telegram);
       if(is_binary_cola)
@@ -208,7 +208,7 @@ bool sick_lidar_localization::ColaTransmitter::receive(boost::asio::ip::tcp::soc
           return true; // <ETX> received, telegram completed
       }
       // Check for timeout
-      if ((ros::Time::now() - start_time).toSec() >= timeout)
+      if (ROS::seconds(ROS::now() - start_time) >= timeout)
       {
         // ROS_DEBUG_STREAM("ColaTransmitter::receive(): timeout, " << telegram.size() << " byte received: " << sick_lidar_localization::Utils::toHexString(telegram));
         break;
@@ -279,14 +279,14 @@ bool sick_lidar_localization::ColaTransmitter::stopReceiverThread(void)
  * @param[out] receive_timestamp receive timestamp in seconds (ros timestamp immediately after first response byte received)
  * @return true on success, false on failure (connection error or timeout)
  */
-bool sick_lidar_localization::ColaTransmitter::waitPopResponse(std::vector<uint8_t> & telegram, double timeout, ros::Time & receive_timestamp)
+bool sick_lidar_localization::ColaTransmitter::waitPopResponse(std::vector<uint8_t> & telegram, double timeout, ROS::Time & receive_timestamp)
 {
-  ros::Time start_time = ros::Time::now();
-  while(ros::ok() && m_receiver_thread_running && m_response_fifo.empty())
+  ROS::Time start_time = ROS::now();
+  while(ROS::ok() && m_receiver_thread_running && m_response_fifo.empty())
   {
-    ros::Duration(0.0001).sleep();
+    ROS::sleep(0.0001);
     m_response_fifo.waitOnceForElement();
-    if((ros::Time::now() - start_time).toSec() >= timeout)
+    if(ROS::seconds(ROS::now() - start_time) >= timeout)
       break;
   }
   if(!m_response_fifo.empty())
@@ -304,7 +304,7 @@ bool sick_lidar_localization::ColaTransmitter::waitPopResponse(std::vector<uint8
  */
 void sick_lidar_localization::ColaTransmitter::runReceiverThreadCb(void)
 {
-  while(ros::ok() && m_receiver_thread_running)
+  while(ROS::ok() && m_receiver_thread_running)
   {
     ColaResponseContainer response;
     if(receive(response.telegram_data, m_receive_timeout, response.receive_timestamp))

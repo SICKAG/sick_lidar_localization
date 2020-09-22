@@ -55,21 +55,26 @@
  *  Copyright 2019 Ing.-Buero Dr. Michael Lehning
  *
  */
-#include <ros/ros.h>
+#include "sick_lidar_localization/ros_wrapper.h"
 #include <string>
 #include <vector>
 
 #include "sick_lidar_localization/driver_monitor.h"
+#include "sick_lidar_localization/cola_configuration.h"
+#include "sick_lidar_localization/cola_services.h"
+#include "sick_lidar_localization/odom_converter.h"
+#include "sick_lidar_localization/time_sync_service.h"
 
 int main(int argc, char** argv)
 {
   // Ros configuration and initialization
-  ros::init(argc, argv, "sim_loc_driver");
-  ros::NodeHandle nh;
+  ROS::init(argc, argv, "sim_loc_driver");
+  ROS::NodePtr nh = ROS::createNode("sim_loc_driver");
   ROS_INFO_STREAM("sim_loc_driver started.");
   
   // Configuration and parameter for sim_loc_driver
-  std::string server_adress("192.168.0.1"), server_default_adress("192.168.0.1");  // IP adress of the localization controller, default: "192.168.0.1"
+  std::string server_adress("192.168.0.1"), server_default_adress("192.168.0.1"), system_server_adress("");  // IP adress of the localization controller, default: "192.168.0.1"
+
   // Default tcp ports: see Operation-Instruction-v1.1.0.241R.pdf, page 51, "IP port number and protocol":
   // For requests and to transmit settings to the localization controller:
   // * IP port number 2111 and 2112 to send telegrams and to request data.
@@ -79,10 +84,15 @@ int main(int argc, char** argv)
   // * Binary result port protocol TCP/IP
   int tcp_port_results = 2201; // Default: The localization controller uses IP port number 2201 to send localization results
   int tcp_port_cola = 2111;    // For requests and to transmit settings to the localization controller: IP port number 2111 and 2112 to send telegrams and to request data, SOPAS CoLa-A or CoLa-B protocols
-  ros::param::param<std::string>("/sim_loc_driver/localization_controller_ip_address" , server_adress, server_adress);
-  ros::param::param<std::string>("/sick_lidar_localization/driver/localization_controller_default_ip_address", server_default_adress, server_default_adress);
-  ros::param::param<int>("/sick_lidar_localization/driver/result_telegrams_tcp_port", tcp_port_results, tcp_port_results);
-  ros::param::param<int>("/sick_lidar_localization/driver/cola_telegrams_tcp_port", tcp_port_cola, tcp_port_cola);
+  int udp_port_odom = 3000;    // Default udp port to send odom packages to the localization controller
+  ROS::param<std::string>(nh, "/sim_loc_driver/localization_controller_ip_address" , server_adress, server_adress);
+  ROS::param<std::string>(nh, "/sick_lidar_localization/driver/localization_controller_default_ip_address", server_default_adress, server_default_adress);
+  ROS::param<int>(nh, "/sick_lidar_localization/driver/result_telegrams_tcp_port", tcp_port_results, tcp_port_results);
+  ROS::param<int>(nh, "/sick_lidar_localization/driver/cola_telegrams_tcp_port", tcp_port_cola, tcp_port_cola);
+  ROS::param<int>(nh, "/sick_lidar_localization/driver/odom_telegrams_udp_port", udp_port_odom, udp_port_odom);
+  ROS::param<std::string>(nh, "/system/localization_controller_ip_address" , system_server_adress, system_server_adress); // optional system setting
+  if(!system_server_adress.empty())
+    server_adress = system_server_adress;
   server_adress = (server_adress.empty()) ? server_default_adress : server_adress;
   
   // Initialize driver threads to connect to localization controller and to monitor driver messages
@@ -91,15 +101,38 @@ int main(int argc, char** argv)
   // - receives binary result port telegrams,
   // - converts them to SickLocResultPortTelegramMsg
   // - publishes the sim location data
-  sick_lidar_localization::DriverMonitor driver_monitor(&nh, server_adress, tcp_port_results, tcp_port_cola);
+  sick_lidar_localization::DriverMonitor driver_monitor(nh, server_adress, tcp_port_results, tcp_port_cola);
   
+  // Initialize cola services
+  sick_lidar_localization::ColaServices cola_services(nh, &driver_monitor);
+
+  // Initialize TimeSyncService
+  sick_lidar_localization::TimeSyncService time_sync_service(nh, &driver_monitor);
+
+  // Initialize odometry converter
+  sick_lidar_localization::OdomConverter odom_converter(nh, server_adress, udp_port_odom, true);
+  
+  // sim_loc_driver messages and services
+#if defined __ROS_VERSION && __ROS_VERSION == 1
+  auto messageCbResultPortTelegrams =  &sick_lidar_localization::DriverMonitor::messageCbResultPortTelegrams;
+  auto serviceCbColaTelegram = &sick_lidar_localization::DriverMonitor::serviceCbColaTelegram;
+  auto messageCbOdometry =  &sick_lidar_localization::OdomConverter::messageCbOdometry;
+#elif defined __ROS_VERSION && __ROS_VERSION == 2
+  auto messageCbResultPortTelegrams =  &sick_lidar_localization::DriverMonitor::messageCbResultPortTelegramsROS2;
+  auto serviceCbColaTelegram = &sick_lidar_localization::DriverMonitor::serviceCbColaTelegramROS2;
+  auto messageCbOdometry =  &sick_lidar_localization::OdomConverter::messageCbOdometryROS2;
+#endif
+
   // Subscribe to sim_loc_driver messages
   std::string result_telegrams_topic = "/sick_lidar_localization/driver/result_telegrams";      // default topic to publish result port telegram messages (type SickLocResultPortTelegramMsg)
-  ros::param::param<std::string>("/sick_lidar_localization/driver/result_telegrams_topic", result_telegrams_topic, result_telegrams_topic);
-  ros::Subscriber result_telegram_subscriber = nh.subscribe(result_telegrams_topic, 1, &sick_lidar_localization::DriverMonitor::messageCbResultPortTelegrams, &driver_monitor);
-  
+  ROS::param<std::string>(nh, "/sick_lidar_localization/driver/result_telegrams_topic", result_telegrams_topic, result_telegrams_topic);
+  sick_lidar_localization::SickLocResultPortTelegramMsgSubscriber result_telegram_subscriber = ROS_CREATE_SUBSCRIBER(nh, sick_lidar_localization::SickLocResultPortTelegramMsg, result_telegrams_topic, messageCbResultPortTelegrams, &driver_monitor);
+  std::string odom_topic = "/odom"; // ros topic for odometry messages
+  ROS::param<std::string>(nh, "/sick_lidar_localization/driver/odom_topic", odom_topic, odom_topic);
+  sick_lidar_localization::OdomMsgSubscriber odom_subscriber = ROS_CREATE_SUBSCRIBER(nh, sick_lidar_localization::OdomMsg, odom_topic, messageCbOdometry, &odom_converter);
+
   // Advertise service "SickLocColaTelegram" to send and receive Cola-ASCII telegrams to resp. from the localization server (request and response)
-  ros::ServiceServer service = nh.advertiseService("SickLocColaTelegram", &sick_lidar_localization::DriverMonitor::serviceCbColaTelegram, &driver_monitor);
+  sick_lidar_localization::SickLocColaTelegramSrvServer srv_server = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocColaTelegramSrv, "SickLocColaTelegram", serviceCbColaTelegram, &driver_monitor);
   ROS_INFO_STREAM("sim_loc_driver advertising service \"SickLocColaTelegram\" for Cola commands, message type SickLocColaTelegramSrv");
   
   // Start driver threads to connect to localization controller and to monitor driver messages
@@ -108,9 +141,20 @@ int main(int argc, char** argv)
     ROS_ERROR_STREAM("## ERROR sim_loc_driver: could not start driver monitor thread, exiting");
     return EXIT_FAILURE;
   }
+
+  // Initial configuration from launch file
+  sick_lidar_localization::ColaConfiguration cola_configuration(nh, &cola_services);
+  cola_configuration.start();  
+
+  // Start time synchronization thread to run the software pll
+  if(!time_sync_service.start())
+  {
+    ROS_ERROR_STREAM("## ERROR time_sync: could not start synchronization thread, exiting");
+    return EXIT_FAILURE;
+  }
   
   // Run ros event loop
-  ros::spin();
+  ROS::spin(nh);
   
   // Cleanup and exit
   std::cout << "sim_loc_driver finished." << std::endl;
@@ -118,5 +162,6 @@ int main(int argc, char** argv)
   driver_monitor.stop();
   std::cout << "sim_loc_driver exits." << std::endl;
   ROS_INFO_STREAM("sim_loc_driver exits.");
+  ROS::deleteNode(nh);
   return EXIT_SUCCESS;
 }

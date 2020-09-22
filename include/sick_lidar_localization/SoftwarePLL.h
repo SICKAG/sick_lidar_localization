@@ -183,7 +183,7 @@ private:
 	bool NearSameTimeStamp(double relTimeStamp1, double relTimeStamp2);
 	bool UpdateInterpolationSlope();
 	uint32_t ExtrapolationDivergenceCounter_;
-	SoftwarePLL(int fifo_length = 7) : FifoSize_(fifo_length), TickFifo_(fifo_length,0), ClockFifo_(fifo_length,0)
+	SoftwarePLL(int fifo_length = 7) : FifoSize_(fifo_length), TickFifo_(fifo_length,0), ClockFifo_(fifo_length,0), IsInitialized_(false), FirstTimeStamp_(0), FirstTick_(0), InterpolationSlope_(0)
 	{
 		AllowedTimeDeviation(SoftwarePLL::MaxAllowedTimeDeviation_); // 1 ms
 		NumberValInFifo_ = 0;

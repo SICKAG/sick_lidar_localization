@@ -58,36 +58,43 @@
  *  Copyright 2019 Ing.-Buero Dr. Michael Lehning
  *
  */
-#include <ros/ros.h>
+#include "sick_lidar_localization/ros_wrapper.h"
 
 #include "sick_lidar_localization/driver_check_thread.h"
 
 int main(int argc, char** argv)
 {
   // Ros configuration and initialization
-  ros::init(argc, argv, "sim_loc_driver_check");
-  ros::NodeHandle nh;
+  ROS::init(argc, argv, "sim_loc_driver_check");
+  ROS::NodePtr nh = ROS::createNode("sim_loc_driver_check");
   ROS_INFO_STREAM("sim_loc_driver_check started.");
   
   std::string result_telegrams_topic = "/sick_lidar_localization/driver/result_telegrams"; // default topic to publish result port telegram messages (type SickLocResultPortTelegramMsg)
-  ros::param::param<std::string>("/sick_lidar_localization/sim_loc_driver_check/result_telegrams_topic", result_telegrams_topic, result_telegrams_topic);
+  ROS::param<std::string>(nh, "/sick_lidar_localization/sim_loc_driver_check/result_telegrams_topic", result_telegrams_topic, result_telegrams_topic);
   
   // Init thread to check sim_loc_driver messages against configured min and max values
-  sick_lidar_localization::MessageCheckThread check_thread;
+  sick_lidar_localization::MessageCheckThread check_thread(nh);
   
   // Subscribe to sim_loc_driver messages
-  ros::Subscriber result_telegram_subscriber = nh.subscribe(result_telegrams_topic, 1, &sick_lidar_localization::MessageCheckThread::messageCbResultPortTelegrams, &check_thread);
+#if defined __ROS_VERSION && __ROS_VERSION == 1
+  sick_lidar_localization::SickLocResultPortTelegramMsgSubscriber result_telegram_subscriber 
+    = ROS_CREATE_SUBSCRIBER(nh, sick_lidar_localization::SickLocResultPortTelegramMsg, result_telegrams_topic, &sick_lidar_localization::MessageCheckThread::messageCbResultPortTelegrams, &check_thread);
+#elif defined __ROS_VERSION && __ROS_VERSION == 2
+  sick_lidar_localization::SickLocResultPortTelegramMsgSubscriber result_telegram_subscriber
+    = ROS_CREATE_SUBSCRIBER(nh, sick_lidar_localization::SickLocResultPortTelegramMsg, result_telegrams_topic, &sick_lidar_localization::MessageCheckThread::messageCbResultPortTelegramsROS2, &check_thread);
+#endif
   
   // Start checking thread
   check_thread.start();
   
   // Run ros event loop
-  ros::spin();
+  ROS::spin(nh);
   
   std::cout << "sim_loc_driver_check finished." << std::endl;
   ROS_INFO_STREAM("sim_loc_driver_check finished.");
   check_thread.stop();
   std::cout << "sim_loc_driver_check exits." << std::endl;
   ROS_INFO_STREAM("sim_loc_driver_check exits.");
+  ROS::deleteNode(nh);
   return 0;
 }

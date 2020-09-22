@@ -61,7 +61,7 @@
 #ifndef __SIM_LOC_COLA_PARSER_H_INCLUDED
 #define __SIM_LOC_COLA_PARSER_H_INCLUDED
 
-#include "sick_lidar_localization/SickLocColaTelegramMsg.h"
+#include "sick_lidar_localization/ros_wrapper.h"
 #include "sick_lidar_localization/cola_converter.h"
 
 namespace sick_lidar_localization
@@ -189,7 +189,33 @@ namespace sick_lidar_localization
      * @return COLA_SOPAS_COMMAND from string.
      */
     static COLA_SOPAS_COMMAND convertSopasCommand(const std::string & sopas_command);
+
+    /*!
+     * Converts and returns the parameter of a cola ascii telegram into a numeric value.
+     * @param[in] cola_arg parameter of a cola ascii telegram
+     * @param[in] base numeric base (10 for decimal values, 16 for hex strings or -1 for autodetection with base 10 in case of +/-sign, otherwise hex)
+     * @param[in] default_value default value returned in case of parse errors
+     * @return parameter converted to integer value
+     */
+    static int32_t convertColaArg(const std::string & cola_arg, int base = 10, int32_t default_value = 0);
     
+    /*!
+     * Converts and returns the parameter of a cola ascii telegram into an unsigned numeric value.
+     * @param[in] cola_arg parameter of a cola ascii telegram
+     * @param[in] base numeric base (10 for decimal values, 16 for hex strings or -1 for autodetection with base 10 in case of +/-sign, otherwise hex)
+     * @param[in] default_value default value returned in case of parse errors
+     * @return parameter converted to integer value
+     */
+    static uint32_t convertColaArg(const std::string & cola_arg, int base = 10, uint32_t default_value = 0);
+    
+    /*!
+     * Converts and returns the parameter of a cola ascii response into a boolean value.
+     * @param[in] cola_response_arg parameter of a cola ascii response
+     * @param[in] default_value default value returned in case of parse errors
+     * @return parameter converted to boolean value
+     */
+    static bool convertColaResponseBool(const std::string & cola_response_arg, bool default_value);
+
   protected:
   
     static const std::string s_command_type_string[MAX_COLA_COMMAND_NUMBER]; ///< static table to convert COLA_SOPAS_COMMAND to string, f.e. s_command_type_string[sRN]:="sRN", s_command_type_string[sRA]:="sRA" and so on

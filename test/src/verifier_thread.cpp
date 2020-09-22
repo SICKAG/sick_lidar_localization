@@ -63,7 +63,7 @@
  *  Copyright 2019 Ing.-Buero Dr. Michael Lehning
  *
  */
-#include <ros/ros.h>
+#include "sick_lidar_localization/ros_wrapper.h"
 
 #include "sick_lidar_localization/utils.h"
 #include "sick_lidar_localization/verifier_thread.h"
@@ -71,10 +71,10 @@
 /*
  * Constructor
  */
-sick_lidar_localization::VerifierThread::VerifierThread()
+sick_lidar_localization::VerifierThread::VerifierThread(ROS::NodePtr nh)
 : m_verification_thread_running(false), m_verification_thread(0), m_result_telegram_rate(10)
 {
-  ros::param::param<double>("/sick_lidar_localization/test_server/result_telegrams_rate", m_result_telegram_rate, m_result_telegram_rate);
+  ROS::param<double>(nh, "/sick_lidar_localization/test_server/result_telegrams_rate", m_result_telegram_rate, m_result_telegram_rate);
 }
 
 /*
@@ -139,7 +139,7 @@ public:
   /*! Constructor. Parameter telegram_counter is the TelegramCounter to search for, i.e. condition() returns true, if element has a TelegramCounter == telegram_counter */
   TelegramCounterCondition(uint32_t telegram_counter = 0) : m_telegram_counter(telegram_counter) {}
   /*! Search callback: return true, if the search condition for an element is true, or false otherwise */
-  virtual bool condition(const sick_lidar_localization::SickLocResultPortTelegramMsg & element) { return element.telegram_header.TelegramCounter == m_telegram_counter; }
+  virtual bool condition(const sick_lidar_localization::SickLocResultPortTelegramMsg & element) { return element.telegram_header.telegramcounter == m_telegram_counter; }
 protected:
   /** member data */
   uint32_t m_telegram_counter; //!< TelegramCounter to search for, i.e. condition() returns true, if element has a TelegramCounter == m_telegram_counter
@@ -153,19 +153,19 @@ void sick_lidar_localization::VerifierThread::runVerificationThreadCb(void)
 {
   ROS_INFO_STREAM("VerifierThread: verification thread for sim_loc_driver messages started");
   size_t total_verification_cnt = 0, total_verification_failed_cnt = 0;
-  while(ros::ok() && m_verification_thread_running)
+  while(ROS::ok() && m_verification_thread_running)
   {
-    while (ros::ok() && m_verification_thread_running && m_result_port_testcase_fifo.size() < 4) // delay verification by 4 messages (messages may cross each other)
+    while (ROS::ok() && m_verification_thread_running && m_result_port_testcase_fifo.size() < 4) // delay verification by 4 messages (messages may cross each other)
     {
-      ros::Duration(1.0 / m_result_telegram_rate).sleep();
+      ROS::sleep(1.0 / m_result_telegram_rate);
     }
     // Match testcase from server against result port telegrams from driver, search by TelegramCounter (unique telegram id)
     sick_lidar_localization::SickLocResultPortTestcaseMsg server_testcase = m_result_port_testcase_fifo.pop();
-    uint32_t server_telegram_counter = server_testcase.telegram_msg.telegram_header.TelegramCounter;
+    uint32_t server_telegram_counter = server_testcase.telegram_msg.telegram_header.telegramcounter;
     TelegramCounterCondition condition(server_telegram_counter);
     sick_lidar_localization::SickLocResultPortTelegramMsg driver_telegram = m_result_port_telegram_fifo.findFirstIf(condition, true);
     // Compare testcase and driver message
-    if (server_telegram_counter == driver_telegram.telegram_header.TelegramCounter) // Testcase from the server corresponds to the result telegram from the driver
+    if (server_telegram_counter == driver_telegram.telegram_header.telegramcounter) // Testcase from the server corresponds to the result telegram from the driver
     {
       if (!sick_lidar_localization::Utils::identicalByStream(driver_telegram, server_testcase.telegram_msg))
       {
@@ -186,7 +186,7 @@ void sick_lidar_localization::VerifierThread::runVerificationThreadCb(void)
   ROS_INFO_STREAM("VerifierThread: verification thread for sim_loc_driver messages finished");
   std::stringstream info_msg;
   info_msg << "VerifierThread: verification thread summary: " << total_verification_cnt << " messages checked, " << total_verification_failed_cnt << " failures.";
-  if(ros::ok())
+  if(ROS::ok())
     ROS_INFO_STREAM(info_msg.str());
   else
     std::cout << info_msg.str() << std::endl;

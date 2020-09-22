@@ -128,7 +128,7 @@ namespace sick_lidar_localization
      */
     void waitForElement()
     {
-      while (ros::ok() && empty())
+      while (ROS::ok() && empty())
       {
         waitForNotify();
       }
@@ -139,7 +139,7 @@ namespace sick_lidar_localization
      */
     void waitOnceForElement()
     {
-      if (ros::ok() && empty())
+      if (ROS::ok() && empty())
       {
         waitForNotify();
       }

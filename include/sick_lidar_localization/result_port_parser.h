@@ -56,10 +56,7 @@
 #ifndef __SIM_LOC_RESULT_PORT_PARSER_H_INCLUDED
 #define __SIM_LOC_RESULT_PORT_PARSER_H_INCLUDED
 
-#include "sick_lidar_localization/SickLocResultPortHeaderMsg.h"
-#include "sick_lidar_localization/SickLocResultPortPayloadMsg.h"
-#include "sick_lidar_localization/SickLocResultPortCrcMsg.h"
-#include "sick_lidar_localization/SickLocResultPortTelegramMsg.h"
+#include "sick_lidar_localization/ros_wrapper.h"
 
 namespace sick_lidar_localization
 {
