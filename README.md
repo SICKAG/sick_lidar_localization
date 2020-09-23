@@ -111,64 +111,66 @@ https://supportportal.sick.com/Product_notes/lls-telegram-listing/.
 ### LiDAR-LOC specialized ROS services
 
 The operations below are implemented by specialized ros services defined in folder srv. These services create and 
-transmit the corresponding cola telegram to the controller and converts the parameter.
+transmit the corresponding cola telegram to the controller and converts the parameter. Naming convention: 
+A service named <ros_service> is defined in file srv/<ros_service>Srv.srv, f.e. command "LocStartLocalizing" is implemented
+by ros service "SickLocStartLocalizing" defined in file "srv/SickLocStartLocalizingSrv.srv".
 
-Request | ros service | Interface definition | Description
---- | --- | --- | ---
-**States Telegrams**|||
-IsSystemReady            | SickLocIsSystemReady         | [srv/SickLocIsSystemReadySrv.srv](srv/SickLocIsSystemReadySrv.srv)                 | Check if the system is ready
-LocState                 | SickLocState                 | [srv/SickLocStateSrv.srv](srv/SickLocStateSrv.srv)                                 | Read localization state
-LocStartLocalizing       | SickLocStartLocalizing       | [srv/SickLocStartLocalizingSrv.srv](srv/SickLocStartLocalizingSrv.srv)             | Start localization
-LocStop                  | SickLocStop                  | [srv/SickLocStopSrv.srv](srv/SickLocStopSrv.srv)                                   | Stop localization or demo mapping
-**Result Output Configuration Telegrams**|||
-LocSetResultPort         | SickLocSetResultPort         | [srv/SickLocSetResultPortSrv.srv](srv/SickLocSetResultPortSrv.srv)                 | Set TCP-port for result output (default: 2201)
-LocSetResultMode         | SickLocSetResultMode         | [srv/SickLocSetResultModeSrv.srv](srv/SickLocSetResultModeSrv.srv)                 | Set mode of result output (default: stream)
-LocSetResultPoseEnabled  | SickLocSetResultPoseEnabled  | [srv/SickLocSetResultPoseEnabledSrv.srv](srv/SickLocSetResultPoseEnabledSrv.srv)   | Disable/enable result output
-LocSetResultEndianness   | SickLocSetResultEndianness   | [srv/SickLocSetResultEndiannessSrv.srv](srv/SickLocSetResultEndiannessSrv.srv)     | Set endianness of result output
-LocSetResultPoseInterval | SickLocSetResultPoseInterval | [srv/SickLocSetResultPoseIntervalSrv.srv](srv/SickLocSetResultPoseIntervalSrv.srv) | Set interval of result output
-LocRequestResultData     | SickLocRequestResultData     | [srv/SickLocRequestResultDataSrv.srv](srv/SickLocRequestResultDataSrv.srv)         | If in poll mode, trigger sending the localization result of the next processed scan via TCP interface.
-**SetPose Telegrams**|||
-LocSetPose               | SickLocSetPose               | [srv/SickLocSetPoseSrv.srv](srv/SickLocSetPoseSrv.srv)                             | Initialize vehicle pose
-**Timestamp Telegrams**|||
-LocRequestTimestamp      | SickLocRequestTimestamp      | [srv/SickLocRequestTimestampSrv.srv](srv/SickLocRequestTimestampSrv.srv)           | Query timestamp, see "Time synchronization"
-**Advanced services in release 4 and later**|||
-DevGetLidarConfig | SickDevGetLidarConfig | [srv/SickDevGetLidarConfigSrv.srv](srv/SickDevGetLidarConfigSrv.srv) | Reads the configuration for a lidar
-DevGetLidarIdent | SickDevGetLidarIdent | [srv/SickDevGetLidarIdentSrv.srv](srv/SickDevGetLidarIdentSrv.srv) | Returns the scanner ident of the specified lidar.
-DevGetLidarState | SickDevGetLidarState | [srv/SickDevGetLidarStateSrv.srv](srv/SickDevGetLidarStateSrv.srv) | Returns the lidar state of the given lidar.
-DevIMUActive | SickDevIMUActive | [srv/SickDevIMUActiveSrv.srv](srv/SickDevIMUActiveSrv.srv) | Read IMU Active status
-DevSetIMUActive | SickDevSetIMUActive | [srv/SickDevSetIMUActiveSrv.srv](srv/SickDevSetIMUActiveSrv.srv) | Set IMU Active
-DevSetLidarConfig | SickDevSetLidarConfig | [srv/SickDevSetLidarConfigSrv.srv](srv/SickDevSetLidarConfigSrv.srv) | Sets the configuration for a lidar
-GetSoftwareVersion | SickGetSoftwareVersion | [srv/SickGetSoftwareVersionSrv.srv](srv/SickGetSoftwareVersionSrv.srv) | Returns the version string of the localization system.
-LocAutoStartActive | SickLocAutoStartActive | [srv/SickLocAutoStartActiveSrv.srv](srv/SickLocAutoStartActiveSrv.srv) | Returns whether autostart is used or not.
-LocAutoStartSavePose | SickLocAutoStartSavePose | [srv/SickLocAutoStartSavePoseSrv.srv](srv/SickLocAutoStartSavePoseSrv.srv) | Saves the current pose. If no further pose writing occurs the system will reinitialize itself at this position on restart if LocAutoStart is enabled.
-LocAutoStartSavePoseInterval | SickLocAutoStartSavePoseInterval | [srv/SickLocAutoStartSavePoseIntervalSrv.srv](srv/SickLocAutoStartSavePoseIntervalSrv.srv) | Returns the interval in seconds for saving the pose automatically for auto start while localizing
-LocForceUpdate | SickLocForceUpdate | [srv/SickLocForceUpdateSrv.srv](srv/SickLocForceUpdateSrv.srv) | Forces an update of the map localization with the next scan. This should be used with care because it is not garanteed that this converges to the correct pose. Moving the LiDAR instead should be preferred because it produces more robust updates.
-LocInitializePose | SickLocInitializePose | [srv/SickLocInitializePoseSrv.srv](srv/SickLocInitializePoseSrv.srv) | Automatically adjusts the given input pose according to the map of the environment and the current LiDAR measurements.
-LocInitialPose | SickLocInitialPose | [srv/SickLocInitialPoseSrv.srv](srv/SickLocInitialPoseSrv.srv) | Reads the initial pose
-LocMap | SickLocMap | [srv/SickLocMapSrv.srv](srv/SickLocMapSrv.srv) | Returns the currently loaded map
-LocMapState | SickLocMapState | [srv/SickLocMapStateSrv.srv](srv/SickLocMapStateSrv.srv) | Reads the current state of the map. 0: not active, 1: active.
-LocOdometryActive | SickLocOdometryActive | [srv/SickLocOdometryActiveSrv.srv](srv/SickLocOdometryActiveSrv.srv) | Returns the usage of odometry data in Scan Matching
-LocOdometryPort | SickLocOdometryPort | [srv/SickLocOdometryPortSrv.srv](srv/SickLocOdometryPortSrv.srv) | Returns the UDP port of the UDP socket for odometry measurement input.
-LocOdometryRestrictYMotion | SickLocOdometryRestrictYMotion | [srv/SickLocOdometryRestrictYMotionSrv.srv](srv/SickLocOdometryRestrictYMotionSrv.srv) | Returns the variable that Indicates that the vehicle will be able to move in Y-Direction or not. If true the mounting pose of the sensor matters. For omnidirektional vehicles this must be set to false.
-LocReflectorsForSupportActive | SickLocReflectorsForSupportActive | [srv/SickLocReflectorsForSupportActiveSrv.srv](srv/SickLocReflectorsForSupportActiveSrv.srv) | Returns usage of mapped reflectors for map based localization robustification
-LocResultEndianness | SickLocResultEndianness | [srv/SickLocResultEndiannessSrv.srv](srv/SickLocResultEndiannessSrv.srv) | Returns the endianness of the result port: 0 BIG_ENDIAN (default), 1 LITTLE_ENDIAN
-LocResultMode | SickLocResultMode | [srv/SickLocResultModeSrv.srv](srv/SickLocResultModeSrv.srv) | Returns the current result mode: 0 STREAM (default), 1 POLL
-LocResultPort | SickLocResultPort | [srv/SickLocResultPortSrv.srv](srv/SickLocResultPortSrv.srv) | Read the TCP port of the localization controller for result output.
-LocResultPoseInterval | SickLocResultPoseInterval | [srv/SickLocResultPoseIntervalSrv.srv](srv/SickLocResultPoseIntervalSrv.srv) | Reads the interval of the pose result output.
-LocResultState | SickLocResultState | [srv/SickLocResultStateSrv.srv](srv/SickLocResultStateSrv.srv) | Returns the output state of the result interface
-LocRingBufferRecordingActive | SickLocRingBufferRecordingActive | [srv/SickLocRingBufferRecordingActiveSrv.srv](srv/SickLocRingBufferRecordingActiveSrv.srv) | Returns whether rolling buffer log file recording is activated or deactivated
-LocSaveRingBufferRecording | SickLocSaveRingBufferRecording | [srv/SickLocSaveRingBufferRecordingSrv.srv](srv/SickLocSaveRingBufferRecordingSrv.srv) | Saves the current sensor data ring buffer as log file. The log file can be downloaded via FTP.
-LocSetAutoStartActive | SickLocSetAutoStartActive | [srv/SickLocSetAutoStartActiveSrv.srv](srv/SickLocSetAutoStartActiveSrv.srv) | Sets whether autostart should be used or not.
-LocSetAutoStartSavePoseInterval | SickLocSetAutoStartSavePoseInterval | [srv/SickLocSetAutoStartSavePoseIntervalSrv.srv](srv/SickLocSetAutoStartSavePoseIntervalSrv.srv) | Set the interval in seconds for saving the pose automatically for auto start while localizing
-LocSetMap | SickLocSetMap | [srv/SickLocSetMapSrv.srv](srv/SickLocSetMapSrv.srv) | Loads a given map
-LocSetOdometryActive | SickLocSetOdometryActive | [srv/SickLocSetOdometryActiveSrv.srv](srv/SickLocSetOdometryActiveSrv.srv) | Enables or disables the usage of odometry data in Scan Matching
-LocSetOdometryPort | SickLocSetOdometryPort | [srv/SickLocSetOdometryPortSrv.srv](srv/SickLocSetOdometryPortSrv.srv) | Sets the UDP port of the UDP socket for odometry measurement input.
-LocSetOdometryRestrictYMotion | SickLocSetOdometryRestrictYMotion | [srv/SickLocSetOdometryRestrictYMotionSrv.srv](srv/SickLocSetOdometryRestrictYMotionSrv.srv) | Method to set the variable that Indicates that the vehicle will be able to move in Y-Direction or not. If true the mounting pose of the sensor matters. For omnidirektional vehicles this must be set to false.
-LocSetReflectorsForSupportActive | SickLocSetReflectorsForSupportActive | [srv/SickLocSetReflectorsForSupportActiveSrv.srv](srv/SickLocSetReflectorsForSupportActiveSrv.srv) | Enables or disables usage of mapped reflectors for map based localization robustification
-LocSetRingBufferRecordingActive | SickLocSetRingBufferRecordingActive | [srv/SickLocSetRingBufferRecordingActiveSrv.srv](srv/SickLocSetRingBufferRecordingActiveSrv.srv) | Activates or deactivates rolling buffer log file recording on error report
-LocStartDemoMapping | SickLocStartDemoMapping | [srv/SickLocStartDemoMappingSrv.srv](srv/SickLocStartDemoMappingSrv.srv) | If all conditions are met, starts the demo mapping system.
-ReportUserMessage | SickReportUserMessage | [srv/SickReportUserMessageSrv.srv](srv/SickReportUserMessageSrv.srv) | Method to report messages to the localization system.
-SavePermanent | SickSavePermanent | [srv/SickSavePermanentSrv.srv](srv/SickSavePermanentSrv.srv) | Saves the parameters permanently on the device. They will be reloaded on reboot.
+Request : ros service | Description
+--- | ---
+**States Telegrams**|
+IsSystemReady : [SickLocIsSystemReady](srv/SickLocIsSystemReadySrv.srv) | Check if the system is ready
+LocState : [SickLocState](srv/SickLocStateSrv.srv) | Read localization state
+LocStartLocalizing : [SickLocStartLocalizing](srv/SickLocStartLocalizingSrv.srv) | Start localization
+LocStop : [SickLocStop](srv/SickLocStopSrv.srv) | Stop localization or demo mapping
+**Result Output Configuration Telegrams**||
+LocSetResultPort : [SickLocSetResultPort](srv/SickLocSetResultPortSrv.srv) | Set TCP-port for result output (default: 2201)
+LocSetResultMode : [SickLocSetResultMode](srv/SickLocSetResultModeSrv.srv) | Set mode of result output (default: stream)
+LocSetResultPoseEnabled : [SickLocSetResultPoseEnabled](srv/SickLocSetResultPoseEnabledSrv.srv) | Disable/enable result output
+LocSetResultEndianness : [SickLocSetResultEndianness](srv/SickLocSetResultEndiannessSrv.srv) | Set endianness of result output
+LocSetResultPoseInterval : [SickLocSetResultPoseInterval](srv/SickLocSetResultPoseIntervalSrv.srv) | Set interval of result output
+LocRequestResultData : [SickLocRequestResultData](srv/SickLocRequestResultDataSrv.srv) | If in poll mode, trigger sending the localization result of the next processed scan via TCP interface.
+**SetPose Telegrams**|
+LocSetPose : [SickLocSetPose](srv/SickLocSetPoseSrv.srv) | Initialize vehicle pose
+**Timestamp Telegrams**|
+LocRequestTimestamp : [SickLocRequestTimestamp](srv/SickLocRequestTimestampSrv.srv) | Query timestamp, see "Time synchronization"
+**Advanced services in release 4 and later**|
+DevGetLidarConfig : [SickDevGetLidarConfig](srv/SickDevGetLidarConfigSrv.srv) | Reads the configuration for a lidar
+DevGetLidarIdent : [SickDevGetLidarIdent](srv/SickDevGetLidarIdentSrv.srv) | Returns the scanner ident of the specified lidar.
+DevGetLidarState : [SickDevGetLidarState](srv/SickDevGetLidarStateSrv.srv) | Returns the lidar state of the given lidar.
+DevIMUActive : [SickDevIMUActive](srv/SickDevIMUActiveSrv.srv) | Read IMU Active status
+DevSetIMUActive : [SickDevSetIMUActive](srv/SickDevSetIMUActiveSrv.srv) | Set IMU Active
+DevSetLidarConfig : [SickDevSetLidarConfig](srv/SickDevSetLidarConfigSrv.srv) | Sets the configuration for a lidar
+GetSoftwareVersion : [SickGetSoftwareVersion](srv/SickGetSoftwareVersionSrv.srv) | Returns the version string of the localization system.
+LocAutoStartActive : [SickLocAutoStartActive](srv/SickLocAutoStartActiveSrv.srv) | Returns whether autostart is used or not.
+LocAutoStartSavePose : [SickLocAutoStartSavePose](srv/SickLocAutoStartSavePoseSrv.srv) | Saves the current pose. If no further pose writing occurs the system will reinitialize itself at this position on restart if LocAutoStart is enabled.
+LocAutoStartSavePoseInterval : [SickLocAutoStartSavePoseInterval](srv/SickLocAutoStartSavePoseIntervalSrv.srv) | Returns the interval in seconds for saving the pose automatically for auto start while localizing
+LocForceUpdate : [SickLocForceUpdate](srv/SickLocForceUpdateSrv.srv) | Forces an update of the map localization with the next scan. This should be used with care because it is not garanteed that this converges to the correct pose. Moving the LiDAR instead should be preferred because it produces more robust updates.
+LocInitializePose : [SickLocInitializePose](srv/SickLocInitializePoseSrv.srv) | Automatically adjusts the given input pose according to the map of the environment and the current LiDAR measurements.
+LocInitialPose : [SickLocInitialPose](srv/SickLocInitialPoseSrv.srv) | Reads the initial pose
+LocMap : [SickLocMap](srv/SickLocMapSrv.srv) | Returns the currently loaded map
+LocMapState : [SickLocMapState](srv/SickLocMapStateSrv.srv) | Reads the current state of the map. 0: not active, 1: active.
+LocOdometryActive : [SickLocOdometryActive](srv/SickLocOdometryActiveSrv.srv) | Returns the usage of odometry data in Scan Matching
+LocOdometryPort : [SickLocOdometryPort](srv/SickLocOdometryPortSrv.srv) | Returns the UDP port of the UDP socket for odometry measurement input.
+LocOdometryRestrictYMotion : [SickLocOdometryRestrictYMotion](srv/SickLocOdometryRestrictYMotionSrv.srv) | Returns the variable that Indicates that the vehicle will be able to move in Y-Direction or not. If true the mounting pose of the sensor matters. For omnidirektional vehicles this must be set to false.
+LocReflectorsForSupportActive : [SickLocReflectorsForSupportActive](srv/SickLocReflectorsForSupportActiveSrv.srv) | Returns usage of mapped reflectors for map based localization robustification
+LocResultEndianness : [SickLocResultEndianness](srv/SickLocResultEndiannessSrv.srv) | Returns the endianness of the result port: 0 BIG_ENDIAN (default), 1 LITTLE_ENDIAN
+LocResultMode : [SickLocResultMode](srv/SickLocResultModeSrv.srv) | Returns the current result mode: 0 STREAM (default), 1 POLL
+LocResultPort : [SickLocResultPort](srv/SickLocResultPortSrv.srv) | Read the TCP port of the localization controller for result output.
+LocResultPoseInterval : [SickLocResultPoseInterval](srv/SickLocResultPoseIntervalSrv.srv) | Reads the interval of the pose result output.
+LocResultState : [SickLocResultState](srv/SickLocResultStateSrv.srv) | Returns the output state of the result interface
+LocRingBufferRecordingActive : [SickLocRingBufferRecordingActive](srv/SickLocRingBufferRecordingActiveSrv.srv) | Returns whether rolling buffer log file recording is activated or deactivated
+LocSaveRingBufferRecording : [SickLocSaveRingBufferRecording](srv/SickLocSaveRingBufferRecordingSrv.srv) | Saves the current sensor data ring buffer as log file. The log file can be downloaded via FTP.
+LocSetAutoStartActive : [SickLocSetAutoStartActive](srv/SickLocSetAutoStartActiveSrv.srv) | Sets whether autostart should be used or not.
+LocSetAutoStartSavePoseInterval : [SickLocSetAutoStartSavePoseInterval](srv/SickLocSetAutoStartSavePoseIntervalSrv.srv) | Set the interval in seconds for saving the pose automatically for auto start while localizing
+LocSetMap : [SickLocSetMap](srv/SickLocSetMapSrv.srv) | Loads a given map
+LocSetOdometryActive : [SickLocSetOdometryActive](srv/SickLocSetOdometryActiveSrv.srv) | Enables or disables the usage of odometry data in Scan Matching
+LocSetOdometryPort : [SickLocSetOdometryPort](srv/SickLocSetOdometryPortSrv.srv) | Sets the UDP port of the UDP socket for odometry measurement input.
+LocSetOdometryRestrictYMotion : [SickLocSetOdometryRestrictYMotion](srv/SickLocSetOdometryRestrictYMotionSrv.srv) | Method to set the variable that Indicates that the vehicle will be able to move in Y-Direction or not. If true the mounting pose of the sensor matters. For omnidirektional vehicles this must be set to false.
+LocSetReflectorsForSupportActive : [SickLocSetReflectorsForSupportActive](srv/SickLocSetReflectorsForSupportActiveSrv.srv) | Enables or disables usage of mapped reflectors for map based localization robustification
+LocSetRingBufferRecordingActive : [SickLocSetRingBufferRecordingActive](srv/SickLocSetRingBufferRecordingActiveSrv.srv) | Activates or deactivates rolling buffer log file recording on error report
+LocStartDemoMapping : [SickLocStartDemoMapping](srv/SickLocStartDemoMappingSrv.srv) | If all conditions are met, starts the demo mapping system.
+ReportUserMessage : [SickReportUserMessage](srv/SickReportUserMessageSrv.srv) | Method to report messages to the localization system.
+SavePermanent : [SickSavePermanent](srv/SickSavePermanentSrv.srv) | Saves the parameters permanently on the device. They will be reloaded on reboot.
 
 The following examples show how to call these services under ROS1:
 

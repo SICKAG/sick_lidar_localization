@@ -26,7 +26,7 @@ sick_lidar_localization:
 
   # Configuration for time sync service
   time_sync:
-    cola_response_timeout:      1.0  # Timeout in seconds for cola responses from localization controller
+    cola_response_timeout:     10.0  # Timeout in seconds for cola responses from localization controller
     software_pll_fifo_length:   7    # Length of software pll fifo, default: 7
     time_sync_rate:             0.1  # Frequency to request timestamps from localization controller using ros service "SickLocRequestTimestamp" and to update software pll, default: 0.1
     time_sync_initial_rate:     1.0  # Frequency to request timestamps and to update software pll during initialization phase, default: 1.0 (LocRequestTimestamp queries every second)

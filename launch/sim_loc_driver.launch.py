@@ -23,7 +23,7 @@ def generate_launch_description():
             {'/sick_lidar_localization/driver/monitoring_rate': 1.0},                                                       # frequency to monitor driver messages, once per second by default
             {'/sick_lidar_localization/driver/monitoring_message_timeout': 1.0},                                            # timeout for driver messages, shutdown tcp-sockets and reconnect after message timeout, 1 second by default
             # Configuration for time sync service
-            {'/sick_lidar_localization/time_sync/cola_response_timeout':      1.0},                                         # Timeout in seconds for cola responses from localization controller
+            {'/sick_lidar_localization/time_sync/cola_response_timeout':     10.0},                                         # Timeout in seconds for cola responses from localization controller
             {'/sick_lidar_localization/time_sync/software_pll_fifo_length':   7},                                           # Length of software pll fifo, default: 7
             {'/sick_lidar_localization/time_sync/time_sync_rate':             0.1},                                         # Frequency to request timestamps from localization controller using ros service "SickLocRequestTimestamp" and to update software pll, default: 0.1
             {'/sick_lidar_localization/time_sync/time_sync_initial_rate':     1.0},                                         # Frequency to request timestamps and to update software pll during initialization phase, default: 1.0 (LocRequestTimestamp queries every second)
@@ -34,7 +34,7 @@ def generate_launch_description():
             {'/sick_lidar_localization/driver/tf_parent_frame_id': "tf_demo_map"},                                          # parent frame of tf messages of of vehicles pose (typically frame of the loaded map)
             {'/sick_lidar_localization/driver/tf_child_frame_id': "tf_sick_lidar_localization"},                            # child frame of tf messages of of vehicles pose
             # Configuration for cola service
-            {'/sick_lidar_localization/time_sync/cola_response_timeout':      1.0},                                         # Timeout in seconds for cola responses from localization controller
+            {'/sick_lidar_localization/time_sync/cola_response_timeout':     10.0},                                         # Timeout in seconds for cola responses from localization controller
             {'/sick_lidar_localization/driver/tcp_connection_retry_delay':    1.0},                                         # Delay in seconds to retry to connect to the localization controller, default 1 second
             # Odometry configuration
             {'/sick_lidar_localization/driver/odom_telegrams_udp_port':   3000},                                            # Udp port to send odom packages to the localization controller

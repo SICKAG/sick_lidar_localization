@@ -76,7 +76,7 @@
  */
 sick_lidar_localization::DriverMonitor::DriverMonitor(ROS::NodePtr nh, const std::string & server_adress, int ip_port_results, int ip_port_cola)
 : m_initialized(false), m_nh(nh), m_server_adress(server_adress), m_ip_port_results(ip_port_results), m_ip_port_cola(ip_port_cola), m_cola_binary(false),
-  m_monitoring_thread_running(false), m_monitoring_thread(0), m_monitoring_rate(1.0), m_receive_telegrams_timeout(1.0), m_cola_response_timeout(1.0), m_cola_transmitter(0)
+  m_monitoring_thread_running(false), m_monitoring_thread(0), m_monitoring_rate(1.0), m_receive_telegrams_timeout(1.0), m_cola_response_timeout(10.0), m_cola_transmitter(0)
 {
   if(m_nh)
   {
@@ -219,7 +219,7 @@ bool sick_lidar_localization::DriverMonitor::serviceCbColaTelegram(sick_lidar_lo
   if(!m_cola_transmitter->waitPopResponse(binary_response, cola_request.wait_response_timeout, receive_timestamp) || binary_response.size() < 2) // at least 2 byte stx and etx
   {
     ROS_WARN_STREAM("## ERROR DriverMonitor::serviceCbColaTelegram: receive() failed by localization server " << m_server_adress << ":" << m_ip_port_cola
-      << "(" << binary_response.size() << " bytes received, configured timeout: " << cola_request.wait_response_timeout << " sec, receive failed after " 
+      << "(" << binary_response.size() << " bytes received, configured timeout: " << cola_request.wait_response_timeout << " sec, receive failed after "
       << ROS::seconds(ROS::now() - waitResponseStartTime) << " sec)");
     stopColaTransmitter();
     return false;
@@ -302,15 +302,15 @@ bool sick_lidar_localization::DriverMonitor::resultTelegramsReceiveStatusIsOk(vo
     ROS_INFO_STREAM("DriverMonitor: result telegrams deactivated, no result telegrams received (cola response: " << sick_lidar_localization::Utils::flattenToString(cola_response) << ")");
     return true; // OK: LocResultState == "0": Result telegrams deactivated
   }
-    
+
   // Check timestamp of last result telegram
   ROS::Time driver_message_recv_timestamp = m_driver_message_recv_timestamp.get();
   ROS::Time current_time = ROS::now();
   if(ROS::seconds(current_time - driver_message_recv_timestamp) <= m_receive_telegrams_timeout)
     return true; // OK: result telegram received within timeout
   // Timeout error: Localization and result telegrams activated, but no result telegrams received
-  ROS_WARN_STREAM("## ERROR DriverMonitor: Localization and result telegrams activated, timeout while waiting for result telegrams, current time: " 
-    << ROS::secondsSinceStart(current_time) << " last message received: " << ROS::secondsSinceStart(driver_message_recv_timestamp) << ", delta_time: " 
+  ROS_WARN_STREAM("## ERROR DriverMonitor: Localization and result telegrams activated, timeout while waiting for result telegrams, current time: "
+    << ROS::secondsSinceStart(current_time) << " last message received: " << ROS::secondsSinceStart(driver_message_recv_timestamp) << ", delta_time: "
     << ROS::seconds(current_time - driver_message_recv_timestamp) << ", configured timeout: " << m_receive_telegrams_timeout << " sec");
   return false;
 }

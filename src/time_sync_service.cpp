@@ -93,7 +93,7 @@
  */
 sick_lidar_localization::TimeSyncService::TimeSyncService(ROS::NodePtr nh, sick_lidar_localization::DriverMonitor* driver_monitor)
 : m_nh(nh), m_driver_monitor(driver_monitor), m_time_sync_thread_running(false), m_time_sync_thread(0), m_cola_binary(false), m_cola_binary_mode(0), m_software_pll_fifo_length(7),
-  m_time_sync_rate(0.1), m_time_sync_initial_rate(1.0), m_time_sync_initial_length(10), m_cola_response_timeout(1.0)
+  m_time_sync_rate(0.1), m_time_sync_initial_rate(1.0), m_time_sync_initial_length(10), m_cola_response_timeout(10.0)
 {
   if(nh)
   {
@@ -152,7 +152,7 @@ bool sick_lidar_localization::TimeSyncService::serviceCbRequestTimestamp(sick_li
 #elif defined __ROS_VERSION && __ROS_VERSION == 2
   std::shared_ptr<sick_lidar_localization::SickLocColaTelegramSrv::Request> cola_telegram_request = std::make_shared<sick_lidar_localization::SickLocColaTelegramSrv::Request>();
   std::shared_ptr<sick_lidar_localization::SickLocColaTelegramSrv::Response> cola_telegram_response = std::make_shared<sick_lidar_localization::SickLocColaTelegramSrv::Response>();
-#endif  
+#endif
   cola_telegram_request->cola_ascii_request = "sMN LocRequestTimestamp";
   cola_telegram_request->wait_response_timeout = m_cola_response_timeout;
   // cola_telegram_request.send_binary = m_cola_binary;
@@ -169,7 +169,7 @@ bool sick_lidar_localization::TimeSyncService::serviceCbRequestTimestamp(sick_li
     {
       ROS_WARN_STREAM("## ERROR TimeSyncService::serviceCbRequestTimestamp(): calling ros service \"SickLocColaTelegram\" failed with request: \""
         << cola_telegram_request->cola_ascii_request << "\" response: \"" << cola_telegram_response->cola_ascii_response << "\" after "
-        << ROS::seconds(ROS::now() - start_request_timestamp) << " sec (status: " << service_call_ok << ", timeout: " << m_cola_response_timeout 
+        << ROS::seconds(ROS::now() - start_request_timestamp) << " sec (status: " << service_call_ok << ", timeout: " << m_cola_response_timeout
         << " sec, " << __FILE__ << ":" << __LINE__ << ")");
       return false;
     }
@@ -180,7 +180,7 @@ bool sick_lidar_localization::TimeSyncService::serviceCbRequestTimestamp(sick_li
     ROS_WARN_STREAM("## ERROR TimeSyncService::serviceCbRequestTimestamp():  request \"" << cola_telegram_request->cola_ascii_request << "\" failed, exception " << exc.what());
     return false;
   }
-  
+
   // Decode response, get timestamp_lidar_ms from parameter
   sick_lidar_localization::SickLocColaTelegramMsg cola_response = sick_lidar_localization::ColaParser::decodeColaTelegram(cola_telegram_response->cola_ascii_response);
   if(cola_response.command_name != "LocRequestTimestamp" || cola_response.parameter.size() != 1)
@@ -204,23 +204,23 @@ bool sick_lidar_localization::TimeSyncService::serviceCbRequestTimestamp(sick_li
     ROS_WARN_STREAM("## ERROR TimeSyncService::serviceCbRequestTimestamp(): invalid timestamps in cola response " << sick_lidar_localization::Utils::flattenToString(cola_response));
     return false;
   }
-  
+
   // Set timestamps in service_response
   service_response.send_time_vehicle_sec = cola_telegram_response->send_timestamp_sec;          // Vehicle timestamp when sending LocRequestTimestamp (seconds part of ros timestamp immediately before tcp send)
   service_response.send_time_vehicle_nsec = cola_telegram_response->send_timestamp_nsec;        // Vehicle timestamp when sending LocRequestTimestamp (nano seconds part of ros timestamp immediately before tcp send)
   service_response.receive_time_vehicle_sec = cola_telegram_response->receive_timestamp_sec;    // Vehicle timestamp when receiving the LocRequestTimestamp response (seconds part of ros timestamp immediately after first response byte received)
   service_response.receive_time_vehicle_nsec = cola_telegram_response->receive_timestamp_nsec;  // Vehicle timestamp when receiving the LocRequestTimestamp response (nano seconds part of ros timestamp immediately after first response byte received)
-  
+
   // Calculate time offset
   uint64_t send_time_vehicle_nsec = service_response.send_time_vehicle_sec * 1000000000UL + service_response.send_time_vehicle_nsec;
   uint64_t receive_time_vehicle_nsec = service_response.receive_time_vehicle_sec * 1000000000UL + service_response.receive_time_vehicle_nsec;
   uint64_t mean_time_vehicle_nsec = send_time_vehicle_nsec / 2 + receive_time_vehicle_nsec / 2;
   service_response.mean_time_vehicle_ms = mean_time_vehicle_nsec / 1000000;                                      // Vehicle mean timestamp in milliseconds: (send_time_vehicle + receive_time_vehicle) / 2
   service_response.delta_time_ms = service_response.mean_time_vehicle_ms - service_response.timestamp_lidar_ms;  // Time offset: mean_time_vehicle_ms - timestamp_lidar_ms
-  
+
   // Update software pll
   updateSoftwarePll(service_response);
-  
+
   // Get system timestamp from ticks via ros service "SickLocTimeSync"
   sick_lidar_localization::SickLocTimeSyncSrv::Request time_sync_msg_request;
   sick_lidar_localization::SickLocTimeSyncSrv::Response time_sync_msg_response;
@@ -231,7 +231,7 @@ bool sick_lidar_localization::TimeSyncService::serviceCbRequestTimestamp(sick_li
     ROS_WARN_STREAM("## ERROR TimeSyncService::serviceCbRequestTimestamp(): service \"SickLocTimeSync\" failed, could not get system time from ticks");
   else
     ROS_INFO_STREAM("TimeSyncService::serviceCbRequestTimestamp(): no system time from ticks, software pll still initializing");
-  
+
   return true;
 }
 
@@ -354,7 +354,7 @@ void sick_lidar_localization::TimeSyncService::runTimeSyncThreadCb(void)
       sick_lidar_localization::SickLocRequestTimestampSrv::Request* timestamp_service_request = &timestamp_service.request;
       sick_lidar_localization::SickLocRequestTimestampSrv::Response* timestamp_service_response = &timestamp_service.response;
       // bool service_call_ok = m_request_timestamp_client.call(timestamp_service);
-#elif defined __ROS_VERSION && __ROS_VERSION == 2      
+#elif defined __ROS_VERSION && __ROS_VERSION == 2
       std::shared_ptr<sick_lidar_localization::SickLocRequestTimestampSrv::Request> timestamp_service_request = std::make_shared<sick_lidar_localization::SickLocRequestTimestampSrv::Request>();
       std::shared_ptr<sick_lidar_localization::SickLocRequestTimestampSrv::Response> timestamp_service_response = std::make_shared<sick_lidar_localization::SickLocRequestTimestampSrv::Response>();
 #endif

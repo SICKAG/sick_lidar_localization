@@ -74,12 +74,12 @@
 /*!
  * Constructor
  */
-sick_lidar_localization::ColaServices::ColaServices(ROS::NodePtr nh, sick_lidar_localization::DriverMonitor* driver_monitor) : m_nh(nh), m_driver_monitor(driver_monitor), m_cola_response_timeout(1.0)
+sick_lidar_localization::ColaServices::ColaServices(ROS::NodePtr nh, sick_lidar_localization::DriverMonitor* driver_monitor) : m_nh(nh), m_driver_monitor(driver_monitor), m_cola_response_timeout(10.0)
 {
   if(nh)
   {
     ROS::param<double>(nh, "/sick_lidar_localization/time_sync/cola_response_timeout", m_cola_response_timeout, m_cola_response_timeout);
-    
+
     // Advertise ros services supported by release 3 and later
 #if defined __ROS_VERSION && __ROS_VERSION == 1
     m_srv_server_01 = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocIsSystemReadySrv, "SickLocIsSystemReady",&sick_lidar_localization::ColaServices::serviceCbIsSystemReady, this);
@@ -105,7 +105,7 @@ sick_lidar_localization::ColaServices::ColaServices(ROS::NodePtr nh, sick_lidar_
     m_srv_server_10 = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocSetResultPoseIntervalSrv, "SickLocSetResultPoseInterval",&sick_lidar_localization::ColaServices::serviceCbLocSetResultPoseIntervalROS2, this);
     m_srv_server_11 = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocRequestResultDataSrv, "SickLocRequestResultData",&sick_lidar_localization::ColaServices::serviceCbLocRequestResultDataROS2, this);
     m_srv_server_12 = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickLocSetPoseSrv, "SickLocSetPose",&sick_lidar_localization::ColaServices::serviceCbLocSetPoseROS2, this);
-#endif   
+#endif
     // Advertise ros services supported by release 4 and later
 #if defined __ROS_VERSION && __ROS_VERSION == 1
      m_SickDevSetLidarConfigSrvServer = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::SickDevSetLidarConfigSrv, "SickDevSetLidarConfig", &sick_lidar_localization::ColaServices::serviceCbDevSetLidarConfig, this);
@@ -212,7 +212,7 @@ sick_lidar_localization::SickLocColaTelegramMsg sick_lidar_localization::ColaSer
 #elif defined __ROS_VERSION && __ROS_VERSION == 2
   std::shared_ptr<sick_lidar_localization::SickLocColaTelegramSrv::Request> cola_telegram_request = std::make_shared<sick_lidar_localization::SickLocColaTelegramSrv::Request>();
   std::shared_ptr<sick_lidar_localization::SickLocColaTelegramSrv::Response> cola_telegram_response = std::make_shared<sick_lidar_localization::SickLocColaTelegramSrv::Response>();
-#endif  
+#endif
   cola_telegram_request->cola_ascii_request = cola_ascii_request;
   cola_telegram_request->wait_response_timeout = m_cola_response_timeout;
   try
@@ -226,7 +226,7 @@ sick_lidar_localization::SickLocColaTelegramMsg sick_lidar_localization::ColaSer
     bool service_call_ok = m_driver_monitor->serviceCbColaTelegram(*cola_telegram_request, *cola_telegram_response);
     if (!service_call_ok || cola_telegram_response->cola_ascii_response.empty())
     {
-       ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(): calling ros service \"SickLocColaTelegram\" failed with request: \"" 
+       ROS_WARN_STREAM("## ERROR ColaServices::sendColaTelegram(): calling ros service \"SickLocColaTelegram\" failed with request: \""
         << cola_telegram_request->cola_ascii_request << "\", response: \"" << cola_telegram_response->cola_ascii_response << "\"" << " after "
         << ROS::seconds(ROS::now() - start_request_timestamp) << " sec (timeout: " << m_cola_response_timeout << " sec, " << __FILE__ << ":" << __LINE__ << ")");
       return sick_lidar_localization::SickLocColaTelegramMsg();
