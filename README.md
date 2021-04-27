@@ -242,16 +242,16 @@ ros2 service call SickLocState sick_lidar_localization/srv/SickLocStateSrv "{}" 
 ros2 service call SickLocStop sick_lidar_localization/srv/SickLocStopSrv "{}"                                                  # expected answer: "success: True" # Stop localization or demo mapping
 ros2 service call SickLocStartLocalizing sick_lidar_localization/srv/SickLocStartLocalizingSrv "{}"                            # expected answer: "success: True" # Start localization
 # ROS2 services for Result Output Configuration Telegrams
-ros2 service call SickLocSetResultPort sick_lidar_localization/srv/SickSickLocSetResultPortSrv "{port: 2201}"                  # expected answer: "success: True" # Set TCP-port for result output
-ros2 service call SickLocSetResultMode sick_lidar_localization/srv/SickSickLocSetResultModeSrv "{mode: 0}"                     # expected answer: "success: True" # Set mode of result output (stream or: poll)
-ros2 service call SickLocSetResultPoseEnabled sick_lidar_localization/srv/SickSickLocSetResultPoseEnabledSrv "{enabled: 1}"    # expected answer: "success: True" # Disable/enable result output
-ros2 service call SickLocSetResultEndianness sick_lidar_localization/srv/SickSickLocSetResultEndiannessSrv "{endianness: 0}"   # expected answer: "success: True" # Set endianness of result output
-ros2 service call SickLocSetResultPoseInterval sick_lidar_localization/srv/SickSickLocSetResultPoseIntervalSrv "{interval: 1}" # expected answer: "success: True" # Set interval of result output
-ros2 service call SickLocRequestResultData sick_lidar_localization/srv/SickSickLocRequestResultDataSrv "{}"                    # expected answer: "success: True" # If in poll mode, trigger sending the localization result of the next processed scan via TCP interface.
+ros2 service call SickLocSetResultPort sick_lidar_localization/srv/SickLocSetResultPortSrv "{port: 2201}"                      # expected answer: "success: True" # Set TCP-port for result output
+ros2 service call SickLocSetResultMode sick_lidar_localization/srv/SickLocSetResultModeSrv "{mode: 0}"                         # expected answer: "success: True" # Set mode of result output (stream or: poll)
+ros2 service call SickLocSetResultPoseEnabled sick_lidar_localization/srv/SickLocSetResultPoseEnabledSrv "{enabled: 1}"        # expected answer: "success: True" # Disable/enable result output
+ros2 service call SickLocSetResultEndianness sick_lidar_localization/srv/SickLocSetResultEndiannessSrv "{endianness: 0}"       # expected answer: "success: True" # Set endianness of result output
+ros2 service call SickLocSetResultPoseInterval sick_lidar_localization/srv/SickLocSetResultPoseIntervalSrv "{interval: 1}"     # expected answer: "success: True" # Set interval of result output
+ros2 service call SickLocRequestResultData sick_lidar_localization/srv/SickLocRequestResultDataSrv "{}"                        # expected answer: "success: True" # If in poll mode, trigger sending the localization result of the next processed scan via TCP interface.
 # ROS2 services for SetPose Telegrams
-ros2 service call SickLocSetPose sick_lidar_localization/srv/SickSickLocSetPoseSrv "{posex: 10300, posey: -5200, yaw: 30000, uncertainty: 1000}" # expected answer: "success: True" # Initialize vehicle pose
+ros2 service call SickLocSetPose sick_lidar_localization/srv/SickLocSetPoseSrv "{posex: 10300, posey: -5200, yaw: 30000, uncertainty: 1000}" # expected answer: "success: True" # Initialize vehicle pose
 # ROS2 services for Timestamp Telegrams
-ros2 service call SickLocRequestTimestamp sick_lidar_localization/srv/SickSickLocRequestTimestampSrv "{}" # expected reponse: "timestamp_lidar_ms: <uint32>, mean_time_vehicle_ms: <uint64>, delta_time_ms: <uint64>, ..." # Query timestamp, see "Time synchronization"
+ros2 service call SickLocRequestTimestamp sick_lidar_localization/srv/SickLocRequestTimestampSrv "{}" # expected reponse: "timestamp_lidar_ms: <uint32>, mean_time_vehicle_ms: <uint64>, delta_time_ms: <uint64>, ..." # Query timestamp, see "Time synchronization"
 # ROS2 services release 4 and later
 ros2 service call SickLocIsSystemReady sick_lidar_localization/srv/SickLocIsSystemReadySrv "{}" # expected reponse: "success=True"
 ros2 service call SickLocStartLocalizing sick_lidar_localization/srv/SickLocStartLocalizingSrv "{}" # expected reponse: "success=True"
