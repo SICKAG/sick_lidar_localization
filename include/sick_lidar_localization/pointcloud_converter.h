@@ -1,5 +1,5 @@
 /*
- * @brief sim_loc_pointcloud_converts sim_loc_driver messages (type sick_lidar_localization::SickLocResultPortTelegramMsg),
+ * @brief sim_loc_pointcloud_converts sim_loc_driver messages (type sick_lidar_localization::LocResultPortTelegramMsg),
  * to PointCloud2 messages and publishes PointCloud2 messages on topic "/cloud".
  *
  * The vehicle poses (PoseX, PoseY, PoseYaw of result port telegrams) are transformed and published
@@ -59,21 +59,27 @@
  *  Copyright 2019 Ing.-Buero Dr. Michael Lehning
  *
  */
-#ifndef __SIM_LOC_POINT_CLOUD_CONVERTER_H_INCLUDED
-#define __SIM_LOC_POINT_CLOUD_CONVERTER_H_INCLUDED
+#ifndef __LIDAR_LOC_POINT_CLOUD_CONVERTER_H_INCLUDED
+#define __LIDAR_LOC_POINT_CLOUD_CONVERTER_H_INCLUDED
 
 #include <list>
 #include <string>
 
-#include "sick_lidar_localization/ros_wrapper.h"
+#include "sick_lidar_localization/sick_common.h"
 #include "sick_lidar_localization/fifo_buffer.h"
-#include "sick_lidar_localization/result_port_parser.h"
+#if __ROS_VERSION == 1
+#include "sick_lidar_localization/LocalizationControllerResultMessage0502.h"
+#elif __ROS_VERSION == 2
+#include "sick_lidar_localization/msg/localization_controller_result_message0502.hpp"
+namespace sick_lidar_localization { using namespace msg; }
+#endif
+
 
 namespace sick_lidar_localization
 {
   /*!
-   * class PointCloudConverter implements a thread to converts sim_loc_driver messages
-   * (type sick_lidar_localization::SickLocResultPortTelegramMsg) to PointCloud2 messages
+   * class PointCloudConverter implements a thread to converts lidar_loc_driver messages
+   * (type sick_lidar_localization::LocResultPortTelegramMsg) to PointCloud2 messages
    * and publishes them on topic "/cloud".
    */
   class PointCloudConverter
@@ -84,7 +90,7 @@ namespace sick_lidar_localization
      * Constructor
      * @param[in] nh ros node handle
      */
-    PointCloudConverter(ROS::NodePtr nh = 0);
+    PointCloudConverter(rosNodePtr nh = 0);
     
     /*!
      * Destructor
@@ -104,14 +110,14 @@ namespace sick_lidar_localization
     virtual bool stop(void);
   
     /*!
-     * Callback for result telegram messages (SickLocResultPortTelegramMsg) from sim_loc_driver.
+     * Callback for result telegram messages (LocResultPortTelegramMsg) from lidar_loc_driver.
      * The received message is buffered by fifo m_result_port_telegram_fifo.
      * Message handling and evaluation is done in the converter thread.
-     * @param[in] msg result telegram message (SickLocResultPortTelegramMsg)
+     * @param[in] msg result telegram message (LocResultPortTelegramMsg)
      */
-    virtual void messageCbResultPortTelegrams(const sick_lidar_localization::SickLocResultPortTelegramMsg & msg);
+    virtual void messageCbResultPortTelegrams(const sick_lidar_localization::LocalizationControllerResultMessage0502 & msg);
     /*! ROS2 version of function messageCbResultPortTelegrams */
-    virtual void messageCbResultPortTelegramsROS2(const std::shared_ptr<sick_lidar_localization::SickLocResultPortTelegramMsg> msg) { messageCbResultPortTelegrams(*msg); }
+    virtual void messageCbResultPortTelegramsROS2(const std::shared_ptr<sick_lidar_localization::LocalizationControllerResultMessage0502> msg) { messageCbResultPortTelegrams(*msg); }
   
   protected:
 
@@ -125,26 +131,26 @@ namespace sick_lidar_localization
      * @param[in] triangle_height heigt of the virtual triangle in meter
      * @return list of 3D points
      */
-    std::vector<geometry_msgs::Point> poseToDemoPoints(double posx, double posy, double yaw, double triangle_height);
+    std::vector<ros_geometry_msgs::Point> poseToDemoPoints(double posx, double posy, double yaw, double triangle_height);
     
     /*!
      * Converts the vehicle position from a result port telegram to PointCloud2 message with 4 points
      * (centerpoint plus 3 demo corner points showing a triangle).
-     * @param[in] msg result telegram message (SickLocResultPortTelegramMsg)
+     * @param[in] msg result telegram message (LocResultPortTelegramMsg)
      * @return PointCloud2 message
      */
-    sensor_msgs::PointCloud2 convertToPointCloud(const sick_lidar_localization::SickLocResultPortTelegramMsg & msg);
+    ros_sensor_msgs::PointCloud2 convertToPointCloud(const sick_lidar_localization::LocalizationControllerResultMessage0502 & msg);
 
     /*!
      * Converts the vehicle pose from a result port telegram to a tf transform.
-     * @param[in] msg result telegram message (SickLocResultPortTelegramMsg)
+     * @param[in] msg result telegram message (LocResultPortTelegramMsg)
      * @return tf transform
      */
-    geometry_msgs::TransformStamped convertToTransform(const sick_lidar_localization::SickLocResultPortTelegramMsg & msg);
+    ros_geometry_msgs::TransformStamped convertToTransform(const sick_lidar_localization::LocalizationControllerResultMessage0502 & msg);
     
     /*!
      * Thread callback, pops received telegrams from the fifo buffer m_result_port_telegram_fifo,
-     * converts the telegrams from type SickLocResultPortTelegramMsg to PointCloud2 and publishes
+     * converts the telegrams from type LocResultPortTelegramMsg to PointCloud2 and publishes
      * PointCloud2 messages. The vehicle pose is converted to a tf transform and broadcasted.
      */
     virtual void runPointCloudConverterThreadCb(void);
@@ -153,16 +159,16 @@ namespace sick_lidar_localization
      * member data
      */
 
-    ROS::NodePtr m_nh; ///< ROS node handle
-    sick_lidar_localization::FifoBuffer<sick_lidar_localization::SickLocResultPortTelegramMsg, boost::mutex> m_result_port_telegram_fifo; ///< fifo buffer for result port telegrams from sim_loc_driver
+    rosNodePtr m_nh; ///< ROS node handle
+    sick_lidar_localization::FifoBuffer<sick_lidar_localization::LocalizationControllerResultMessage0502, std::mutex> m_result_port_telegram_fifo; ///< fifo buffer for result port telegrams from lidar_loc_driver
     std::string m_point_cloud_frame_id;      ///< ros frame id of PointCloud2 messages, default: "sick_lidar_localization"
     std::string m_tf_parent_frame_id;        ///< parent frame of tf messages of of vehicles pose (typically frame of the loaded map)
     std::string m_tf_child_frame_id;         ///< child frame of tf messages of of vehicles pose
-    sick_lidar_localization::PointCloud2MsgPublisher m_point_cloud_publisher;  ///< ros publisher for PointCloud2 messages
+    rosPublisher<ros_sensor_msgs::PointCloud2>  m_point_cloud_publisher;  ///< ros publisher for PointCloud2 messages
     bool m_converter_thread_running;         ///< true: m_verification_thread is running, otherwise false
-    boost::thread* m_converter_thread;       ///< thread to verify sim_loc_driver
+    std::thread* m_converter_thread;         ///< thread to verify lidar_loc_driver
     
   }; // class PointCloudConverter
   
 } // namespace sick_lidar_localization
-#endif // __SIM_LOC_POINT_CLOUD_CONVERTER_H_INCLUDED
+#endif // __LIDAR_LOC_POINT_CLOUD_CONVERTER_H_INCLUDED

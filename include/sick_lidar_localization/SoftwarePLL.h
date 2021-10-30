@@ -47,7 +47,7 @@ public:
 	@param[in] tick sensor ticks
 	@return true if timestamp is computed, false otherwise (SoftwarePLL not initialized)
 	*/
-  bool GetCorrectedTimeStamp(uint32_t& sec, uint32_t& nanoSec, uint32_t tick);
+  bool GetCorrectedTimeStamp(uint32_t& sec, uint32_t& nanoSec, uint64_t tick);
 
 	/**
 	@brief Updates PLL internale State should be called only with network send timestamps
@@ -57,7 +57,7 @@ public:
 	@param[in] curtick sensor ticks
 	@return PLL is in valid state (true)
 	*/
-  bool UpdatePLL(uint32_t sec, uint32_t nanoSec, uint32_t curtick);
+  bool UpdatePLL(uint32_t sec, uint32_t nanoSec, uint64_t curtick);
 	
 	/**
   @brief Returns the initialization status, i.e. true, if SoftwarePLL is initialized, or false otherwise (inconsistent or not enough samples in the fifo buffer)
@@ -136,14 +136,14 @@ protected:
   *
   @return counter of extrapolated divergences
   */
-	uint32_t ExtrapolationDivergenceCounter() const { return ExtrapolationDivergenceCounter_; }
+	uint64_t ExtrapolationDivergenceCounter() const { return ExtrapolationDivergenceCounter_; }
   
   /**
   @brief Sets the counter of extrapolated divergences (number of times the estimated and measured receive timestamp differed more than AllowedTimeDeviation
   *
   @param[in] val counter of extrapolated divergences
   */
-	void ExtrapolationDivergenceCounter(uint32_t val) { ExtrapolationDivergenceCounter_ = val; }
+	void ExtrapolationDivergenceCounter(uint64_t val) { ExtrapolationDivergenceCounter_ = val; }
 
 	/**
 	@brief Pushes measurement timestamp and sensor ticks to the fifo,
@@ -153,7 +153,7 @@ protected:
 	@param curtick: sensor ticks
 	@return always true
 	*/
-	bool PushIntoFifo(double curTimeStamp, uint32_t curtick);// update tick fifo and update clock (timestamp) fifo;
+	bool PushIntoFifo(double curTimeStamp, uint64_t curtick);// update tick fifo and update clock (timestamp) fifo;
 
 	/**
 	@brief Extrapolates and returns the measurement timestamp in seconds
@@ -164,25 +164,25 @@ protected:
 	@param tick: sensor ticks
 	@return measurement timestamp in seconds relative to FirstTimeStamp
 	*/
-	double ExtraPolateRelativeTimeStamp(uint32_t tick);
+	double ExtraPolateRelativeTimeStamp(uint64_t tick);
 
 private:
 	
 	int NumberValInFifo_;
 	const int FifoSize_;
 	static const double MaxAllowedTimeDeviation_;
-	static const uint32_t MaxExtrapolationCounter_;
-	std::vector<uint32_t> TickFifo_;
+	static const uint64_t MaxExtrapolationCounter_;
+	std::vector<uint64_t> TickFifo_;
 	std::vector<double> ClockFifo_;
 	bool IsInitialized_;
 	double FirstTimeStamp_;
 	double AllowedTimeDeviation_;
 	uint64_t FirstTick_;
-	uint32_t Lastcurtick_ = 0;
+	uint64_t Lastcurtick_ = 0;
 	double InterpolationSlope_;
 	bool NearSameTimeStamp(double relTimeStamp1, double relTimeStamp2);
 	bool UpdateInterpolationSlope();
-	uint32_t ExtrapolationDivergenceCounter_;
+	uint64_t ExtrapolationDivergenceCounter_;
 	SoftwarePLL(int fifo_length = 7) : FifoSize_(fifo_length), TickFifo_(fifo_length,0), ClockFifo_(fifo_length,0), IsInitialized_(false), FirstTimeStamp_(0), FirstTick_(0), InterpolationSlope_(0)
 	{
 		AllowedTimeDeviation(SoftwarePLL::MaxAllowedTimeDeviation_); // 1 ms

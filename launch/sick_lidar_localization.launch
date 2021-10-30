@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<launch>
+
+  <!-- Launch sick_lidar_localization -->
+  <arg name="hostname"   default="192.168.0.1"/>         <!-- IP adress of the localization controller --> 
+  <arg name="serverpath" default="api"/>                 <!-- Relative path to the rest api, i.e. url of rest requests is "http://<hostname>/<serverpath>/" --> 
+  <arg name="verbose"    default="0"/>                   <!-- If verbose>0: print informational messages, otherwise silent except for error messages --> 
+  <arg name="udp_ip_sim_output" default=""/>             <!-- IP address for output UDP messages, or "" for broadcast (INADDR_ANY), default: "", use IP address of your local machine --> 
+  <arg name="udp_ip_sim_input" default="192.168.0.1"/>   <!-- IP address for input UDP messages, or "" for broadcast, default: "192.168.0.1", (IP adress of the localization controller) --> 
+  <arg name="udp_port_sim_input" default="5009"/>        <!-- UDP port of input messages --> 
+  <arg name="udp_sim_input_source_id" default="21"/>     <!-- Source_id of UDP input messages (Source ID of odom sender), has to match the ID in the localization controller configuration file lidarloc_config.yml (vehicle/odometer/external/interface/sourceId) --> 
+  <arg name="udp_port_sim_output" default="5010"/>       <!-- UDP port of output messages --> 
+  <arg name="udp_sim_output_logfile" default=""/>        <!-- Optional logfile for human readable UDP output messages, default: "" (no outputlogfile) --> 
+  <arg name="software_pll_fifo_length" default="7"/>     <!-- Length of fifo in SoftwarePLL -->   
+  <arg name="odom_topic" default="/odom"/>               <!-- Topic of ros odom messages -->
+  <arg name="ros_odom_to_udp_msg" default="3"/>          <!-- Convert ros odom message to upd: 0 = map velocity to OdometryPayload0101 (Type 1, Version 1, LidarLoc 1), -->
+                                                         <!-- 1 = map velocity to OdometryPayload0104 (Type 1, Version 4, LidarLoc 2),    -->
+                                                         <!-- 2 = map position to OdometryPayload0105 (Type 1, Version 5, LidarLoc 2),    -->
+                                                         <!-- 3 = map velocity to OdometryPayload0104 and position to OdometryPayload0105 -->
+
+  <node name="sick_lidar_localization" pkg="sick_lidar_localization" type="sick_lidar_localization" output="screen">
+    <param name="hostname"                 type="string"  value="$(arg hostname)"/>                  <!-- IP adress of the localization controller, f.e. "192.168.0.1" (default) -->
+    <param name="serverpath"               type="string"  value="$(arg serverpath)"/>                <!-- Relative path to the rest api, i.e. url of rest requests is "http://<hostname>/<serverpath>/" --> 
+    <param name="verbose"                  type="int"     value="$(arg verbose)"/>                   <!-- If verbose>0: print informational messages, otherwise silent except for error messages --> 
+    <param name="udp_ip_sim_output"        type="string"  value="$(arg udp_ip_sim_output)"/>         <!-- IP address for output UDP messages, or "" for broadcast (INADDR_ANY), default: "", use IP address of your local machine --> 
+    <param name="udp_ip_sim_input"         type="string"  value="$(arg udp_ip_sim_input)"/>          <!-- IP address for input UDP messages, or "" for broadcast, default: "192.168.0.1", (IP adress of the localization controller) --> 
+    <param name="udp_port_sim_input"       type="int"     value="$(arg udp_port_sim_input)"/>        <!-- UDP port of input messages --> 
+    <param name="udp_sim_input_source_id"  type="int"     value="$(arg udp_sim_input_source_id)"/>   <!-- Source_id of UDP input messages --> 
+    <param name="udp_port_sim_output"      type="int"     value="$(arg udp_port_sim_output)"/>       <!-- UDP port of output messages --> 
+    <param name="udp_sim_output_logfile"   type="string"  value="$(arg udp_sim_output_logfile)"/>    <!-- Optional logfile for human readable UDP output messages, default: "" (no outputlogfile) --> 
+    <param name="software_pll_fifo_length" type="int"     value="$(arg software_pll_fifo_length)"/>  <!-- Length of fifo in SoftwarePLL --> 
+    <param name="odom_topic"               type="string"  value="$(arg odom_topic)"/>                <!-- Topic of ros odom messages --> 
+    <param name="ros_odom_to_udp_msg"      type="int"     value="$(arg ros_odom_to_udp_msg)"/>       <!-- Convert ros odom message to upd --> 
+  </node>
+
+</launch>
+

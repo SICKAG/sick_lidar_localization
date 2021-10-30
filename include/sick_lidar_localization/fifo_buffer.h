@@ -52,26 +52,29 @@
  *  Copyright 2019 Ing.-Buero Dr. Michael Lehning
  *
  */
-#ifndef __SIM_LOC_FIFO_H_INCLUDED
-#define __SIM_LOC_FIFO_H_INCLUDED
+#ifndef __LIDAR_LOC_FIFO_H_INCLUDED
+#define __LIDAR_LOC_FIFO_H_INCLUDED
 
-#include <boost/thread.hpp>
+#include <condition_variable>
+#include <mutex>
+#include <thread>
 #include <list>
+#include "sick_ros_wrapper.h"
 
 namespace sick_lidar_localization
 {
   /*!
    * Class FifoBuffer implements a threadsafe fifo-buffer ("first in, first out").
    */
-  template<typename ElementType, typename MutexType = boost::mutex> class FifoBuffer
+  template<typename ElementType, typename MutexType = std::mutex> class FifoBuffer
   {
   public:
-    
+
     /*!
      * Constructor
      */
     FifoBuffer() : m_fifo_buffer() {}
-    
+
     /*!
      * Destructor
      */
@@ -79,25 +82,25 @@ namespace sick_lidar_localization
     {
       notify(); // interrupt a possible wait in waitForNotify()
     }
-  
+
     /*!
      * Returns true, if the fifo buffer is empty.
      */
     bool empty(void)
     {
-      boost::lock_guard<MutexType> message_lockguard(m_fifo_mutex);
+      std::lock_guard<MutexType> message_lockguard(m_fifo_mutex);
       return m_fifo_buffer.empty();
     }
-  
+
     /*!
      * Returns the number of elements in the fifo buffer.
      */
     size_t size(void)
     {
-      boost::lock_guard<MutexType> message_lockguard(m_fifo_mutex);
+      std::lock_guard<MutexType> message_lockguard(m_fifo_mutex);
       return m_fifo_buffer.size();
     }
-  
+
     /*!
      * Pushes an element to the end of the fifo buffer.
      */
@@ -106,14 +109,14 @@ namespace sick_lidar_localization
       push_back(elem);
       notifyAll();
     }
-  
+
     /*!
      * Removes and returns the first element from the fifo buffer.
      * @return first element in the buffer, or T() if the fifo is empty.
      */
     ElementType pop(void)
     {
-      boost::lock_guard<MutexType> message_lockguard(m_fifo_mutex);
+      std::lock_guard<MutexType> message_lockguard(m_fifo_mutex);
       if(!m_fifo_buffer.empty())
       {
         ElementType elem(m_fifo_buffer.front());
@@ -122,24 +125,24 @@ namespace sick_lidar_localization
       }
       return ElementType();
     }
-  
+
     /*!
      * Waits until there's at least one element in the fifo buffer.
      */
     void waitForElement()
     {
-      while (ROS::ok() && empty())
+      while (rosOk() && empty())
       {
         waitForNotify();
       }
     }
-  
+
     /*!
      * Waits until there's at least one element in the fifo buffer, or a notification has been signalled.
      */
     void waitOnceForElement()
     {
-      if (ROS::ok() && empty())
+      if (rosOk() && empty())
       {
         waitForNotify();
       }
@@ -152,7 +155,7 @@ namespace sick_lidar_localization
     {
       notifyAll();
     }
-    
+
     /*!
      * Interface class to search for an element with a unary condition.
      */
@@ -162,7 +165,7 @@ namespace sick_lidar_localization
       /** Search callback: return true, if the search condition for an element is true, or false otherwise */
       virtual bool condition(const ElementType & element) = 0;
     };
-    
+
     /*!
      * Searches for an element in the fifo by a unary condition.
      * Returns and optionally removes an element from the fifo buffer, if condition_impl.condition(ElementType &) returns true.
@@ -172,7 +175,7 @@ namespace sick_lidar_localization
      */
     ElementType findFirstIf(UnaryConditionIf & condition_impl, bool erase_if_found = false)
     {
-      boost::lock_guard<MutexType> message_lockguard(m_fifo_mutex);
+      std::lock_guard<MutexType> message_lockguard(m_fifo_mutex);
       for(auto iter = m_fifo_buffer.begin(); iter != m_fifo_buffer.end(); iter++)
       {
         if(condition_impl.condition(*iter))
@@ -189,37 +192,37 @@ namespace sick_lidar_localization
     }
 
   protected:
-  
+
     /*! Pushes an element to the end of the fifo buffer. */
     void push_back(const ElementType & elem)
     {
-      boost::lock_guard<MutexType> message_lockguard(m_fifo_mutex);
+      std::lock_guard<MutexType> message_lockguard(m_fifo_mutex);
       m_fifo_buffer.push_back(elem);
     }
-  
+
     /*! Notification after changes in fifo buffer size. */
     void notifyAll(void)
     {
       m_buffer_condition.notify_all();
     }
-  
+
     /*! Wait until notification signalled. */
     void waitForNotify(void)
     {
-      boost::mutex::scoped_lock lock(m_condition_mutex);
+      std::unique_lock<std::mutex> lock(m_condition_mutex);
       m_buffer_condition.wait(lock);
     }
 
     /*
      * member data
      */
-    
+
     std::list<ElementType> m_fifo_buffer;          ///< list of all elements of the fifo buffer
     MutexType m_fifo_mutex;                        ///< mutex to lock m_fifo_buffer
-    boost::mutex m_condition_mutex;                ///< mutex to lock m_buffer_condition
-    boost::condition_variable m_buffer_condition;  ///< condition variable to signal changes in buffer size
-    
+    std::mutex m_condition_mutex;                  ///< mutex to lock m_buffer_condition
+    std::condition_variable m_buffer_condition;    ///< condition variable to signal changes in buffer size
+
   }; // class FifoBuffer
-  
+
 } // namespace sick_lidar_localization
-#endif // __SIM_LOC_FIFO_H_INCLUDED
+#endif // __LIDAR_LOC_FIFO_H_INCLUDED

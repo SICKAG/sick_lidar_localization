@@ -1,0 +1,21 @@
+# Definition of ROS service LocSetRingBufferRecordingActiveSrv for sick localization
+# Activates or deactivates rolling buffer log file recording on error report.
+# Example call (ROS1):
+# rosservice call LocSetRingBufferRecordingActiveSrv "{active: 1}"
+# Example call (ROS2):
+# ros2 service call LocSetRingBufferRecordingActiveSrv sick_lidar_localization/srv/LocSetRingBufferRecordingActiveSrv "{active: 1}"
+# 
+
+# 
+# Request (input)
+# 
+
+bool active # Whether rolling buffer recording on error reporting shall be active. {0 (false), 1 (true)} 
+
+---
+
+# 
+# Response (output)
+# 
+
+bool success # true: success response received from localization controller, false: service failed (timeout or error status from controller)

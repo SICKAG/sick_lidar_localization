@@ -1,0 +1,18 @@
+# Definition of ROS service GetSoftwareVersion for sick localization.
+#
+# ROS service LocGetSoftwareVersion queries the software version
+# by sending cola command ("sMN GetSoftwareVersion").
+#
+
+#
+# Request (input)
+#
+
+---
+
+#
+# Response (output)
+#
+
+string version
+bool success # true: response received from localization controller, false: service failed (timeout or error status from controller)

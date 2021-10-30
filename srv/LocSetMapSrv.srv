@@ -1,0 +1,21 @@
+# Definition of ROS service LocSetMap for sick localization
+# Loads the given map
+# Example call (ROS1):
+# rosservice call LocSetMap "{mappath: test.vmap}"
+# Example call (ROS2):
+# ros2 service call LocSetMap sick_lidar_localization/srv/LocSetMapSrv "{mappath: test.vmap}"
+# 
+
+# 
+# Request (input)
+# 
+
+string mappath # The filename of the map to load. Max length = 255 
+
+---
+
+# 
+# Response (output)
+# 
+
+bool success

@@ -67,7 +67,7 @@ uint32_t sec = t_rec.nsec;
 uint32_t nanosec = t_rec.nsec;
 
 // Get sensor ticks from sensor data
-uint32_t ticks = scanner_msg.ticks;
+uint64_t ticks = scanner_msg.ticks;
 
 // Update SoftwarePLL
 software_pll.UpdatePLL(sec, nanosec, ticks);

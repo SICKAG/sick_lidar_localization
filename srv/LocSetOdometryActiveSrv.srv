@@ -1,0 +1,21 @@
+# Definition of ROS service LocSetOdometryActive for sick localization
+# Enables or disables usage of odometry data in Scan Matching
+# Example call (ROS1):
+# rosservice call LocSetOdometryActive "{active: 1}"
+# Example call (ROS2):
+# ros2 service call LocSetOdometryActive sick_lidar_localization/srv/LocSetOdometryActiveSrv "{active: 1}"
+# 
+
+# 
+# Request (input)
+# 
+
+bool active # Whether data from an odometry sensor is considered in Scan Matching {0 (false), 1 (true)} 
+
+---
+
+# 
+# Response (output)
+# 
+
+bool success

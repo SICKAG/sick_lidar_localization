@@ -23,7 +23,7 @@ See https://github.com/michael1309/SoftwarePLL/blob/master/README.md for details
 std::map<std::string,SoftwarePLL*> SoftwarePLL::_instances; // list of SoftwarePLL instances, mapped by id
 
 const double SoftwarePLL::MaxAllowedTimeDeviation_ = 0.1;
-const uint32_t SoftwarePLL::MaxExtrapolationCounter_ = 20;
+const uint64_t SoftwarePLL::MaxExtrapolationCounter_ = 20;
 
 SoftwarePLL& SoftwarePLL::Instance(const std::string & id, int fifo_length)
 {
@@ -48,7 +48,7 @@ SoftwarePLL::~SoftwarePLL()
 	}
 }
 
-bool SoftwarePLL::PushIntoFifo(double curTimeStamp, uint32_t curtick)
+bool SoftwarePLL::PushIntoFifo(double curTimeStamp, uint64_t curtick)
 // update tick fifo and update clock (timestamp) fifo
 {
 	for (int i = 0; i < FifoSize_ - 1; i++)
@@ -69,16 +69,15 @@ bool SoftwarePLL::PushIntoFifo(double curTimeStamp, uint32_t curtick)
 	return(true);
 }
 
-double SoftwarePLL::ExtraPolateRelativeTimeStamp(uint32_t tick)
+double SoftwarePLL::ExtraPolateRelativeTimeStamp(uint64_t tick)
 {
-	int32_t tempTick =0;
-	tempTick = tick-(uint32_t)(0xFFFFFFFF & FirstTick());
+	uint64_t tempTick = tick - FirstTick();
 	double timeDiff = tempTick * this->InterpolationSlope();
 	return(timeDiff);
 
 }
 
-bool SoftwarePLL::UpdatePLL(uint32_t sec, uint32_t nanoSec, uint32_t curtick)
+bool SoftwarePLL::UpdatePLL(uint32_t sec, uint32_t nanoSec, uint64_t curtick)
 {
   if(curtick!=this->Lastcurtick_)
   {
@@ -116,7 +115,7 @@ bool SoftwarePLL::UpdatePLL(uint32_t sec, uint32_t nanoSec, uint32_t curtick)
     if (timeStampVerified == false)
     {
       // BEGIN HANDLING Extrapolation divergence
-      uint32_t tmp = ExtrapolationDivergenceCounter();
+      uint64_t tmp = ExtrapolationDivergenceCounter();
       tmp++;
       ExtrapolationDivergenceCounter(tmp);
       if (ExtrapolationDivergenceCounter() >= SoftwarePLL::MaxExtrapolationCounter_)
@@ -135,12 +134,12 @@ bool SoftwarePLL::UpdatePLL(uint32_t sec, uint32_t nanoSec, uint32_t curtick)
 
 }
 
-bool SoftwarePLL::GetCorrectedTimeStamp(uint32_t& sec, uint32_t& nanoSec, uint32_t curtick)
+bool SoftwarePLL::GetCorrectedTimeStamp(uint32_t& sec, uint32_t& nanoSec, uint64_t curtick)
 {
-  if (IsInitialized() == false)
-  {
-    return(false);
-  }
+	if (IsInitialized() == false)
+	{
+		return(false);
+	}
 
 	double relTimeStamp = ExtraPolateRelativeTimeStamp(curtick); // evtl. hier wg. Ueberlauf noch einmal pruefen
 	double corrTime = relTimeStamp + this->FirstTimeStamp();
@@ -180,16 +179,16 @@ bool SoftwarePLL::UpdateInterpolationSlope() // fifo already updated
 	FirstTimeStamp(this->ClockFifo_[0]);
 	FirstTick(this->TickFifo_[0]);
 
-	uint64_t tickDivisor = 0x100000000;
+	// uint64_t tickDivisor = 0x100000000;
 
 
 
 	for (int i = 1; i < FifoSize_; i++)  // typical 643 for 20ms -> round about 32150 --> near to 32768 standard clock in many watches
 	{
-		if (TickFifo_[i] < TickFifo_[i - 1]) // Overflow
-		{
-			tickOffset += tickDivisor;
-		}
+		// if (TickFifo_[i] < TickFifo_[i - 1]) // Overflow (obsolete with uint64 tics)
+		// {
+		// 	 tickOffset += tickDivisor;
+		// }
 		tickFifoUnwrap[i] = tickOffset + TickFifo_[i] - FirstTick();
 		clockFifoUnwrap[i] = (this->ClockFifo_[i] - FirstTimeStamp());
 	}

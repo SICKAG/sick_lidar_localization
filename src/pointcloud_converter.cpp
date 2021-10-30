@@ -1,5 +1,5 @@
 /*
- * @brief pointcloud_converter subscribes to sim_loc_driver messages (type sick_lidar_localization::SickLocResultPortTelegramMsg),
+ * @brief pointcloud_converter subscribes to sim_loc_driver messages (type sick_lidar_localization::LocResultPortTelegramMsg),
  * converts them to PointCloud2 and publishes PointCloud2 messages on topic "/cloud".
  *
  * It also serves as an usage example for sick_lidar_localization and shows how to subscribe and use the
@@ -56,43 +56,60 @@
  *  Copyright 2019 Ing.-Buero Dr. Michael Lehning
  *
  */
-#include "sick_lidar_localization/ros_wrapper.h"
+#include "sick_lidar_localization/sick_common.h"
 
 #include "sick_lidar_localization/pointcloud_converter.h"
 
 int main(int argc, char** argv)
 {
   // Ros configuration and initialization
-  ROS::init(argc, argv, "pointcloud_converter");
-  ROS::NodePtr nh = ROS::createNode("pointcloud_converter");
+#if __ROS_VERSION == 1
+    ros::init(argc, argv, "pointcloud_converter", ros::init_options::NoSigintHandler);
+    ros::NodeHandle node("~");
+    rosNodePtr nh = &node;
+#elif __ROS_VERSION ==  2
+    rclcpp::init(argc, argv);
+    rclcpp::NodeOptions node_options;
+    node_options.allow_undeclared_parameters(true);
+    //node_options.automatically_declare_initial_parameters(true);
+    rosNodePtr nh = rclcpp::Node::make_shared("pointcloud_converter", "", node_options);
+    //parseLaunchfileSetParameter(nh, argc, argv);
+#else
+#error __ROS_VERSION not defined, define __ROS_VERSION 1 or 2
+#endif
+
   ROS_INFO_STREAM("pointcloud_converter started.");
   
-  std::string result_telegrams_topic = "/sick_lidar_localization/driver/result_telegrams"; // default topic to publish result port telegram messages (type SickLocResultPortTelegramMsg)
-  ROS::param<std::string>(nh, "/sick_lidar_localization/driver/result_telegrams_topic", result_telegrams_topic, result_telegrams_topic);
+  std::string result_telegrams_topic = "/localizationcontroller/out/localizationcontroller_result_message_0502"; // default topic to publish result port telegram messages (type LocResultPortTelegramMsg)
+  //rosGetParam(nh, "result_telegrams_topic", result_telegrams_topic);
   
   // Init verifier to compare and check sim_loc_driver and sim_loc_test_server messages
   sick_lidar_localization::PointCloudConverter pointcloud_converter(nh);
   
   // Subscribe to sim_loc_driver messages
-#if defined __ROS_VERSION && __ROS_VERSION == 1
-  sick_lidar_localization::SickLocResultPortTelegramMsgSubscriber result_telegram_subscriber 
-    = ROS_CREATE_SUBSCRIBER(nh, sick_lidar_localization::SickLocResultPortTelegramMsg, result_telegrams_topic, &sick_lidar_localization::PointCloudConverter::messageCbResultPortTelegrams, &pointcloud_converter);
-#elif defined __ROS_VERSION && __ROS_VERSION == 2
-  sick_lidar_localization::SickLocResultPortTelegramMsgSubscriber result_telegram_subscriber 
-    = ROS_CREATE_SUBSCRIBER(nh, sick_lidar_localization::SickLocResultPortTelegramMsg, result_telegrams_topic, &sick_lidar_localization::PointCloudConverter::messageCbResultPortTelegramsROS2, &pointcloud_converter);
+#if __ROS_VERSION == 1
+  rosSubscriber<sick_lidar_localization::LocalizationControllerResultMessage0502> result_telegram_subscriber = rosSubscribe<sick_lidar_localization::LocalizationControllerResultMessage0502>(nh, 
+      result_telegrams_topic, &sick_lidar_localization::PointCloudConverter::messageCbResultPortTelegrams, &pointcloud_converter);
+#elif __ROS_VERSION == 2
+# ifdef _MSC_VER
+  auto subscriber = nh->create_subscription<sick_lidar_localization::LocalizationControllerResultMessage0502>(result_telegrams_topic, 10, std::bind(&sick_lidar_localization::PointCloudConverter::messageCbResultPortTelegramsROS2, &pointcloud_converter, std::placeholders::_1));
+  rosSubscriber<sick_lidar_localization::LocalizationControllerResultMessage0502> result_telegram_subscriber = rosSubscriber<sick_lidar_localization::LocalizationControllerResultMessage0502>(subscriber);
+# else
+  rosSubscriber<sick_lidar_localization::LocalizationControllerResultMessage0502> result_telegram_subscriber = rosSubscribe<sick_lidar_localization::LocalizationControllerResultMessage0502>(nh, 
+      result_telegrams_topic, &sick_lidar_localization::PointCloudConverter::messageCbResultPortTelegramsROS2, &pointcloud_converter);
+#endif
 #endif
  
   // Start pointcloud converter thread
   pointcloud_converter.start();
   
   // Run ros event loop
-  ROS::spin(nh);
+  rosSpin(nh);
   
   std::cout << "pointcloud_converter finished." << std::endl;
   ROS_INFO_STREAM("pointcloud_converter finished.");
   pointcloud_converter.stop();
   std::cout << "pointcloud_converter exits." << std::endl;
   ROS_INFO_STREAM("pointcloud_converter exits.");
-  ROS::deleteNode(nh);
   return 0;
 }

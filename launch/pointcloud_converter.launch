@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<launch>
+
+  <!-- Launch pointcloud_converter -->
+  
+  <node name="pointcloud_converter" pkg="sick_lidar_localization" type="pointcloud_converter" output="screen">
+  </node>
+
+</launch>
+ 

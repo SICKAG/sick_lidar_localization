@@ -31,11 +31,30 @@
 *.out
 *.app
 
-test/ros1_scripts/log/
-test/ros1_scripts/log/cola_examples/
-test/ros1_scripts/log/error_simu/
-test/ros2_scripts/log/
-test/ros2_scripts/log/cola_examples/
-test/ros2_scripts/log/error_simu/
+build
+package.xml
 
-package\.xml
+archive
+
+doc/specifications/arbeitspakete_20210708_backlog.md
+doc/specifications/arbeitspakete_20210713.png
+doc/specifications/2021-07-13-cola_interface.html
+doc/specifications/2021-07-13-LLS2_UDP_input_output.pdf
+doc/specifications/20210721_*.png
+doc/specifications/2021-07-15-extranet-LLS2
+doc/specifications/2021-06-09_User_interface_REST.pdf
+doc/specifications/2021-06-23_TI_Telegram_listing_en-us-version1.5.pdf
+doc/specifications/20211013-*.*
+doc/issues
+doc/20210721_Lidarloc_setup.md
+doc/20210721_rest_api_test.pptx
+doc/20210726_rest_api_test.pptx
+doc/*_lidar_localization2.pptx
+
+test/scripts/wireshark.cmd
+
+test/data/wireshark/20210727_*.*
+test/data/wireshark/20210921-*.*
+test/data/wireshark/20210923-*.*
+
+

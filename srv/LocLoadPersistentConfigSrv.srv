@@ -1,0 +1,18 @@
+# Definition of ROS service LocLoadPersistentConfig for sick localization.
+#
+# ROS service LocLoadPersistentConfig (re-)Loads the persistent lidarloc configuration file.
+# by sending cola command ("sMN LoadPersistentConfig").
+#
+
+#
+# Request (input)
+#
+
+---
+
+#
+# Response (output)
+#
+
+string response
+bool success # true: esponse received from localization controller, false: service failed (timeout or error status from controller)
