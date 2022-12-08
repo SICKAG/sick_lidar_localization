@@ -68,7 +68,7 @@ sleep 3
 # 
 
 pushd ../../../..
-source /opt/ros/melodic/setup.bash
+source /opt/ros/noetic/setup.bash
 source ./install/setup.bash 
 SICK_LIDAR_LOCALIZATION_ROOT=./src/sick_lidar_localization
 if [ -d ./src/sick_lidar_localization2_pretest ] ; then SICK_LIDAR_LOCALIZATION_ROOT=./src/sick_lidar_localization2_pretest ; fi

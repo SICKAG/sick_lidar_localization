@@ -60,6 +60,8 @@ printf "\033c"
 # 
 
 echo -e "(Re-)starting sudo sick_rest_server.py ...\n" 
+pkill -f roslaunch > /dev/null 2>&1
+pkill -f rosmaster > /dev/null 2>&1
 sudo pkill -f sick_rest_server.py > /dev/null 2>&1
 sudo pkill -9 -f sick_rest_server.py > /dev/null 2>&1
 sudo python3 ../rest_server/python/sick_rest_server.py --time_sync=1 &
@@ -70,11 +72,15 @@ sleep 3
 # 
 
 pushd ../../../..
-source /opt/ros/eloquent/setup.bash
+if [ -f /opt/ros/humble/setup.bash ] ; then 
+    source /opt/ros/humble/setup.bash
+elif [ -f /opt/ros/foxy/setup.bash ] ; then 
+    source /opt/ros/foxy/setup.bash
+fi
 source ./install/setup.bash 
 SICK_LIDAR_LOCALIZATION_ROOT=./src/sick_lidar_localization
 if [ -d ./src/sick_lidar_localization2_pretest ] ; then SICK_LIDAR_LOCALIZATION_ROOT=./src/sick_lidar_localization2_pretest ; fi
-ros2 run sick_lidar_localization sick_lidar_localization $SICK_LIDAR_LOCALIZATION_ROOT/launch/sick_lidar_localization.launch --ros-args hostname:=localhost udp_ip_sim_input:=127.0.0.1 udp_ip_sim_output:=localhost verbose:=1 &
+ros2 run sick_lidar_localization sick_lidar_localization $SICK_LIDAR_LOCALIZATION_ROOT/launch/sick_lidar_localization.launch --ros-args -p hostname:=localhost -p udp_ip_sim_input:=127.0.0.1 -p udp_ip_sim_output:=localhost -p verbose:=1 &
 sleep 3
 
 # 

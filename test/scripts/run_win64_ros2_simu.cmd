@@ -22,6 +22,12 @@ REM Start rest server
 REM 
 
 python --version
+rem Required for python rest server and pcapng player:
+rem pip install flask
+rem pip install pcapng
+rem pip install scapy
+rem pip install pypcapfile
+rem pip install python-pcapng
 start "rest server" python %SICK_LIDAR_LOCALIZATION_ROOT%/test/rest_server/python/sick_rest_server.py
 @timeout /t 3
 
@@ -71,7 +77,7 @@ REM rviz -> Add by display type TF
 REM 
 
 start "pointcloud_converter" /min ros2 run sick_lidar_localization pointcloud_converter %SICK_LIDAR_LOCALIZATION_ROOT%/launch/pointcloud_converter.launch
-start "rviz2" rviz2 -d %SICK_LIDAR_LOCALIZATION_ROOT%/test/config/rviz2_win64_sick_lidar_localization_pointcloud.rviz
+start "rviz2" ros2 run rviz2 rviz2 -d %SICK_LIDAR_LOCALIZATION_ROOT%/test/config/rviz2_win64_sick_lidar_localization_pointcloud.rviz
 start "ros2 topic echo /localizationcontroller/out" cmd /k .\src\sick_lidar_localization2_pretest\test\scripts\simu_echo_localizationcontroller_out_topics.cmd
 
 REM 

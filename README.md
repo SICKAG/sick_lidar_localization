@@ -343,6 +343,7 @@ pip install scapy
 pip install pypcapfile
 pip install python-pcapng
 ```
+If you're still getting `ModuleNotFoundError` messages, try `sudo pip install` resp. `sudo pip3 install` instead of `pip install`.
 
 :question: UDP messages have CRC checksum error in wireshark or tcpdump
 
@@ -350,17 +351,28 @@ pip install python-pcapng
 
 :question: Error MSB3491 on Windows: "Could not write lines to file. The fully qualified file name must be less than 260 characters"
 
-:white_check_mark: Possible solutions are f.e.
+:white_check_mark: Possible solutions are e.g.:
 * Just clone repository https://github.com/SICKAG/sick_lidar_localization into a short path, f.e. directly to `C:\`: 
     ```
     cd c:\
     git clone https://github.com/SICKAG/sick_lidar_localization.git
     ```
-* Use subst to shorten long paths, f.e.:
+    This is the recommended solution. Working on shared folder might cause errors using ROS-2 on Windows.
+* Alternatively, use subst to shorten long paths, f.e.:
     ```
     subst <long_path_to_sick_lidar_localization> s:
     cd /d s:\
     ```
-* See https://docs.ros.org/en/foxy/Guides/Installation-Troubleshooting.html:
+* Alternatively, See https://docs.ros.org/en/foxy/Guides/Installation-Troubleshooting.html:
     * Run regedit.exe, navigate to Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem, and set LongPathsEnabled to 0x00000001 (1).
-    * Hit the windows key and type Edit Group Policy. Navigate to Local Computer Policy > Computer Configuration > Administrative Templates > System > Filesystem. Right click Enable Win32 long paths, click Edit. In the dialog, select Enabled and click OK.
+    * Hit the windows key and type Edit Group Policy (gpedit.msc). Navigate to Local Computer Policy > Computer Configuration > Administrative Templates > System > Filesystem. Right click Enable Win32 long paths, click Edit. In the dialog, select Enabled and click OK.
+
+:question: `rivz2` does not work on Windows
+
+:white_check_mark: Start rviz2 with 
+    ```
+    call C:\dev\ros2_foxy\local_setup.bat
+    call c:\opt\ros\foxy\x64\setup.bat
+    call .\install\setup.bat
+    ros2 run rviz2 rviz2
+    ```

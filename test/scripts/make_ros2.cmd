@@ -3,6 +3,11 @@ REM Build sick_lidar_localization on Windows ROS-2
 REM
 
 pushd ..\..\..\..
+rem Workaround for "The fully qualified file name must be less than 260 characters" errors:
+rem Copy folder sick_lidar_localization2_pretest to c:\<short_folder_name> and run in that directory...
+rem if not exist r:\sick_lidar_localization2_pretest subst r: ..
+rem pushd r:\sick_lidar_localization2_pretest
+rem Cleanup
 rmdir /s/q .\log
 for %%i in ( .\install\sick_lidar_localization\lib .\install\sick_lidar_localization\lib\sick_lidar_localization .\build\sick_lidar_localization\Debug .\build\sick_lidar_localization\Release ) do (
   if exist %%i\gen_service_call.exe        del /f/q %%i\gen_service_call.exe
@@ -31,6 +36,7 @@ if not exist .\build\sick_lidar_localization\Release\gen_service_call.exe       
 if not exist .\build\sick_lidar_localization\Release\sick_lidar_localization.exe ( @echo colcon build sick_lidar_localization.exe failed & @pause ) else ( @echo Successfully build sick_lidar_localization.exe for ROS-2 Windows )
 if not exist .\build\sick_lidar_localization\Release\pointcloud_converter.exe    ( @echo colcon build pointcloud_converter.exe failed    & @pause ) else ( @echo Successfully build pointcloud_converter.exe for ROS-2 Windows )
 
+popd
 popd
 @pause
 rem @timeout /t 10

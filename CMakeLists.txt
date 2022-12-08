@@ -5,13 +5,25 @@ project(sick_lidar_localization)
 ## Compile options ##
 #####################
 
+if(ROS_VERSION EQUAL 2)
+    set(ROS2_HUMBLE 1)
+    if(WIN32 OR EXISTS "/opt/ros/eloquent" OR EXISTS "/opt/ros/foxy" OR EXISTS "/opt/ros/galactic") # rosidl_typesupport for ROS2 eloquent, foxy, galaxy # use $ENV{ROS_DISTRO} instead
+        set(ROS2_HUMBLE 0)
+    endif()
+endif()
+
 ## Compile as C++14
 set(CMAKE_CXX_STANDARD 14)
 if(WIN32)
     add_compile_options(-D_CRT_SECURE_NO_WARNINGS)
     set(WIN_LIBRARIES Ws2_32)
 else()
-    add_compile_options(-std=c++14 -g -Wall -Wno-reorder -Wno-sign-compare -Wno-unused-local-typedefs -Wno-unused-parameter -Wno-unused-function -Wno-unused-result)
+    if(ROS2_HUMBLE) # ROS2 humble or later require C++17
+        add_compile_options(-std=c++17)
+    else()
+        add_compile_options(-std=c++14)
+    endif()
+    add_compile_options(-g -Wall -Wno-reorder -Wno-sign-compare -Wno-unused-local-typedefs -Wno-unused-parameter -Wno-unused-function -Wno-unused-result)
     # add_compile_options(-Wshadow) # Note: compiler option -Wshadow generates a lot of warnings in ros header files. Therefore it's deactivated by default, but can be usefull for development and testing.
     set(LINUX_LIBRARIES pthread)    # gcc maps std::thread to pthread, using std::thread requires linking with pthread
 endif()
@@ -41,7 +53,8 @@ elseif(ROS_VERSION EQUAL 2)
     find_package(sensor_msgs REQUIRED)
     find_package(std_msgs REQUIRED)
     find_package(tf2 REQUIRED)  
-    find_package(tf2_ros REQUIRED)  
+    find_package(tf2_ros REQUIRED)
+    find_package(visualization_msgs REQUIRED)
 endif() 
 
 ## packages required by sick_lidar_localization
@@ -112,10 +125,16 @@ if(ROS_VERSION EQUAL 1)
     add_dependencies(sick_lidar_localization_main sick_localization_lib ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
     add_dependencies(pointcloud_converter sick_localization_lib ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 elseif(ROS_VERSION EQUAL 2)
-    ament_target_dependencies(sick_localization_lib rclcpp geometry_msgs nav_msgs sensor_msgs std_msgs tf2_ros)
-    rosidl_target_interfaces(sick_localization_lib ${PROJECT_NAME} "rosidl_typesupport_cpp")
-    ament_target_dependencies(pointcloud_converter rclcpp geometry_msgs nav_msgs sensor_msgs std_msgs tf2_ros)
-    rosidl_target_interfaces(pointcloud_converter ${PROJECT_NAME} "rosidl_typesupport_cpp")
+    ament_target_dependencies(sick_localization_lib rclcpp geometry_msgs nav_msgs sensor_msgs std_msgs tf2_ros visualization_msgs)
+    ament_target_dependencies(pointcloud_converter rclcpp geometry_msgs nav_msgs sensor_msgs std_msgs tf2_ros visualization_msgs)
+    if(ROS2_HUMBLE) # rosidl_typesupport for ROS2 humble or later
+        rosidl_get_typesupport_target(cpp_typesupport_target ${PROJECT_NAME} "rosidl_typesupport_cpp")
+        target_link_libraries(sick_localization_lib "${cpp_typesupport_target}")
+        target_link_libraries(pointcloud_converter "${cpp_typesupport_target}")
+    else()
+        rosidl_target_interfaces(sick_localization_lib ${PROJECT_NAME} "rosidl_typesupport_cpp")
+        rosidl_target_interfaces(pointcloud_converter ${PROJECT_NAME} "rosidl_typesupport_cpp")
+    endif()
 else()
     add_dependencies(sick_lidar_localization_main sick_localization_lib)
 endif()     

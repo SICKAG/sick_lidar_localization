@@ -739,10 +739,10 @@ static std::string printHex(const std::vector<uint8_t>& data)
 template<class T> static void decodeAndPrint(std::vector<uint8_t>& reference_bin)
 {
     sick_lidar_localization::UDPMessage::HeaderData msg_header = { 0 };
-    sick_lidar_localization::UDPMessage::decodeHeader(&reference_bin[0], reference_bin.size(), msg_header);
+    sick_lidar_localization::UDPMessage::decodeHeader(&reference_bin[0], (int)reference_bin.size(), msg_header);
     bool payload_is_big_endian = (msg_header.payloadtype == 0x0642);
     uint8_t* udp_payload_buffer = &reference_bin[0] + sizeof(sick_lidar_localization::UDPMessage::HeaderData);
-    int udp_payload_len = reference_bin.size() - sizeof(sick_lidar_localization::UDPMessage::HeaderData);
+    int udp_payload_len = (int)reference_bin.size() - (int)sizeof(sick_lidar_localization::UDPMessage::HeaderData);
     sick_lidar_localization::UDPMessage::Payload<T> reference_payload;
     reference_payload.decodePayload(udp_payload_buffer, udp_payload_len, payload_is_big_endian);
     ROS_INFO_STREAM("UDPMessage::unittest: payload_reference = " << reference_payload.toString(false) << ", payload_big_endian = " << payload_is_big_endian << ", source_id = " << msg_header.sourceid);

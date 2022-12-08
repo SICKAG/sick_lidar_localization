@@ -4,6 +4,7 @@
 # cleanup
 #
 
+printf "\033c"
 pushd ../../../..
 if [ -d ./src/sick_lidar_localization2_pretest ] ; then 
   cp -f ./src/sick_lidar_localization2_pretest/package_ros2.xml ./src/sick_lidar_localization2_pretest/package.xml
