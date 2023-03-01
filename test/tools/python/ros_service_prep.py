@@ -4,13 +4,13 @@ if __name__ == "__main__":
     ros_service_names = [ "LocAutoStartSavePoseSrv", "LocClearMapCacheSrv", "LocGetErrorLevelSrv", "LocGetMapSrv", "LocGetSystemStateSrv", "LocInitializeAtPoseSrv", 
                       "LocInitializePoseSrv", "LocIsSystemReadySrv", "LocLoadMapToCacheSrv", "LocRequestTimestampSrv", "LocResumeAtPoseSrv", 
                       "LocSaveRingBufferRecordingSrv", "LocSetKinematicVehicleModelActiveSrv", "LocSetLinesForSupportActiveSrv", "LocSetMappingActiveSrv",
-                      "LocSetMapSrv", "LocSetOdometryActiveSrv", "LocSetRecordingActiveSrv", "LocSetRingBufferRecordingActiveSrv", "LocStartLocalizingSrv",
+                      "LocSetMapSrv", "LocSetOdometryActiveSrv", "LocSetRecordingActiveSrv", "LocSetRingBufferRecordingActiveSrv", "LocStartSrv",
                       "LocStateSrv", "LocStopSrv", "LocSwitchMapSrv" ]
    
     rest_service_names = [ "LocAutoStartSavePose", "LocClearMapCache", "GetErrorLevel", "LocGetMap", "LocGetSystemState", "LocInitializeAtPose", 
                       "IsSystemReady", "LocLoadMapToCache", "LocRequestTimestamp", "LocResumeAtPose", "LocSaveRingBufferRecording", 
                       "LocSetKinematicVehicleModelActive", "LocSetLinesForSupportActive", "LocSetMappingActive",
-                      "LocSetMap", "LocSetOdometryActive", "LocSetRecordingActive", "LocSetRingBufferRecordingActive", "LocStartLocalizing",
+                      "LocSetMap", "LocSetOdometryActive", "LocSetRecordingActive", "LocSetRingBufferRecordingActive", "LocStart",
                       "LocStop", "LocSwitchMap" ]
     
     if False: # print ros service callback declarations

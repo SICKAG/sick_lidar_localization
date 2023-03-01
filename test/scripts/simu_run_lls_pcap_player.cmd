@@ -16,5 +16,5 @@ REM
 REM Run sim udp sender
 REM
 
-python ../rest_server/python/sim_pcapng_player.py --pcap_filename ../data/wireshark/20210816_lidarloc2_2.0.0.14R_moving.pcapng
+python ../rest_server/python/lls_pcapng_player.py --pcap_filename ../data/wireshark/20210816_lidarloc2_2.0.0.14R_moving.pcapng
 @pause

@@ -73,11 +73,11 @@ namespace sick_lidar_localization
         /*
         ** @brief Default constructor
         ** @param[in] services time sync services
-        ** @param[in] udp_ip_sim_output IP address for output UDP messages, or "" for broadcast (INADDR_ANY), default: "", use IP address of your local machine
-        ** @param[in] udp_port_sim_output UDP port of output messages, default: 5010
-        ** @param[in] udp_sim_output_logfile Optional logfile for human readable UDP output messages, default: "" (no outputlogfile)
+        ** @param[in] udp_ip_lls_output IP address for output UDP messages, or "" for broadcast (INADDR_ANY), default: "", use IP address of your local machine
+        ** @param[in] udp_port_lls_output UDP port of output messages, default: 5010
+        ** @param[in] udp_lls_output_logfile Optional logfile for human readable UDP output messages, default: "" (no outputlogfile)
         */
-        UDPReceiverThread(sick_lidar_localization::SickServices* services = 0, const std::string& udp_ip_sim_output = "", int udp_port_sim_output = 5010, const std::string& udp_sim_output_logfile = "");
+        UDPReceiverThread(sick_lidar_localization::SickServices* services = 0, const std::string& udp_ip_lls_output = "", int udp_port_lls_output = 5010, const std::string& udp_lls_output_logfile = "");
 
         /*
         ** @brief Default destructor, exits running threads
@@ -99,7 +99,7 @@ namespace sick_lidar_localization
         void stop();
 
         /*
-        ** @brief Register a listener for upd messages. The callback functions of the listener will be called after receiving a new udp message.
+        ** @brief Register a listener for udp messages. The callback functions of the listener will be called after receiving a new udp message.
         ** Overwrite the functions defined in sick_lidar_localization::UDPMessage::Listener with customized code to handle udp messages.
         */
         void registerListener(sick_lidar_localization::UDPMessage::Listener* listener);
@@ -127,9 +127,9 @@ namespace sick_lidar_localization
         bool runReceiver(void);
 
         sick_lidar_localization::SickServices* m_services; // time sync services
-        std::string m_udp_ip_sim_output;      // IP address for output UDP messages, or "" for broadcast (INADDR_ANY), default: "", use IP address of your local machine
-        int m_udp_port_sim_output;            // UDP port of UDP output messages, default: 5010
-        std::string m_udp_sim_output_logfile; // Optional logfile for human readable UDP output messages, default: "" (no outputlogfile)
+        std::string m_udp_ip_lls_output;      // IP address for output UDP messages, or "" for broadcast (INADDR_ANY), default: "", use IP address of your local machine
+        int m_udp_port_lls_output;            // UDP port of UDP output messages, default: 5010
+        std::string m_udp_lls_output_logfile; // Optional logfile for human readable UDP output messages, default: "" (no outputlogfile)
         bool m_run_receiver_thread;           // Flag to start and stop m_receiver_thread
         std::thread* m_receiver_thread;       // Background thread to receive udp data, parsing, conversion and publishing
         std::list<sick_lidar_localization::UDPMessage::Listener*> m_udp_message_listener;

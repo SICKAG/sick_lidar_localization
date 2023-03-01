@@ -92,22 +92,22 @@ namespace sick_lidar_localization
         /*
         ** @brief Default constructor
         */
-        UDPSenderImpl() : m_udp_socket(INVALID_SOCKET), m_sim_ip_address(), m_udp_port_sim_input(0)
+        UDPSenderImpl() : m_udp_socket(INVALID_SOCKET), m_lls_ip_address(), m_udp_port_lls_input(0)
         {
         }
 
         /*
         ** @brief Initializes the socket
-        ** @param[in] sim_ip_address IP address of localization controller, or "" for broadcast
-        ** @param[in] udp_port_sim_input UDP port of input messages, default: 5009
+        ** @param[in] lls_ip_address IP address of localization controller, or "" for broadcast
+        ** @param[in] udp_port_lls_input UDP port of input messages, default: 5009
         */
-        bool initSocket(const std::string & sim_ip_address = "192.168.0.1", int udp_port_sim_input = 5009)
+        bool initSocket(const std::string & lls_ip_address = "192.168.0.1", int udp_port_lls_input = 5009)
         {
-            m_sim_ip_address = sim_ip_address;
-            m_udp_port_sim_input = udp_port_sim_input;
+            m_lls_ip_address = lls_ip_address;
+            m_udp_port_lls_input = udp_port_lls_input;
             if ((m_udp_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == INVALID_SOCKET)
             {
-                ROS_ERROR_STREAM("## ERROR UDPSenderImpl::init(" << udp_port_sim_input << "): can't create socket");
+                ROS_ERROR_STREAM("## ERROR UDPSenderImpl::init(" << udp_port_lls_input << "): can't create socket");
                 return false;
             }
             #if defined WIN32 || defined _MSC_VER
@@ -116,7 +116,7 @@ namespace sick_lidar_localization
             int broadcast_opt = 1;
             #endif
             if (setsockopt(m_udp_socket, SOL_SOCKET, SO_BROADCAST, &broadcast_opt, sizeof(broadcast_opt)) < 0)
-                ROS_ERROR_STREAM("## ERROR UDPSenderImpl::init(" << udp_port_sim_input << "): setsockopt(SO_BROADCAST) failed, error: " << getErrorMessage());
+                ROS_ERROR_STREAM("## ERROR UDPSenderImpl::init(" << udp_port_lls_input << "): setsockopt(SO_BROADCAST) failed, error: " << getErrorMessage());
             return true;
         }
 
@@ -134,34 +134,34 @@ namespace sick_lidar_localization
         {
             if (m_udp_socket != INVALID_SOCKET)
             {
-                struct sockaddr_in sim_servaddr = { 0 };
-                if(m_sim_ip_address.empty())
+                struct sockaddr_in lls_servaddr = { 0 };
+                if(m_lls_ip_address.empty())
                 {
-                    sim_servaddr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
+                    lls_servaddr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
                 }
                 else
                 {
                     #if defined WIN32 || defined _MSC_VER
-                    sim_servaddr.sin_addr.s_addr = inet_addr(m_sim_ip_address.c_str());
+                    lls_servaddr.sin_addr.s_addr = inet_addr(m_lls_ip_address.c_str());
                     #else
-                    struct in_addr sim_in_addr;
-                    if (inet_aton(m_sim_ip_address.c_str(), &sim_in_addr) != 0)
+                    struct in_addr lls_in_addr;
+                    if (inet_aton(m_lls_ip_address.c_str(), &lls_in_addr) != 0)
                     {
-                        sim_servaddr.sin_addr.s_addr = sim_in_addr.s_addr;
+                        lls_servaddr.sin_addr.s_addr = lls_in_addr.s_addr;
                     }
                     else
                     {
-                        ROS_ERROR_STREAM("## ERROR UDPSenderImpl::sendData(): inet_aton(" << m_sim_ip_address << ") failed (invalid address)");
-                        sim_servaddr.sin_addr.s_addr = inet_addr(m_sim_ip_address.c_str());
+                        ROS_ERROR_STREAM("## ERROR UDPSenderImpl::sendData(): inet_aton(" << m_lls_ip_address << ") failed (invalid address)");
+                        lls_servaddr.sin_addr.s_addr = inet_addr(m_lls_ip_address.c_str());
                     }
                     #endif
                 }
-                sim_servaddr.sin_family = AF_INET;
-                sim_servaddr.sin_port = htons(m_udp_port_sim_input);
-                int bytes_send = sendto(m_udp_socket, (const char*)buffer, num_bytes, 0, (SOCKADDR*)&sim_servaddr, sizeof(sim_servaddr));
+                lls_servaddr.sin_family = AF_INET;
+                lls_servaddr.sin_port = htons(m_udp_port_lls_input);
+                int bytes_send = sendto(m_udp_socket, (const char*)buffer, num_bytes, 0, (SOCKADDR*)&lls_servaddr, sizeof(lls_servaddr));
                 if (bytes_send != num_bytes)
                 {
-                    ROS_ERROR_STREAM("## ERROR UDPSenderImpl::sendData(): " << bytes_send << " of " << num_bytes << " bytes send to " << m_sim_ip_address << ":" << m_udp_port_sim_input << ", error: " << getErrorMessage());
+                    ROS_ERROR_STREAM("## ERROR UDPSenderImpl::sendData(): " << bytes_send << " of " << num_bytes << " bytes send to " << m_lls_ip_address << ":" << m_udp_port_lls_input << ", error: " << getErrorMessage());
                     return false;
                 }
                 return true;
@@ -172,25 +172,25 @@ namespace sick_lidar_localization
     protected:
 
         SOCKET m_udp_socket; // OS socket descriptor
-        std::string m_sim_ip_address; // IP address of localization controller, or "" for broadcast
-        int m_udp_port_sim_input; // UDP port of input messages, default: 5009
+        std::string m_lls_ip_address; // IP address of localization controller, or "" for broadcast
+        int m_udp_port_lls_input; // UDP port of input messages, default: 5009
     };
 }
 
 /*
 ** @brief Default constructor
 ** @param[in] nh ros node handle (always 0 for native linus or windows)
-** @param[in] sim_ip_address IP address of localization controller, or "" for broadcast
-** @param[in] udp_port_sim_input UDP port of input messages, default: 5009
-** @param[in] udp_sim_input_source_id source_id of UDP input messages, default: 1
+** @param[in] lls_ip_address IP address of localization controller, or "" for broadcast
+** @param[in] udp_port_lls_input UDP port of input messages, default: 5009
+** @param[in] source_id_cfg source_id map of UDP input messages, default source id: 1
 ** @param[in] verbose print informational messages if verbose > 0, otherwise silent mode (error messages only)
-** @param[in] ros_odom_to_udp_msg  Convert ros odom message to upd: 0 = map velocity to OdometryPayload0101 (Type 1, Version 1, LidarLoc 1), 
+** @param[in] ros_odom_to_udp_msg  Convert ros odom message to udp:
 **                                 1 = map velocity to OdometryPayload0104 (Type 1, Version 4, LidarLoc 2),
 **                                 2 = map position to OdometryPayload0105 (Type 1, Version 5, LidarLoc 2),
 **                                 3 = map velocity to OdometryPayload0104 and position to OdometryPayload0105
 */
-sick_lidar_localization::UDPSender::UDPSender(rosNodePtr nh, const std::string& sim_ip_address, int udp_port_sim_input, int udp_sim_input_source_id, int verbose, const std::string& odom_topic, int ros_odom_to_udp_msg) 
-: m_sim_ip_address(sim_ip_address), m_udp_port_sim_input(udp_port_sim_input), m_source_id(udp_sim_input_source_id), m_verbose(verbose), m_ros_odom_to_udp_msg(ros_odom_to_udp_msg), m_udp_sender_impl(0)
+sick_lidar_localization::UDPSender::UDPSender(rosNodePtr nh, const std::string& lls_ip_address, int udp_port_lls_input, const sick_lidar_localization::UDPDefaultInputSourceId& source_id_cfg, int verbose, const std::string& odom_topic, int ros_odom_to_udp_msg) 
+: m_lls_ip_address(lls_ip_address), m_udp_port_lls_input(udp_port_lls_input), m_source_id_cfg(source_id_cfg), m_verbose(verbose), m_ros_odom_to_udp_msg(ros_odom_to_udp_msg), m_udp_sender_impl(0)
 {
     #if __ROS_VERSION > 0
     if(nh != 0)
@@ -198,39 +198,39 @@ sick_lidar_localization::UDPSender::UDPSender(rosNodePtr nh, const std::string& 
         // Subscribe to odometry messages
         #if __ROS_VERSION == 1
         auto messageCbOdomROS = &sick_lidar_localization::UDPSender::messageCbOdomROS;
-        auto messageCbOdometryMessage0101 = &sick_lidar_localization::UDPSender::messageCbOdometryMessage0101;
         auto messageCbOdometryMessage0104 = &sick_lidar_localization::UDPSender::messageCbOdometryMessage0104;
         auto messageCbOdometryMessage0105 = &sick_lidar_localization::UDPSender::messageCbOdometryMessage0105;
         auto messageCbEncoderMeasurementMessage0202 = &sick_lidar_localization::UDPSender::messageCbEncoderMeasurementMessage0202;
         auto messageCbCodeMeasurementMessage0303 = &sick_lidar_localization::UDPSender::messageCbCodeMeasurementMessage0303;
+        auto messageCbCodeMeasurementMessage0701 = &sick_lidar_localization::UDPSender::messageCbCodeMeasurementMessage0701;
         auto messageCbLineMeasurementMessage0403 = &sick_lidar_localization::UDPSender::messageCbLineMeasurementMessage0403;
         auto messageCbLineMeasurementMessage0404 = &sick_lidar_localization::UDPSender::messageCbLineMeasurementMessage0404;
         #else
         auto messageCbOdomROS = &sick_lidar_localization::UDPSender::messageCbOdomROS2;
-        auto messageCbOdometryMessage0101 = &sick_lidar_localization::UDPSender::messageCbOdometryMessage0101ROS2;
         auto messageCbOdometryMessage0104 = &sick_lidar_localization::UDPSender::messageCbOdometryMessage0104ROS2;
         auto messageCbOdometryMessage0105 = &sick_lidar_localization::UDPSender::messageCbOdometryMessage0105ROS2;
         auto messageCbEncoderMeasurementMessage0202 = &sick_lidar_localization::UDPSender::messageCbEncoderMeasurementMessage0202ROS2;
         auto messageCbCodeMeasurementMessage0303 = &sick_lidar_localization::UDPSender::messageCbCodeMeasurementMessage0303ROS2;
+        auto messageCbCodeMeasurementMessage0701 = &sick_lidar_localization::UDPSender::messageCbCodeMeasurementMessage0701ROS2;
         auto messageCbLineMeasurementMessage0403 = &sick_lidar_localization::UDPSender::messageCbLineMeasurementMessage0403ROS2;
         auto messageCbLineMeasurementMessage0404 = &sick_lidar_localization::UDPSender::messageCbLineMeasurementMessage0404ROS2;
         #endif
 # ifdef _MSC_VER
         m_subOdomROS = rosSubscriber<ros_nav_msgs::Odometry>(nh->create_subscription<ros_nav_msgs::Odometry>(odom_topic, 10, std::bind(&sick_lidar_localization::UDPSender::messageCbOdomROS2, this, std::placeholders::_1)));
-        m_subOdometryMessage0101 = rosSubscriber<sick_lidar_localization::OdometryMessage0101>(nh->create_subscription<sick_lidar_localization::OdometryMessage0101>("/localizationcontroller/in/odometry_message_0101", 10, std::bind(&sick_lidar_localization::UDPSender::messageCbOdometryMessage0101ROS2, this, std::placeholders::_1)));
         m_subOdometryMessage0104 = rosSubscriber<sick_lidar_localization::OdometryMessage0104>(nh->create_subscription<sick_lidar_localization::OdometryMessage0104>("/localizationcontroller/in/odometry_message_0104", 10, std::bind(&sick_lidar_localization::UDPSender::messageCbOdometryMessage0104ROS2, this, std::placeholders::_1)));
         m_subOdometryMessage0105 = rosSubscriber<sick_lidar_localization::OdometryMessage0105>(nh->create_subscription<sick_lidar_localization::OdometryMessage0105>("/localizationcontroller/in/odometry_message_0105", 10, std::bind(&sick_lidar_localization::UDPSender::messageCbOdometryMessage0105ROS2, this, std::placeholders::_1)));
         m_subEncoderMeasurementMessage0202 = rosSubscriber<sick_lidar_localization::EncoderMeasurementMessage0202>(nh->create_subscription<sick_lidar_localization::EncoderMeasurementMessage0202>("/localizationcontroller/in/encoder_measurement_message_0202", 10, std::bind(&sick_lidar_localization::UDPSender::messageCbEncoderMeasurementMessage0202ROS2, this, std::placeholders::_1)));
         m_subCodeMeasurementMessage0303 = rosSubscriber<sick_lidar_localization::CodeMeasurementMessage0303>(nh->create_subscription<sick_lidar_localization::CodeMeasurementMessage0303>("/localizationcontroller/in/code_measurement_message_0303", 10, std::bind(&sick_lidar_localization::UDPSender::messageCbCodeMeasurementMessage0303ROS2, this, std::placeholders::_1)));
+        m_subCodeMeasurementMessage0701 = rosSubscriber<sick_lidar_localization::CodeMeasurementMessage0701>(nh->create_subscription<sick_lidar_localization::CodeMeasurementMessage0701>("/localizationcontroller/in/code_measurement_message_0701", 10, std::bind(&sick_lidar_localization::UDPSender::messageCbCodeMeasurementMessage0701ROS2, this, std::placeholders::_1)));
         m_subLineMeasurementMessage0403 = rosSubscriber<sick_lidar_localization::LineMeasurementMessage0403>(nh->create_subscription<sick_lidar_localization::LineMeasurementMessage0403>("/localizationcontroller/in/line_measurement_message_0403", 10, std::bind(&sick_lidar_localization::UDPSender::messageCbLineMeasurementMessage0403ROS2, this, std::placeholders::_1)));
         m_subLineMeasurementMessage0404 = rosSubscriber<sick_lidar_localization::LineMeasurementMessage0404>(nh->create_subscription<sick_lidar_localization::LineMeasurementMessage0404>("/localizationcontroller/in/line_measurement_message_0404", 10, std::bind(&sick_lidar_localization::UDPSender::messageCbLineMeasurementMessage0404ROS2, this, std::placeholders::_1)));
 #else
         m_subOdomROS = rosSubscribe<ros_nav_msgs::Odometry>(nh, odom_topic, messageCbOdomROS, this);
-        m_subOdometryMessage0101 = rosSubscribe<sick_lidar_localization::OdometryMessage0101>(nh, "/localizationcontroller/in/odometry_message_0101", messageCbOdometryMessage0101, this);
         m_subOdometryMessage0104 = rosSubscribe<sick_lidar_localization::OdometryMessage0104>(nh, "/localizationcontroller/in/odometry_message_0104", messageCbOdometryMessage0104, this);
         m_subOdometryMessage0105 = rosSubscribe<sick_lidar_localization::OdometryMessage0105>(nh, "/localizationcontroller/in/odometry_message_0105", messageCbOdometryMessage0105, this);
         m_subEncoderMeasurementMessage0202 = rosSubscribe<sick_lidar_localization::EncoderMeasurementMessage0202>(nh, "/localizationcontroller/in/encoder_measurement_message_0202", messageCbEncoderMeasurementMessage0202, this);
         m_subCodeMeasurementMessage0303 = rosSubscribe<sick_lidar_localization::CodeMeasurementMessage0303>(nh, "/localizationcontroller/in/code_measurement_message_0303", messageCbCodeMeasurementMessage0303, this);
+        m_subCodeMeasurementMessage0701 = rosSubscribe<sick_lidar_localization::CodeMeasurementMessage0701>(nh, "/localizationcontroller/in/code_measurement_message_0701", messageCbCodeMeasurementMessage0701, this);
         m_subLineMeasurementMessage0403 = rosSubscribe<sick_lidar_localization::LineMeasurementMessage0403>(nh, "/localizationcontroller/in/line_measurement_message_0403", messageCbLineMeasurementMessage0403, this);
         m_subLineMeasurementMessage0404 = rosSubscribe<sick_lidar_localization::LineMeasurementMessage0404>(nh, "/localizationcontroller/in/line_measurement_message_0404", messageCbLineMeasurementMessage0404, this);
 #endif
@@ -258,11 +258,11 @@ bool sick_lidar_localization::UDPSender::init(void)
         close();
     }
     m_udp_sender_impl = new sick_lidar_localization::UDPSenderImpl();
-    if (!m_udp_sender_impl->initSocket(m_sim_ip_address, m_udp_port_sim_input))
+    if (!m_udp_sender_impl->initSocket(m_lls_ip_address, m_udp_port_lls_input))
     {
         delete(m_udp_sender_impl);
         m_udp_sender_impl = 0;
-        ROS_ERROR_STREAM("## ERROR UDPSender::init(" << m_sim_ip_address << ", " << m_udp_port_sim_input << ") failed");
+        ROS_ERROR_STREAM("## ERROR UDPSender::init(" << m_lls_ip_address << ", " << m_udp_port_lls_input << ") failed");
         return false;
     }
     return true;
@@ -294,7 +294,7 @@ bool sick_lidar_localization::UDPSender::sendData(const std::vector<uint8_t>& ud
     }
     if (!m_udp_sender_impl)
     {
-        ROS_ERROR_STREAM("## ERROR UDPSender: can't init udp socket, UDPSender(" << m_sim_ip_address << ", " << m_udp_port_sim_input << ") failed");
+        ROS_ERROR_STREAM("## ERROR UDPSender: can't init udp socket, UDPSender(" << m_lls_ip_address << ", " << m_udp_port_lls_input << ") failed");
         return false;
     }
     bool ok = m_udp_sender_impl->sendData(udp_data.data(), (int)udp_data.size());
@@ -320,6 +320,17 @@ static double quaternionToYawAngle(double w, double x, double y, double z)
     return std::atan2(siny_cosp, cosy_cosp);
 }
 
+/** returns the default source id from configuration file */
+int sick_lidar_localization::UDPDefaultInputSourceId::getSourceId(int msg_type, int msg_version)
+{
+    if (m_msgtype_version_sourceid_map.find(msg_type) == m_msgtype_version_sourceid_map.end()
+     || m_msgtype_version_sourceid_map[msg_type].find(msg_version) == m_msgtype_version_sourceid_map[msg_type].end())
+    {
+        m_msgtype_version_sourceid_map[msg_type][msg_version] = m_default_source_id;
+    }
+    return m_msgtype_version_sourceid_map[msg_type][msg_version];
+}
+
 #if __ROS_VERSION > 0
 
 /** subscriber callback function for ros odom messages */
@@ -329,7 +340,6 @@ void sick_lidar_localization::UDPSender::messageCbOdomROS(const ros_nav_msgs::Od
     rosTime timestamp_msg = msg.header.stamp;
     uint64_t timestamp_sec = sec(timestamp_msg);
     uint64_t timestamp_nsec = nsec(timestamp_msg);
-    uint64_t timestamp_msec = 1000 * timestamp_sec + timestamp_nsec / 1000000;// message timestamp in milliseconds
     int64_t timestamp_mircrosec = 1000000 * timestamp_sec + timestamp_nsec / 1000;// message timestamp in microseconds
     double vx_ms = msg.twist.twist.linear.x;     // vx in m/s
     double vy_ms = msg.twist.twist.linear.y;     // vy in m/s
@@ -344,21 +354,6 @@ void sick_lidar_localization::UDPSender::messageCbOdomROS(const ros_nav_msgs::Od
 
     static uint64_t s_telegram_count = 0;
     s_telegram_count++;
-    // Convert to OdometryPayload0101 message
-    if(m_ros_odom_to_udp_msg == 0)
-    {
-        sick_lidar_localization::UDPMessage::OdometryPayload0101 odometry0101;
-        odometry0101.telegram_count = s_telegram_count;
-        odometry0101.timestamp = timestamp_msec;
-        odometry0101.x_velocity = vx_mms;
-        odometry0101.y_velocity = vy_mms;
-        odometry0101.angular_velocity = omega_mdegs;
-        // Send OdometryMessage0101
-        if (m_verbose)
-            ROS_INFO_STREAM("sick_lidar_localization::UDPSender: sending odom message (vx=" << vx_ms << ", vy=" << vy_ms << ", omega=" << omega_rs << ") converted to OdometryPayload0101");
-        if (!sendUDPPayload(odometry0101, true, false, m_source_id))
-            ROS_ERROR_STREAM("## ERROR sick_lidar_localization::UDPSender::messageCbOdomROS(): sendUDPPayload(" << sick_lidar_localization::UDPMessage::printPayload(odometry0101) << ") failed");
-    }
     // Convert to OdometryPayload0104 message
     if(m_ros_odom_to_udp_msg == 1 || m_ros_odom_to_udp_msg == 3)
     {
@@ -368,10 +363,11 @@ void sick_lidar_localization::UDPSender::messageCbOdomROS(const ros_nav_msgs::Od
         odometry0104.x_velocity = vx_mms;
         odometry0104.y_velocity = vy_mms;
         odometry0104.angular_velocity = omega_mdegs;
+        odometry0104.source_id = m_source_id_cfg.getSourceId(1, 4);
         // Send OdometryMessage0104
         if (m_verbose)
             ROS_INFO_STREAM("sick_lidar_localization::UDPSender: sending odom message (vx=" << vx_ms << ", vy=" << vy_ms << ", omega=" << omega_rs << ") converted to OdometryPayload0104");
-        if (!sendUDPPayload(odometry0104, UDP_HEADER_BIG_ENDIAN_DEFAULT, UDP_PAYLOAD_BIG_ENDIAN_DEFAULT, m_source_id))
+        if (!sendUDPPayload(odometry0104, UDP_HEADER_BIG_ENDIAN_DEFAULT, UDP_PAYLOAD_BIG_ENDIAN_DEFAULT))
             ROS_ERROR_STREAM("## ERROR sick_lidar_localization::UDPSender::messageCbOdometryMessage0104(): sendUDPPayload(" << sick_lidar_localization::UDPMessage::printPayload(odometry0104) << ") failed");
     }
     // Convert to OdometryPayload0105 message
@@ -383,10 +379,11 @@ void sick_lidar_localization::UDPSender::messageCbOdomROS(const ros_nav_msgs::Od
         odometry0105.x_position = x_pos_mm;
         odometry0105.y_position = y_pos_mm;
         odometry0105.heading = heading_mdeg;
+        odometry0105.source_id = m_source_id_cfg.getSourceId(1, 5);
         // Send OdometryMessage0105
         if (m_verbose)
             ROS_INFO_STREAM("sick_lidar_localization::UDPSender: sending odom message (x=" << x_pos_mm << ", y=" << y_pos_mm << ", heading=" << heading_mdeg << ") converted to OdometryPayload0105");
-        if (!sendUDPPayload(odometry0105, UDP_HEADER_BIG_ENDIAN_DEFAULT, UDP_PAYLOAD_BIG_ENDIAN_DEFAULT, m_source_id))
+        if (!sendUDPPayload(odometry0105, UDP_HEADER_BIG_ENDIAN_DEFAULT, UDP_PAYLOAD_BIG_ENDIAN_DEFAULT))
             ROS_ERROR_STREAM("## ERROR sick_lidar_localization::UDPSender::OdometryPayload0105(): sendUDPPayload(" << sick_lidar_localization::UDPMessage::printPayload(odometry0105) << ") failed");
     }
     if(m_ros_odom_to_udp_msg < 0 || m_ros_odom_to_udp_msg > 3)
@@ -394,19 +391,6 @@ void sick_lidar_localization::UDPSender::messageCbOdomROS(const ros_nav_msgs::Od
         ROS_ERROR_STREAM("## ERROR sick_lidar_localization::UDPSender::messageCbOdomROS(): ros_odom_to_udp_msg = " << m_ros_odom_to_udp_msg << " not supported");
     }
 }
-
-/** subscriber callback function for input udp messages type OdometryMessage0101 */
-void sick_lidar_localization::UDPSender::messageCbOdometryMessage0101(const sick_lidar_localization::OdometryMessage0101 & msg)
-{
-    sick_lidar_localization::UDPMessage::OdometryPayload0101 odometry0101;
-    odometry0101.telegram_count = msg.telegram_count;
-    odometry0101.timestamp = msg.timestamp;
-    odometry0101.x_velocity = msg.x_velocity;
-    odometry0101.y_velocity = msg.y_velocity;
-    odometry0101.angular_velocity = msg.angular_velocity;
-    if (!sendUDPPayload(odometry0101, true, false, m_source_id))
-        ROS_ERROR_STREAM("## ERROR sick_lidar_localization::UDPSender::messageCbOdometryMessage0101(): sendUDPPayload(" << sick_lidar_localization::UDPMessage::printPayload(odometry0101) << ") failed");
-} 
 
 /** subscriber callback function for input udp messages type OdometryMessage0104 */
 void sick_lidar_localization::UDPSender::messageCbOdometryMessage0104(const sick_lidar_localization::OdometryMessage0104 & msg)
@@ -417,7 +401,10 @@ void sick_lidar_localization::UDPSender::messageCbOdometryMessage0104(const sick
     odometry0104.x_velocity = msg.x_velocity;
     odometry0104.y_velocity = msg.y_velocity;
     odometry0104.angular_velocity = msg.angular_velocity;
-    if (!sendUDPPayload(odometry0104, UDP_HEADER_BIG_ENDIAN_DEFAULT, UDP_PAYLOAD_BIG_ENDIAN_DEFAULT, m_source_id))
+    odometry0104.source_id = msg.source_id;
+    if (odometry0104.source_id <= 0)
+        odometry0104.source_id = m_source_id_cfg.getSourceId(1, 4);
+    if (!sendUDPPayload(odometry0104, UDP_HEADER_BIG_ENDIAN_DEFAULT, UDP_PAYLOAD_BIG_ENDIAN_DEFAULT))
         ROS_ERROR_STREAM("## ERROR sick_lidar_localization::UDPSender::messageCbOdometryMessage0104(): sendUDPPayload(" << sick_lidar_localization::UDPMessage::printPayload(odometry0104) << ") failed");
 } 
 
@@ -430,7 +417,10 @@ void sick_lidar_localization::UDPSender::messageCbOdometryMessage0105(const sick
     odometry0105.x_position = msg.x_position;
     odometry0105.y_position = msg.y_position;
     odometry0105.heading = msg.heading;
-    if (!sendUDPPayload(odometry0105, UDP_HEADER_BIG_ENDIAN_DEFAULT, UDP_PAYLOAD_BIG_ENDIAN_DEFAULT, m_source_id))
+    odometry0105.source_id = msg.source_id;
+    if (odometry0105.source_id <= 0)
+        odometry0105.source_id = m_source_id_cfg.getSourceId(1, 5);
+    if (!sendUDPPayload(odometry0105, UDP_HEADER_BIG_ENDIAN_DEFAULT, UDP_PAYLOAD_BIG_ENDIAN_DEFAULT))
         ROS_ERROR_STREAM("## ERROR sick_lidar_localization::UDPSender::OdometryPayload0105(): sendUDPPayload(" << sick_lidar_localization::UDPMessage::printPayload(odometry0105) << ") failed");
 } 
 
@@ -441,7 +431,10 @@ void sick_lidar_localization::UDPSender::messageCbEncoderMeasurementMessage0202(
     encoder_measurement0202.telegram_count = msg.telegram_count;
     encoder_measurement0202.timestamp = msg.timestamp;
     encoder_measurement0202.encoder_value = msg.encoder_value;
-    if (!sendUDPPayload(encoder_measurement0202, UDP_HEADER_BIG_ENDIAN_DEFAULT, UDP_PAYLOAD_BIG_ENDIAN_DEFAULT, m_source_id))
+    encoder_measurement0202.source_id = msg.source_id;
+    if (encoder_measurement0202.source_id <= 0)
+        encoder_measurement0202.source_id = m_source_id_cfg.getSourceId(2, 2);
+    if (!sendUDPPayload(encoder_measurement0202, UDP_HEADER_BIG_ENDIAN_DEFAULT, UDP_PAYLOAD_BIG_ENDIAN_DEFAULT))
         ROS_ERROR_STREAM("## ERROR sick_lidar_localization::UDPSender::messageCbEncoderMeasurementMessage0202(): sendUDPPayload(" << sick_lidar_localization::UDPMessage::printPayload(encoder_measurement0202) << ") failed");
 } 
 
@@ -452,8 +445,28 @@ void sick_lidar_localization::UDPSender::messageCbCodeMeasurementMessage0303(con
     code_measurement0303.telegram_count = msg.telegram_count;
     code_measurement0303.timestamp = msg.timestamp;
     code_measurement0303.code = msg.code;
-    if (!sendUDPPayload(code_measurement0303, UDP_HEADER_BIG_ENDIAN_DEFAULT, UDP_PAYLOAD_BIG_ENDIAN_DEFAULT, m_source_id))
+    code_measurement0303.source_id = msg.source_id;
+    if (code_measurement0303.source_id <= 0)
+        code_measurement0303.source_id = m_source_id_cfg.getSourceId(3, 3);
+    if (!sendUDPPayload(code_measurement0303, UDP_HEADER_BIG_ENDIAN_DEFAULT, UDP_PAYLOAD_BIG_ENDIAN_DEFAULT))
         ROS_ERROR_STREAM("## ERROR sick_lidar_localization::UDPSender::messageCbCodeMeasurementMessage0303(): sendUDPPayload(" << sick_lidar_localization::UDPMessage::printPayload(code_measurement0303) << ") failed");
+} 
+
+/** subscriber callback function for input udp messages type messageCbCodeMeasurementMessage0701 */
+void sick_lidar_localization::UDPSender::messageCbCodeMeasurementMessage0701(const sick_lidar_localization::CodeMeasurementMessage0701 & msg)
+{
+    sick_lidar_localization::UDPMessage::CodeMeasurementPayload0701 code_measurement0701;
+    code_measurement0701.telegram_count = msg.telegram_count;
+    code_measurement0701.timestamp = msg.timestamp;
+    code_measurement0701.code = msg.code;
+    code_measurement0701.x_position = msg.x_position;
+    code_measurement0701.y_position = msg.y_position;
+    code_measurement0701.heading = msg.heading;
+    code_measurement0701.source_id = msg.source_id;
+    if (code_measurement0701.source_id <= 0)
+        code_measurement0701.source_id = m_source_id_cfg.getSourceId(7, 1);
+    if (!sendUDPPayload(code_measurement0701, UDP_HEADER_BIG_ENDIAN_DEFAULT, UDP_PAYLOAD_BIG_ENDIAN_DEFAULT))
+        ROS_ERROR_STREAM("## ERROR sick_lidar_localization::UDPSender::messageCbCodeMeasurementMessage0701(): sendUDPPayload(" << sick_lidar_localization::UDPMessage::printPayload(code_measurement0701) << ") failed");
 } 
 
 /** subscriber callback function for input udp messages type messageCbLineMeasurementMessage0403 */
@@ -464,7 +477,10 @@ void sick_lidar_localization::UDPSender::messageCbLineMeasurementMessage0403(con
     line_measurement0403.timestamp = msg.timestamp;
     line_measurement0403.num_lanes = msg.num_lanes;
     line_measurement0403.lanes = msg.lanes;
-    if (!sendUDPPayload(line_measurement0403, UDP_HEADER_BIG_ENDIAN_DEFAULT, UDP_PAYLOAD_BIG_ENDIAN_DEFAULT, m_source_id))
+    line_measurement0403.source_id = msg.source_id;
+    if (line_measurement0403.source_id <= 0)
+        line_measurement0403.source_id = m_source_id_cfg.getSourceId(4, 3);
+    if (!sendUDPPayload(line_measurement0403, UDP_HEADER_BIG_ENDIAN_DEFAULT, UDP_PAYLOAD_BIG_ENDIAN_DEFAULT))
         ROS_ERROR_STREAM("## ERROR sick_lidar_localization::UDPSender::messageCbLineMeasurementMessage0403(): sendUDPPayload(" << sick_lidar_localization::UDPMessage::printPayload(line_measurement0403) << ") failed");
 } 
 
@@ -479,7 +495,10 @@ void sick_lidar_localization::UDPSender::messageCbLineMeasurementMessage0404(con
     line_measurement0404.lcp3 = msg.lcp3;
     line_measurement0404.cnt_lpc = msg.cnt_lpc;
     line_measurement0404.reserved = 0;
-    if (!sendUDPPayload(line_measurement0404, UDP_HEADER_BIG_ENDIAN_DEFAULT, UDP_PAYLOAD_BIG_ENDIAN_DEFAULT, m_source_id))
+    line_measurement0404.source_id = msg.source_id;
+    if (line_measurement0404.source_id <= 0)
+        line_measurement0404.source_id = m_source_id_cfg.getSourceId(4, 4);
+    if (!sendUDPPayload(line_measurement0404, UDP_HEADER_BIG_ENDIAN_DEFAULT, UDP_PAYLOAD_BIG_ENDIAN_DEFAULT))
         ROS_ERROR_STREAM("## ERROR sick_lidar_localization::UDPSender::messageCbLineMeasurementMessage0404(): sendUDPPayload(" << sick_lidar_localization::UDPMessage::printPayload(line_measurement0404) << ") failed");
 } 
 #endif // __ROS_VERSION > 0

@@ -44,7 +44,7 @@ responses = {
         "LocSetOdometryActive"                        : { "header": std_header_ok, "data": { "success": True } },
         "LocSetRecordingActive"                       : { "header": std_header_ok, "data": { "success": True } },
         "LocSetRingBufferRecordingActive"             : { "header": std_header_ok, "data": { "success": True } },
-        "LocStartLocalizing"                          : { "header": std_header_ok, "data": { "success": True } },
+        "LocStart"                                    : { "header": std_header_ok, "data": { "success": True } },
         "LocStop"                                     : { "header": std_header_ok, "data": { "success": True } },
         "LocSwitchMap"                                : { "header": std_header_ok, "data": { "success": True } },
         "LocGetLocalizationStatus"                    : { "header": std_header_ok, "data": { "locStatus": 1, "details": "LOCALIZING" } },

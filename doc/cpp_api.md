@@ -32,41 +32,56 @@ int main(int argc, char** argv)
     sick_lidar_localization::UDPMessage::OdometryPayload0105 odometry0105;
     sick_lidar_localization::UDPMessage::EncoderMeasurementPayload0202 encoder_measurement0202;
     sick_lidar_localization::UDPMessage::CodeMeasurementPayload0303 code_measurement0303;
+    sick_lidar_localization::UDPMessage::CodeMeasurementPayload0701 code_measurement0701;
     sick_lidar_localization::UDPMessage::LineMeasurementPayload0403 line_measurement0403;
     sick_lidar_localization::UDPMessage::LineMeasurementPayload0404 line_measurement0404;
     odometry0104.telegram_count = 1000001;
     odometry0104.timestamp = 123456789;
+    odometry0104.source_id = 0;
     odometry0104.x_velocity = -1234;
     odometry0104.y_velocity = -1234;
     odometry0104.angular_velocity = 1234;
     odometry0105.telegram_count = 1000002;
     odometry0105.timestamp = 123456780;
+    odometry0105.source_id = 0;
     odometry0105.x_position = -1234;
     odometry0105.y_position = -1234;
     odometry0105.heading = 1234;
     encoder_measurement0202.telegram_count = 1000003;
     encoder_measurement0202.timestamp = 123456781;
+    encoder_measurement0202.source_id = 0;
     encoder_measurement0202.encoder_value = 123456789;
     code_measurement0303.telegram_count = 1000004;
     code_measurement0303.timestamp = 123456782;
+    code_measurement0303.source_id = 0;
     code_measurement0303.code = 1234;
+    code_measurement0701.telegram_count = 1000004;
+    code_measurement0701.timestamp = 123456782;
+    code_measurement0701.source_id = 0;
+    code_measurement0701.code = "1234";
+    code_measurement0701.x_position = -1234;
+    code_measurement0701.y_position = -1234;
+    code_measurement0701.heading = 1234;
     line_measurement0403.telegram_count = 1000005;
     line_measurement0403.timestamp = 123456783;
+    line_measurement0403.source_id = 0;
     line_measurement0403.num_lanes = 1;
     line_measurement0403.lanes.push_back(1234);
     line_measurement0404.telegram_count = 1000006;
     line_measurement0404.timestamp = 123456784;
+    line_measurement0404.source_id = 0;
     line_measurement0404.lcp1 = 12;
     line_measurement0404.lcp2 = 34;
     line_measurement0404.lcp3 = 56;
     line_measurement0404.cnt_lpc = 78;
     line_measurement0404.reserved = 0;
-    if (!lidar_loc_api.sendUDPMessage(odometry0104, false, false, 1)
-        || !lidar_loc_api.sendUDPMessage(odometry0105, false, false, 1)
-        || !lidar_loc_api.sendUDPMessage(encoder_measurement0202, false, false, 1)
-        || !lidar_loc_api.sendUDPMessage(code_measurement0303, false, false, 1)
-        || !lidar_loc_api.sendUDPMessage(line_measurement0403, false, false, 1)
-        || !lidar_loc_api.sendUDPMessage(line_measurement0404, false, false, 1))
+    if (!lidar_loc_api.sendUDPMessage(odometry0104, false, false)
+        || !lidar_loc_api.sendUDPMessage(odometry0105, false, false)
+        || !lidar_loc_api.sendUDPMessage(encoder_measurement0202, false, false)
+        || !lidar_loc_api.sendUDPMessage(code_measurement0303, false, false)
+        || !lidar_loc_api.sendUDPMessage(code_measurement0701, false, false)
+        || !lidar_loc_api.sendUDPMessage(line_measurement0403, false, false)
+        || !lidar_loc_api.sendUDPMessage(line_measurement0404, false, false))
     {
         ROS_ERROR_STREAM("## ERROR sick_lidar_localization: UDPSender::sendUDPPayload() failed");
     }

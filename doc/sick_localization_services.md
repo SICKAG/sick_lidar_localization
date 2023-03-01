@@ -12,7 +12,7 @@ gen_service_call <command> <method> <jsondata> [options]
 ```
 with the following commandline options:
 ```
-<command>: name of command (service request), f.e. LocIsSystemReady or LocStartLocalizing
+<command>: name of command (service request), f.e. LocIsSystemReady or LocStart
 <method>: GET or POST
 <jsondata>: parameter as json string, f.e. {}
 --hostname=<ip-address>: ip address of the localization server, default: 192.168.0.1
@@ -44,7 +44,7 @@ The following table lists supported commands using `gen_service_call` (supported
 | LocSetOdometryActive | gen_service_call<br/> LocSetOdometryActive POST <br/>"\{\\"data\\": \{\\"active\\":true\}\}" | Enable or disable the support of odometry to enhance the robustness of the contour localization algorithm |
 | LocSetRecordingActive | gen_service_call<br/> LocSetRecordingActive POST <br/>"\{\\"data\\": \{\\"active\\":true\}\}" | Starts or stops the recording of sensor data |
 | LocSetRingBufferRecordingActive | gen_service_call<br/> LocSetRingBufferRecordingActive POST <br/>"\{\\"data\\": \{\\"active\\":true\}\}" | Enable or disable the continuous recording of data for improved support in critical situations |
-| LocStartLocalizing | gen_service_call<br/> LocStartLocalizing POST "\{\}" | Start the localization |
+| LocStart | gen_service_call<br/> LocStart POST "\{\}" | Start the localization |
 | LocStop | gen_service_call<br/> LocStop POST "\{\}" | Stop the localization or the demo mapping and return to IDLE state |
 | LocSwitchMap | gen_service_call<br/> LocSwitchMap POST <br/>"\{\\"data\\": \{\\"subMapName\\": \\"test.vmap\\"\}\}" | Transits to the given sub map if close enough to a transition point between the current and the given sub map |
 | LocGetLocalizationStatus | gen_service_call<br/> LocGetLocalizationStatus POST "\{\}" | Returns the localization status |
@@ -78,7 +78,7 @@ The following table lists supported commands in their shortest form:
 | LocSetOdometryActive | gen_service_call<br/> LocSetOdometryActive <br/>"\{active: true\}" | Enable or disable the support of odometry to enhance the robustness of the contour localization algorithm |
 | LocSetRecordingActive | gen_service_call<br/> LocSetRecordingActive <br/>"\{active: true\}" | Starts or stops the recording of sensor data |
 | LocSetRingBufferRecordingActive | gen_service_call<br/> LocSetRingBufferRecordingActive <br/>"\{active: true\}" | Enable or disable the continuous recording of data for improved support in critical situations |
-| LocStartLocalizing | gen_service_call<br/> LocStartLocalizing | Start the localization |
+| LocStart | gen_service_call<br/> LocStart | Start the localization |
 | LocStop | gen_service_call<br/> LocStop | Stop the localization or the demo mapping and return to IDLE state |
 | LocSwitchMap | gen_service_call<br/> LocSwitchMap <br/>"\{subMapName: \\"test.vmap\\"\}\}" | Transits to the given sub map if close enough to a transition point between the current and the given sub map |
 | LocGetLocalizationStatus | gen_service_call<br/> LocGetLocalizationStatus | Returns the localization status |
@@ -98,7 +98,7 @@ gen_service_call examples:
 ./build/gen_service_call LocSetMappingActive POST "{\"data\":{\"active\": true}}" -d=2
 ./build/gen_service_call LocSetOdometryActive POST "{\"data\":{\"active\": true}}" -d=2
 ./build/gen_service_call LocStop POST "{}" -d=2
-./build/gen_service_call LocStartLocalizing POST "{}" -d=2
+./build/gen_service_call LocStart POST "{}" -d=2
 # short form
 ./build/gen_service_call LocIsSystemReady
 ./build/gen_service_call LocGetMap
@@ -106,7 +106,7 @@ gen_service_call examples:
 ./build/gen_service_call LocSetMappingActive "{active: true}"
 ./build/gen_service_call LocSetOdometryActive "{active: true}"
 ./build/gen_service_call LocStop
-./build/gen_service_call LocStartLocalizing
+./build/gen_service_call LocStart
 ```
 
 Output examples (test against SIM1000FX):
@@ -153,12 +153,12 @@ gen_service_call request: LocStop, response: {"header":{"status":0,"message":"Ok
 curl command: 
 curl -i -H "Content-Type: application/json" -X POST -d "{}" http://192.168.0.1/api/LocStop
 
-./build/gen_service_call LocStartLocalizing POST "{}" -d=2
-gen_service_call LocStartLocalizing POST {} --hostname=192.168.0.1 --verbose=1
-INFO : curl send http POST request "LocStartLocalizing", response: "{"header":{"status":0,"message":"Ok"},"data":{"success":true}}"
-gen_service_call request: LocStartLocalizing, response: {"header":{"status":0,"message":"Ok"},"data":{"success":true}}
+./build/gen_service_call LocStart POST "{}" -d=2
+gen_service_call LocStart POST {} --hostname=192.168.0.1 --verbose=1
+INFO : curl send http POST request "LocStart", response: "{"header":{"status":0,"message":"Ok"},"data":{"success":true}}"
+gen_service_call request: LocStart, response: {"header":{"status":0,"message":"Ok"},"data":{"success":true}}
 curl command: 
-curl -i -H "Content-Type: application/json" -X POST -d "{}" http://192.168.0.1/api/LocStartLocalizing
+curl -i -H "Content-Type: application/json" -X POST -d "{}" http://192.168.0.1/api/LocStart
 ```
 
 Note: A REST-API can be served with tool curl, too. `gen_service_call` with option `-d=2` prints the corresponding curl command, f.e.:
@@ -169,7 +169,7 @@ curl -i -H "Content-Type: application/json" -X POST -d "{}" http://192.168.0.1/a
 curl -i -H "Content-Type: application/json" -X POST -d "{\"data\":{\"active\":true}}" http://192.168.0.1/api/LocSetMappingActive
 curl -i -H "Content-Type: application/json" -X POST -d "{\"data\":{\"active\":true}}" http://192.168.0.1/api/LocSetOdometryActive
 curl -i -H "Content-Type: application/json" -X POST -d "{}" http://192.168.0.1/api/LocStop
-curl -i -H "Content-Type: application/json" -X POST -d "{}" http://192.168.0.1/api/LocStartLocalizing
+curl -i -H "Content-Type: application/json" -X POST -d "{}" http://192.168.0.1/api/LocStart
 ```
 
 ## ROS-1 services
@@ -196,7 +196,7 @@ The following table lists the same commands using ROS1 services:
 | LocSetOdometryActive | rosservice call LocSetOdometryActive <br/>"\{active: true\}" |
 | LocSetRecordingActive | rosservice call LocSetRecordingActive <br/>"\{active: true\}" |
 | LocSetRingBufferRecordingActive | rosservice call LocSetRingBufferRecordingActive <br/>"\{active: true\}" |
-| LocStartLocalizing | rosservice call LocStartLocalizing "\{\}" |
+| LocStart | rosservice call LocStart "\{\}" |
 | LocStop | rosservice call LocStop "\{\}" |
 | LocSwitchMap | rosservice call LocSwitchMap <br/>"\{submapname: \\"test.vmap\\"\}" |
 | LocGetLocalizationStatus | rosservice call LocGetLocalizationStatus "\{\}" |
@@ -214,7 +214,7 @@ rosservice call LocSetMappingActive "{active: true}"
 rosservice call LocSetOdometryActive "{active: true}"
 rosservice call LocGetSystemState "{}"
 rosservice call LocStop "{}"
-rosservice call LocStartLocalizing "{}"
+rosservice call LocStart "{}"
 ```
 
 Output examples (test examples against SIM1000FX):
@@ -246,8 +246,8 @@ success: True
 rosservice call LocStop "{}"
 [ INFO] [1626875300.376469527]: SickServices::serviceCb("LocStop", "POST", "{}"): success=1
 success: True
-rosservice call LocStartLocalizing "{}"
-[ INFO] [1626875302.384810233]: SickServices::serviceCb("LocStartLocalizing", "POST", "{}"): success=1
+rosservice call LocStart "{}"
+[ INFO] [1626875302.384810233]: SickServices::serviceCb("LocStart", "POST", "{}"): success=1
 success: True
 ```
 
@@ -275,7 +275,7 @@ The following table lists the same commands using ROS2 services:
 | LocSetOdometryActive | ros2 service call LocSetOdometryActive sick_lidar_localization/srv/LocSetOdometryActiveSrv <br/>"\{active: true\}" |
 | LocSetRecordingActive | ros2 service call LocSetRecordingActive sick_lidar_localization/srv/LocSetRecordingActiveSrv <br/>"\{active: true\}" |
 | LocSetRingBufferRecordingActive | ros2 service call LocSetRingBufferRecordingActive sick_lidar_localization/srv/LocSetRingBufferRecordingActiveSrv <br/>"\{active: true\}" |
-| LocStartLocalizing | ros2 service call LocStartLocalizing sick_lidar_localization/srv/LocStartLocalizingSrv "\{\}" |
+| LocStart | ros2 service call LocStart sick_lidar_localization/srv/LocStartSrv "\{\}" |
 | LocStop | ros2 service call LocStop sick_lidar_localization/srv/LocStopSrv "\{\}" |
 | LocSwitchMap | ros2 service call LocSwitchMap sick_lidar_localization/srv/LocSwitchMapSrv <br/>"\{submapname: \\"test.vmap\\"\}" |
 | LocGetLocalizationStatus | ros2 service call LocGetLocalizationStatus sick_lidar_localization/srv/LocGetLocalizationStatusSrv "\{\}" |
@@ -292,7 +292,7 @@ ros2 service call LocGetSystemState sick_lidar_localization/srv/LocGetSystemStat
 ros2 service call LocSetMappingActive sick_lidar_localization/srv/LocSetMappingActiveSrv "{active: true}"
 ros2 service call LocSetOdometryActive sick_lidar_localization/srv/LocSetOdometryActiveSrv "{active: true}"
 ros2 service call LocStop sick_lidar_localization/srv/LocStopSrv "{}"
-ros2 service call LocStartLocalizing sick_lidar_localization/srv/LocStartLocalizingSrv "{}"
+ros2 service call LocStart sick_lidar_localization/srv/LocStartSrv "{}"
 ```
 
 Output examples (test examples against SIM1000FX):
@@ -319,7 +319,7 @@ response: sick_lidar_localization.srv.LocSetOdometryActiveSrv_Response(success=T
 ros2 service call LocStop sick_lidar_localization/srv/LocStopSrv "{}"
 [INFO] [1626874812.001814744] [sick_lidar_localization]: SickServices::serviceCb("LocStop", "POST", "{}"): success=1
 response: sick_lidar_localization.srv.LocStopSrv_Response(success=True)
-ros2 service call LocStartLocalizing sick_lidar_localization/srv/LocStartLocalizingSrv "{}"
-[INFO] [1626874813.582692773] [sick_lidar_localization]: SickServices::serviceCb("LocStartLocalizing", "POST", "{}"): success=1
-response: sick_lidar_localization.srv.LocStartLocalizingSrv_Response(success=True)
+ros2 service call LocStart sick_lidar_localization/srv/LocStartSrv "{}"
+[INFO] [1626874813.582692773] [sick_lidar_localization]: SickServices::serviceCb("LocStart", "POST", "{}"): success=1
+response: sick_lidar_localization.srv.LocStartSrv_Response(success=True)
 ```

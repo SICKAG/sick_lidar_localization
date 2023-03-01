@@ -62,7 +62,7 @@ ros2 service call LocSetMappingActive sick_lidar_localization/srv/LocSetMappingA
 ros2 service call LocSetOdometryActive sick_lidar_localization/srv/LocSetOdometryActiveSrv "{\"active\":1}"
 ros2 service call LocSetRecordingActive sick_lidar_localization/srv/LocSetRecordingActiveSrv "{\"active\":1}"
 ros2 service call LocSetRingBufferRecordingActive sick_lidar_localization/srv/LocSetRingBufferRecordingActiveSrv "{\"active\":1}"
-ros2 service call LocStartLocalizing sick_lidar_localization/srv/LocStartLocalizingSrv "{}"
+ros2 service call LocStart sick_lidar_localization/srv/LocStartSrv "{}"
 ros2 service call LocStop sick_lidar_localization/srv/LocStopSrv "{}"
 ros2 service call LocSwitchMap sick_lidar_localization/srv/LocSwitchMapSrv "{\"submapname\":\"test.vmap\"}"
 ros2 service call LocGetLocalizationStatus sick_lidar_localization/srv/LocGetLocalizationStatusSrv "{}"
@@ -71,12 +71,11 @@ ros2 service call LocLoadPersistentConfig sick_lidar_localization/srv/LocLoadPer
 @timeout /t 3
 
 REM 
-REM Start pointcloud_converter and visualize PointCloud2 messages by rviz
-REM rviz -> Add by topic /cloud/PointCloud2
+REM Start lls_transform and visualize TF messages by rviz
 REM rviz -> Add by display type TF
 REM 
 
-start "pointcloud_converter" /min ros2 run sick_lidar_localization pointcloud_converter %SICK_LIDAR_LOCALIZATION_ROOT%/launch/pointcloud_converter.launch
+start "lls_transform" /min ros2 run sick_lidar_localization lls_transform %SICK_LIDAR_LOCALIZATION_ROOT%/launch/lls_transform.launch
 start "rviz2" ros2 run rviz2 rviz2 -d %SICK_LIDAR_LOCALIZATION_ROOT%/test/config/rviz2_win64_sick_lidar_localization_pointcloud.rviz
 start "ros2 topic echo /localizationcontroller/out" cmd /k .\src\sick_lidar_localization2_pretest\test\scripts\simu_echo_localizationcontroller_out_topics.cmd
 
@@ -84,14 +83,28 @@ REM
 REM Start udp sender resp. pcapng player to send UDP output messages
 REM 
 
-rem python %SICK_LIDAR_LOCALIZATION_ROOT%/test/rest_server/python/sim_udp_sender.py --udp_port=5010 --udp_send_rate=30.0 --max_message_count=300
-python %SICK_LIDAR_LOCALIZATION_ROOT%/test/rest_server/python/sim_pcapng_player.py --pcap_filename %SICK_LIDAR_LOCALIZATION_ROOT%/test/data/wireshark/20210803_moving_lidarloc2.pcapng
+rem python %SICK_LIDAR_LOCALIZATION_ROOT%/test/rest_server/python/lls_udp_sender.py --udp_port=5010 --udp_send_rate=30.0 --max_message_count=300
+python %SICK_LIDAR_LOCALIZATION_ROOT%/test/rest_server/python/lls_pcapng_player.py --pcap_filename %SICK_LIDAR_LOCALIZATION_ROOT%/test/data/wireshark/20210803_moving_lidarloc2.pcapng
 
 REM 
 REM Start odometry sender
 REM 
 
 python %SICK_LIDAR_LOCALIZATION_ROOT%/test/rest_server/python/send_ros2_odom_messages.py
+ros2 topic pub --once /localizationcontroller/in/odometry_message_0104            sick_lidar_localization/OdometryMessage0104           "{telegram_count: 1000001, timestamp: 123456789, source_id: 0, x_velocity: -1234, y_velocity: -1234, angular_velocity: 1234}"
+ros2 topic pub --once /localizationcontroller/in/odometry_message_0104            sick_lidar_localization/OdometryMessage0104           "{telegram_count: 1000001, timestamp: 123456789, source_id: 2, x_velocity: -1234, y_velocity: -1234, angular_velocity: 1234}"
+ros2 topic pub --once /localizationcontroller/in/odometry_message_0105            sick_lidar_localization/OdometryMessage0105           "{telegram_count: 1000002, timestamp: 123456780, source_id: 0, x_position: -1234, y_position: -1234, heading: 1234}"
+ros2 topic pub --once /localizationcontroller/in/odometry_message_0105            sick_lidar_localization/OdometryMessage0105           "{telegram_count: 1000002, timestamp: 123456780, source_id: 3, x_position: -1234, y_position: -1234, heading: 1234}"
+ros2 topic pub --once /localizationcontroller/in/encoder_measurement_message_0202 sick_lidar_localization/EncoderMeasurementMessage0202 "{telegram_count: 1000003, timestamp: 123456781, source_id: 0, encoder_value: 123456789}"
+ros2 topic pub --once /localizationcontroller/in/encoder_measurement_message_0202 sick_lidar_localization/EncoderMeasurementMessage0202 "{telegram_count: 1000003, timestamp: 123456781, source_id: 4, encoder_value: 123456789}"
+ros2 topic pub --once /localizationcontroller/in/code_measurement_message_0303    sick_lidar_localization/CodeMeasurementMessage0303    "{telegram_count: 1000004, timestamp: 123456782, source_id: 0, code: 1234}"
+ros2 topic pub --once /localizationcontroller/in/code_measurement_message_0303    sick_lidar_localization/CodeMeasurementMessage0303    "{telegram_count: 1000004, timestamp: 123456782, source_id: 5, code: 1234}"
+ros2 topic pub --once /localizationcontroller/in/code_measurement_message_0701    sick_lidar_localization/CodeMeasurementMessage0701    "{telegram_count: 1000004, timestamp: 123456782, source_id: 0, code: "1234", x_position: -1234, y_position: -2345, heading: -3456}"
+ros2 topic pub --once /localizationcontroller/in/code_measurement_message_0701    sick_lidar_localization/CodeMeasurementMessage0701    "{telegram_count: 1000004, timestamp: 123456782, source_id: 6, code: "1234", x_position: -1234, y_position: -2345, heading: -3456}"
+ros2 topic pub --once /localizationcontroller/in/line_measurement_message_0403    sick_lidar_localization/LineMeasurementMessage0403    "{telegram_count: 1000005, timestamp: 123456783, source_id: 0, num_lanes: 1, lanes: [1234]}"
+ros2 topic pub --once /localizationcontroller/in/line_measurement_message_0403    sick_lidar_localization/LineMeasurementMessage0403    "{telegram_count: 1000005, timestamp: 123456783, source_id: 7, num_lanes: 1, lanes: [1234]}"
+ros2 topic pub --once /localizationcontroller/in/line_measurement_message_0404    sick_lidar_localization/LineMeasurementMessage0404    "{telegram_count: 1000006, timestamp: 123456784, source_id: 0, lcp1: 12, lcp2: 34, lcp3: 56, cnt_lpc: 78}"
+ros2 topic pub --once /localizationcontroller/in/line_measurement_message_0404    sick_lidar_localization/LineMeasurementMessage0404    "{telegram_count: 1000006, timestamp: 123456784, source_id: 8, lcp1: 12, lcp2: 34, lcp3: 56, cnt_lpc: 78}"
 
 popd
 @pause

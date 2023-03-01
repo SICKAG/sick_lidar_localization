@@ -79,7 +79,7 @@
 #define serviceCbLocSetOdometryActiveSrv sick_lidar_localization::SickServices::serviceCbLocSetOdometryActiveSrvROS1
 #define serviceCbLocSetRecordingActiveSrv sick_lidar_localization::SickServices::serviceCbLocSetRecordingActiveSrvROS1
 #define serviceCbLocSetRingBufferRecordingActiveSrv sick_lidar_localization::SickServices::serviceCbLocSetRingBufferRecordingActiveSrvROS1
-#define serviceCbLocStartLocalizingSrv sick_lidar_localization::SickServices::serviceCbLocStartLocalizingSrvROS1
+#define serviceCbLocStartSrv sick_lidar_localization::SickServices::serviceCbLocStartSrvROS1
 #define serviceCbLocStateSrv sick_lidar_localization::SickServices::serviceCbLocStateSrvROS1
 #define serviceCbLocStopSrv sick_lidar_localization::SickServices::serviceCbLocStopSrvROS1
 #define serviceCbLocSwitchMapSrv sick_lidar_localization::SickServices::serviceCbLocSwitchMapSrvROS1
@@ -107,7 +107,7 @@
 #define serviceCbLocSetOdometryActiveSrv sick_lidar_localization::SickServices::serviceCbLocSetOdometryActiveSrvROS2
 #define serviceCbLocSetRecordingActiveSrv sick_lidar_localization::SickServices::serviceCbLocSetRecordingActiveSrvROS2
 #define serviceCbLocSetRingBufferRecordingActiveSrv sick_lidar_localization::SickServices::serviceCbLocSetRingBufferRecordingActiveSrvROS2
-#define serviceCbLocStartLocalizingSrv sick_lidar_localization::SickServices::serviceCbLocStartLocalizingSrvROS2
+#define serviceCbLocStartSrv sick_lidar_localization::SickServices::serviceCbLocStartSrvROS2
 #define serviceCbLocStateSrv sick_lidar_localization::SickServices::serviceCbLocStateSrvROS2
 #define serviceCbLocStopSrv sick_lidar_localization::SickServices::serviceCbLocStopSrvROS2
 #define serviceCbLocSwitchMapSrv sick_lidar_localization::SickServices::serviceCbLocSwitchMapSrvROS2
@@ -171,8 +171,8 @@ sick_lidar_localization::SickServices::SickServices(rosNodePtr nh, const std::st
         m_srv_server_LocSetRecordingActiveSrv = rosServiceServer<sick_lidar_localization::LocSetRecordingActiveSrv>(srv_LocSetRecordingActiveSrv);
         auto srv_LocSetRingBufferRecordingActiveSrv = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::LocSetRingBufferRecordingActiveSrv, "/LocSetRingBufferRecordingActive", &serviceCbLocSetRingBufferRecordingActiveSrv, this);
         m_srv_server_LocSetRingBufferRecordingActiveSrv = rosServiceServer<sick_lidar_localization::LocSetRingBufferRecordingActiveSrv>(srv_LocSetRingBufferRecordingActiveSrv);
-        auto srv_LocStartLocalizingSrv = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::LocStartLocalizingSrv, "/LocStartLocalizing", &serviceCbLocStartLocalizingSrv, this);
-        m_srv_server_LocStartLocalizingSrv = rosServiceServer<sick_lidar_localization::LocStartLocalizingSrv>(srv_LocStartLocalizingSrv);
+        auto srv_LocStartSrv = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::LocStartSrv, "/LocStart", &serviceCbLocStartSrv, this);
+        m_srv_server_LocStartSrv = rosServiceServer<sick_lidar_localization::LocStartSrv>(srv_LocStartSrv);
         auto srv_LocStopSrv = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::LocStopSrv, "/LocStop", &serviceCbLocStopSrv, this);
         m_srv_server_LocStopSrv = rosServiceServer<sick_lidar_localization::LocStopSrv>(srv_LocStopSrv);
         auto srv_LocSwitchMapSrv = ROS_CREATE_SRV_SERVER(nh, sick_lidar_localization::LocSwitchMapSrv, "/LocSwitchMap", &serviceCbLocSwitchMapSrv, this);
@@ -220,7 +220,7 @@ void sick_lidar_localization::SickServices::getDefaultCommand(const std::string&
         command_map["LocSetOdometryActive"] = {"LocSetOdometryActive", "POST"};
         command_map["LocSetRecordingActive"] = {"LocSetRecordingActive", "POST"};
         command_map["LocSetRingBufferRecordingActive"] = {"LocSetRingBufferRecordingActive", "POST"};
-        command_map["LocStartLocalizing"] = {"LocStartLocalizing", "POST", "{}"};
+        command_map["LocStart"] = {"LocStart", "POST", "{}"};
         command_map["LocStop"] = {"LocStop", "POST", "{}"};
         command_map["LocSwitchMap"] = {"LocSwitchMap", "POST"};
         command_map["LocGetLocalizationStatus"] = {"LocGetLocalizationStatus", "POST"};
@@ -634,17 +634,17 @@ bool sick_lidar_localization::SickServices::serviceCbLocSetRingBufferRecordingAc
     return serviceCbLocSetRingBufferRecordingActiveSrvROS1(*service_request, *service_response);
 }
 
-bool sick_lidar_localization::SickServices::serviceCbLocStartLocalizingSrvROS1(sick_lidar_localization::LocStartLocalizingSrv::Request &service_request, sick_lidar_localization::LocStartLocalizingSrv::Response &service_response)
+bool sick_lidar_localization::SickServices::serviceCbLocStartSrvROS1(sick_lidar_localization::LocStartSrv::Request &service_request, sick_lidar_localization::LocStartSrv::Response &service_response)
 {
-    std::string command = "LocStartLocalizing", method = "POST", json_data = "{}";
+    std::string command = "LocStart", method = "POST", json_data = "{}";
     std::map<std::string, sick_lidar_localization::JsonValue> response_data = sendJsonRequestGetResponse(command, method, json_data);
     service_response.success = response_data["/data/success"].toBool();
     ROS_INFO_STREAM("SickServices::serviceCb(\"" << command << "\", \"" << method << "\", \"" << json_data << "\"): success=" << std::to_string(service_response.success));
     return true;
 }
-bool sick_lidar_localization::SickServices::serviceCbLocStartLocalizingSrvROS2(std::shared_ptr<sick_lidar_localization::LocStartLocalizingSrv::Request> service_request, std::shared_ptr<sick_lidar_localization::LocStartLocalizingSrv::Response> service_response)
+bool sick_lidar_localization::SickServices::serviceCbLocStartSrvROS2(std::shared_ptr<sick_lidar_localization::LocStartSrv::Request> service_request, std::shared_ptr<sick_lidar_localization::LocStartSrv::Response> service_response)
 {
-    return serviceCbLocStartLocalizingSrvROS1(*service_request, *service_response);
+    return serviceCbLocStartSrvROS1(*service_request, *service_response);
 }
 
 bool sick_lidar_localization::SickServices::serviceCbLocStopSrvROS1(sick_lidar_localization::LocStopSrv::Request &service_request, sick_lidar_localization::LocStopSrv::Response &service_response)

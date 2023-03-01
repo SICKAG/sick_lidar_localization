@@ -1,5 +1,5 @@
 /*
- * @brief sim_loc_pointcloud_converts sim_loc_driver messages (type sick_lidar_localization::LocResultPortTelegramMsg),
+ * @brief lls_loc_pointcloud_converts lls_loc_driver messages (type sick_lidar_localization::LocResultPortTelegramMsg),
  * to PointCloud2 messages and publishes PointCloud2 messages on topic "/cloud".
  *
  * The vehicle poses (PoseX, PoseY, PoseYaw of result port telegrams) are transformed and published
@@ -78,11 +78,11 @@ namespace sick_lidar_localization { using namespace msg; }
 namespace sick_lidar_localization
 {
   /*!
-   * class PointCloudConverter implements a thread to converts lidar_loc_driver messages
+   * class LLSTransformer implements a thread to converts lidar_loc_driver messages
    * (type sick_lidar_localization::LocResultPortTelegramMsg) to PointCloud2 messages
    * and publishes them on topic "/cloud".
    */
-  class PointCloudConverter
+  class LLSTransformer
   {
   public:
     
@@ -90,12 +90,12 @@ namespace sick_lidar_localization
      * Constructor
      * @param[in] nh ros node handle
      */
-    PointCloudConverter(rosNodePtr nh = 0);
+    LLSTransformer(rosNodePtr nh = 0);
     
     /*!
      * Destructor
      */
-    virtual ~PointCloudConverter();
+    virtual ~LLSTransformer();
     
     /*!
      * Starts the converter thread, converts telegrams and publishes PointCloud2 messages.
@@ -131,7 +131,7 @@ namespace sick_lidar_localization
      * @param[in] triangle_height heigt of the virtual triangle in meter
      * @return list of 3D points
      */
-    std::vector<ros_geometry_msgs::Point> poseToDemoPoints(double posx, double posy, double yaw, double triangle_height);
+    // std::vector<ros_geometry_msgs::Point> poseToDemoPoints(double posx, double posy, double yaw, double triangle_height);
     
     /*!
      * Converts the vehicle position from a result port telegram to PointCloud2 message with 4 points
@@ -139,8 +139,15 @@ namespace sick_lidar_localization
      * @param[in] msg result telegram message (LocResultPortTelegramMsg)
      * @return PointCloud2 message
      */
-    ros_sensor_msgs::PointCloud2 convertToPointCloud(const sick_lidar_localization::LocalizationControllerResultMessage0502 & msg);
+    // ros_sensor_msgs::PointCloud2 convertToPointCloud(const sick_lidar_localization::LocalizationControllerResultMessage0502 & msg);
 
+    /*!
+     * Converts the vehicle pose from a result port telegram to a marker array.
+     * @param[in] msg result telegram message (LocResultPortTelegramMsg)
+     * @return marker array
+     */
+    // ros_visualization_msgs::MarkerArray convertToMarker(const sick_lidar_localization::LocalizationControllerResultMessage0502 & msg);
+    
     /*!
      * Converts the vehicle pose from a result port telegram to a tf transform.
      * @param[in] msg result telegram message (LocResultPortTelegramMsg)
@@ -153,7 +160,7 @@ namespace sick_lidar_localization
      * converts the telegrams from type LocResultPortTelegramMsg to PointCloud2 and publishes
      * PointCloud2 messages. The vehicle pose is converted to a tf transform and broadcasted.
      */
-    virtual void runPointCloudConverterThreadCb(void);
+    virtual void runLLSTransformerThreadCb(void);
 
     /*
      * member data
@@ -161,14 +168,22 @@ namespace sick_lidar_localization
 
     rosNodePtr m_nh; ///< ROS node handle
     sick_lidar_localization::FifoBuffer<sick_lidar_localization::LocalizationControllerResultMessage0502, std::mutex> m_result_port_telegram_fifo; ///< fifo buffer for result port telegrams from lidar_loc_driver
-    std::string m_point_cloud_frame_id;      ///< ros frame id of PointCloud2 messages, default: "sick_lidar_localization"
     std::string m_tf_parent_frame_id;        ///< parent frame of tf messages of of vehicles pose (typically frame of the loaded map)
     std::string m_tf_child_frame_id;         ///< child frame of tf messages of of vehicles pose
-    rosPublisher<ros_sensor_msgs::PointCloud2>  m_point_cloud_publisher;  ///< ros publisher for PointCloud2 messages
+    // std::string m_marker_frame_id;           ///< ros frame id marker arrays
+    // double m_marker_arrow_length;            ///< arrow length of lls marker messages -->
+    // double m_marker_arrow_width;             ///<  arrow width of lls marker messages -->
+    // double m_marker_arrow_height;            ///<  arrow length of lls marker messages -->
+    // double m_marker_color_r;                 ///<  color of lls marker messages (RGBA) -->
+    // double m_marker_color_g;                 ///<  color of lls marker messages (RGBA) -->
+    // double m_marker_color_b;                 ///<  color of lls marker messages (RGBA) -->
+    // double m_marker_color_a;                 ///<  color of lls marker messages (RGBA) -->
+    // rosPublisher<ros_visualization_msgs::MarkerArray> m_marker_publisher; ///< ros publisher for marker arrays
+    // rosPublisher<ros_sensor_msgs::PointCloud2>  m_point_cloud_publisher;  ///< ros publisher for PointCloud2 messages
     bool m_converter_thread_running;         ///< true: m_verification_thread is running, otherwise false
     std::thread* m_converter_thread;         ///< thread to verify lidar_loc_driver
     
-  }; // class PointCloudConverter
+  }; // class LLSTransformer
   
 } // namespace sick_lidar_localization
 #endif // __LIDAR_LOC_POINT_CLOUD_CONVERTER_H_INCLUDED

@@ -2,6 +2,7 @@
 std_msgs/Header header
 uint64 telegram_count     # 8 byte TelegramCount uint64
 uint64 timestamp          # 8 byte Timestamp uint64 [microseconds]
+int32 source_id           # 4 byte source id
 int16 x_velocity          # 2 byte X - velocity int16 [mm/s]
 int16 y_velocity          # 2 byte Y - velocity int16 [mm/s]
 int32 angular_velocity    # 4 byte angular velocity int32 [mdeg/s]

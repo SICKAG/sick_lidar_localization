@@ -15,7 +15,7 @@ The drivers support the following ROS versions in the same source:
 ## Specification
 
 The customer requirements and the REST API specification for the implementation of the project:
--[specification](doc/specifications/README.md)
+[specification](doc/specifications/README.md)
 
 ## Build on native Linux
 
@@ -210,8 +210,8 @@ Common parameters are:
 |--------------------|-------------------|--------------------|-------------|-----------------|
 | hostname | 192.168.0.1 | string | hostname:=192.168.0.1 | IP address of the SIM localization controller |
 | verbose  | 0           | int    | verbose:=1            | Print informational messages (verbose>0, otherwise error messages only) |
-| udp_ip_sim_output | "" | string | udp_ip_sim_output:=192.168.0.100 | IP address of your local machine (i.e. the receiver of UDP stream messages) |
-| udp_ip_sim_input | 192.168.0.1 | string | udp_ip_sim_input:=192.168.0.1 | IP address of host to send input UDP messages to, should be identical to hostname (except for unittests) |
+| udp_ip_lls_output | "" | string | udp_ip_lls_output:=192.168.0.100 | IP address of your local machine (i.e. the receiver of UDP stream messages) |
+| udp_ip_lls_input | 192.168.0.1 | string | udp_ip_lls_input:=192.168.0.1 | IP address of host to send input UDP messages to, should be identical to hostname (except for unittests) |
 
 ## REST API services
 
@@ -234,32 +234,36 @@ UDP stream output messages are:
 * [Localization result messages type 5 version 2](msg/LocalizationControllerResultMessage0502.msg)
 
 UDP stream input messages are:
-* [Odometry messages type 1 version 1](msg/OdometryMessage0101.msg)
 * [Odometry messages type 1 version 4](msg/OdometryMessage0104.msg)
 * [Odometry messages type 1 version 5](msg/OdometryMessage0105.msg)
 * [Encoder measurement messages type 2 version 2](msg/EncoderMeasurementMessage0202.msg)
 * [Code measurement messages type 3 version 3](msg/CodeMeasurementMessage0303.msg)
+* [Code measurement messages type 7 version 1](msg/CodeMeasurementMessage0701.msg)
 * [Line measurement messages type 4 version 3](msg/LineMeasurementMessage0403.msg)
 * [Line measurement messages type 4 version 4](msg/LineMeasurementMessage0404.msg)
 
-See [UDP stream messages](doc/sim_messages.md) for details and examples.
+See [UDP stream messages](doc/lls_messages.md) for details and examples.
 
 ## Timestamps and time synchronization
 
 The localization timestamps in UDP output messages are converted to system time using a Software-PLL. See [Time synchronization](doc/timing.md) and [Software-PLL](doc/software_pll.md) for details.
 
+## System setup and source Ids
+
+See [System setup and source Ids](doc/source_id.md) for further information about source Ids and their configuration.
+
 ## Tools and unittests
 
 ### Visualization of localization results
 
-Localization results (i.e. the sensor position and orientation) can be visualized on ROS using pointcloud_convert. The tool converts Localization result messages and publishes the sensor pose and transform. Run pointcloud_converter and rviz, then add topic `/cloud/PointCloud2` and display type `TF`.
+Localization results (i.e. the sensor position and orientation) can be visualized on ROS using lls_transform. The tool converts localization result messages and publishes the sensor pose and transform. Run lls_transform and rviz, then add display type `TF`.
 
 ROS-1 usage example:
 
 ```
 source ./install/setup.bash 
 roslaunch sick_lidar_localization sick_lidar_localization.launch &
-sleep 3 ; roslaunch sick_lidar_localization pointcloud_converter.launch &
+sleep 3 ; roslaunch sick_lidar_localization lls_transform.launch &
 sleep 3 ; rosrun rviz rviz -d ./src/sick_lidar_localization/test/config/rviz_sick_lidar_localization_pointcloud.rviz
 ```
 
@@ -268,13 +272,29 @@ ROS-2 usage example:
 ```
 source ./install/setup.bash 
 ros2 run sick_lidar_localization sick_lidar_localization ./src/sick_lidar_localization/launch/sick_lidar_localization.launch &
-sleep 3 ; ros2 run sick_lidar_localization pointcloud_converter ./src/sick_lidar_localization/launch/pointcloud_converter.launch &
+sleep 3 ; ros2 run sick_lidar_localization lls_transform ./src/sick_lidar_localization/launch/lls_transform.launch &
 sleep 3 ; rviz2 -d ./src/sick_lidar_localization//test/config/rviz2_sick_lidar_localization_pointcloud.rviz2
 ```
 
-The following screenshot shows an example of the sensor pose with the sensor transform and 4 points in "cloud" coordinates:
+The following screenshot shows an example of the sensor pose:
 
-![rviz_pointcloud_converter_screenshot](doc/screenshots/rviz_pointcloud_converter_screenshot1.png)
+![rviz_pointcloud_converter_screenshot](doc/screenshots/rviz_pointcloud_converter_screenshot2.png)
+
+Poses are published by ROS-transform-messages (TF) of tType geometry_msgs::TransformStamped. Each TF message has a parent and a child coordinate system identified by tf_parent_frame_id resp. tf_child_frame_id. These frame ids are configured in the launchfile, by default:
+* tf_parent_frame_id: "map" 
+* tf_child_frame_id: "lls"
+
+The default frame ids for transformations should only be used as an example. In a real application, the reference to the robot is usually specified here, as it is, for example, in the ROS Nagivation stack. Here one would then use the reference
+* tf_parent_frame_id: "base_link"
+* tf_child_frame_id: "lls"
+
+Frame ids are normally customized according to the application resp. setup
+* tf_parent_frame_id: "map" is used by rviz by default
+* tf_parent_frame_id: "base_link" is often used in examples
+
+Other frame ids can be e.g. "robot", "vehicle" or "lidar". Choose parameter tf_parent_frame_id and tf_child_frame_id to match the target setup!
+
+See https://roboticsknowledgebase.com/wiki/state-estimation/ros-navigation/ for further examples.
 
 ### Unittests
 
@@ -319,6 +339,12 @@ Open sick_lidar_localization.sln in build folder and rebuild (debug version)
 See [Quickstart-Setup-SOPASair.md](doc/Quickstart-Setup-SOPASair.md) for a quickstart. 
 Find detailed information in the operation manuals published on https://supportportal.sick.com/products/localization/lidar-localization/lidar-loc/ .  
 
+### Source Ids
+
+:question: What are source Ids and how should I configure them?
+
+:white_check_mark: See [System setup and source Ids](doc/source_id.md) for further information about source Ids and their configuration.
+
 ### Test and diagnosis
 
 :question: How can I activate informational messages for tests and diagnosis?
@@ -335,7 +361,7 @@ Find detailed information in the operation manuals published on https://supportp
 
 :white_check_mark: sick_rest_server.py requires python3 and flask. Install flask with `pip install flask` (on Linux, use `pip3 install flask`)
 
-:question: `ModuleNotFoundError: No module named pcapng` when running sim_pcapng_player.py
+:question: `ModuleNotFoundError: No module named pcapng` when running lls_pcapng_player.py
 
 :white_check_mark: sick_rest_server.py requires python3 with modules scapy, pypcapfile and python-pcapng. Install with `pip` (resp `pip3` on Linux):
 ```

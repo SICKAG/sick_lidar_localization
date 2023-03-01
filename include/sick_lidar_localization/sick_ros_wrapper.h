@@ -140,8 +140,8 @@ inline bool rosOk(void) { return true; }
 #include <std_msgs/ColorRGBA.h>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_ros/transform_broadcaster.h>
-#include <visualization_msgs/Marker.h>
-#include <visualization_msgs/MarkerArray.h>
+// #include <visualization_msgs/Marker.h>
+// #include <visualization_msgs/MarkerArray.h>
 
 typedef ros::NodeHandle* rosNodePtr;
 
@@ -234,8 +234,8 @@ public:
 #include <std_msgs/msg/color_rgba.hpp>
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_ros/transform_broadcaster.h> 
-#include <visualization_msgs/msg/marker.hpp>
-#include <visualization_msgs/msg/marker_array.hpp>
+// #include <visualization_msgs/msg/marker.hpp>
+// #include <visualization_msgs/msg/marker_array.hpp>
 
 typedef rclcpp::Node::SharedPtr rosNodePtr;
 

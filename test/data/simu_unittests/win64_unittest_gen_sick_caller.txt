@@ -16,7 +16,7 @@
 { "request": "LocSetOdometryActive", "response": { "data": { "success": true }, "header": { "message": "Ok", "status": 0 } } },
 { "request": "LocSetRecordingActive", "response": { "data": { "success": true }, "header": { "message": "Ok", "status": 0 } } },
 { "request": "LocSetRingBufferRecordingActive", "response": { "data": { "success": true }, "header": { "message": "Ok", "status": 0 } } },
-{ "request": "LocStartLocalizing", "response": { "data": { "success": true }, "header": { "message": "Ok", "status": 0 } } },
+{ "request": "LocStart", "response": { "data": { "success": true }, "header": { "message": "Ok", "status": 0 } } },
 { "request": "LocStop", "response": { "data": { "success": true }, "header": { "message": "Ok", "status": 0 } } },
 { "request": "LocSwitchMap", "response": { "data": { "success": true }, "header": { "message": "Ok", "status": 0 } } },
 { "request": "LocGetLocalizationStatus", "response": { "data": { "details": "LOCALIZING", "locStatus": 1 }, "header": { "message": "Ok", "status": 0 } } },

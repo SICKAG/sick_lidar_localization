@@ -1,8 +1,8 @@
 # UDP stream messages
 
-LiDAR-LOC receives and sends messages from resp. to the localization controller using UDP. [UDP output messages](#sim_output_messages) are UDP messages sent from localization server to the local PC. [UDP input messages](#sim_input_messages) are UDP messages sent from the local PC to the localization server. On ROS-1 and ROS-2, these UDP-messages are converted from resp. to ROS messages. On native Linux and Windows systems, these UDP-messages can be processed using the [C++ API](../README.md#cpp_api).
+LiDAR-LOC receives and sends messages from resp. to the localization controller using UDP. [UDP output messages](#lls_output_messages) are UDP messages sent from localization server to the local PC. [UDP input messages](#lls_input_messages) are UDP messages sent from the local PC to the localization server. On ROS-1 and ROS-2, these UDP-messages are converted from resp. to ROS messages. On native Linux and Windows systems, these UDP-messages can be processed using the [C++ API](../README.md#cpp_api).
 
-## <a name="sim_output_messages"></a> UDP output messages
+## <a name="lls_output_messages"></a> UDP output messages
 
 UDP output messages are:
 
@@ -128,19 +128,19 @@ Parameters can be configured in the launch file [sick_lidar_localization.launch]
 
 | **parameter name** | **default value** | **parameter type** | **description** |
 |--------------------|-------------------|--------------------|-----------------|
-| udp_ip_sim_output | "" | string | IP address of your local machine (i.e. the receiver of UDP stream messages) |
-| udp_port_sim_output | 5010 | int | UDP port of output messages |
-| udp_sim_output_logfile | "" | string | Optional logfile for human readable UDP output messages, or "" to disable logfile |
+| udp_ip_lls_output | "" | string | IP address of your local machine (i.e. the receiver of UDP stream messages) |
+| udp_port_lls_output | 5010 | int | UDP port of output messages |
+| udp_lls_output_logfile | "" | string | Optional logfile for human readable UDP output messages, or "" to disable logfile |
 
-## <a name="sim_input_messages"></a> UDP input messages
+## <a name="lls_input_messages"></a> UDP input messages
 
 UDP input messages are:
 
-* [Odometry messages type 1 version 1](../msg/OdometryMessage0101.msg)
 * [Odometry messages type 1 version 4](../msg/OdometryMessage0104.msg)
 * [Odometry messages type 1 version 5](../msg/OdometryMessage0105.msg)
 * [Encoder measurement messages type 2 version 2](../msg/EncoderMeasurementMessage0202.msg)
 * [Code measurement messages type 3 version 3](../msg/CodeMeasurementMessage0303.msg)
+* [Code measurement messages type 7 version 1](../msg/CodeMeasurementMessage0701.msg)
 * [Line measurement messages type 4 version 3](../msg/LineMeasurementMessage0403.msg)
 * [Line measurement messages type 4 version 4](../msg/LineMeasurementMessage0404.msg)
 * [ROS odometry messages](http://docs.ros.org/en/noetic/api/nav_msgs/html/msg/Odometry.html)
@@ -152,12 +152,13 @@ ROS-1 examples to send UDP input messages (odometry, encoder measurement, code m
 ```
 source ./install/setup.bash 
 roslaunch sick_lidar_localization sick_lidar_localization.launch verbose:=1 &
-rostopic pub --once /localizationcontroller/in/odometry_message_0104            sick_lidar_localization/OdometryMessage0104           '{telegram_count: 1000001, timestamp: 123456789, x_velocity: -1234, y_velocity: -1234, angular_velocity: 1234}'
-rostopic pub --once /localizationcontroller/in/odometry_message_0105            sick_lidar_localization/OdometryMessage0105           '{telegram_count: 1000002, timestamp: 123456780, x_position: -1234, y_position: -1234, heading: 1234}'
-rostopic pub --once /localizationcontroller/in/encoder_measurement_message_0202 sick_lidar_localization/EncoderMeasurementMessage0202 '{telegram_count: 1000003, timestamp: 123456781, encoder_value: 123456789}'
-rostopic pub --once /localizationcontroller/in/code_measurement_message_0303    sick_lidar_localization/CodeMeasurementMessage0303    '{telegram_count: 1000004, timestamp: 123456782, code: 1234}'
-rostopic pub --once /localizationcontroller/in/line_measurement_message_0403    sick_lidar_localization/LineMeasurementMessage0403    '{telegram_count: 1000005, timestamp: 123456783, num_lanes: 1, lanes: [1234]}'
-rostopic pub --once /localizationcontroller/in/line_measurement_message_0404    sick_lidar_localization/LineMeasurementMessage0404    '{telegram_count: 1000006, timestamp: 123456784, lcp1: 12, lcp2: 34, lcp3: 56, cnt_lpc: 78}'
+rostopic pub --once /localizationcontroller/in/odometry_message_0104            sick_lidar_localization/OdometryMessage0104           '{telegram_count: 1000001, timestamp: 123456789, source_id: 0, x_velocity: -1234, y_velocity: -1234, angular_velocity: 1234}'
+rostopic pub --once /localizationcontroller/in/odometry_message_0105            sick_lidar_localization/OdometryMessage0105           '{telegram_count: 1000002, timestamp: 123456780, source_id: 0, x_position: -1234, y_position: -1234, heading: 1234}'
+rostopic pub --once /localizationcontroller/in/encoder_measurement_message_0202 sick_lidar_localization/EncoderMeasurementMessage0202 '{telegram_count: 1000003, timestamp: 123456781, source_id: 0, encoder_value: 123456789}'
+rostopic pub --once /localizationcontroller/in/code_measurement_message_0303    sick_lidar_localization/CodeMeasurementMessage0303    '{telegram_count: 1000004, timestamp: 123456782, source_id: 0, code: 1234}'
+rostopic pub --once /localizationcontroller/in/code_measurement_message_0701    sick_lidar_localization/CodeMeasurementMessage0701    '{telegram_count: 1000004, timestamp: 123456782, source_id: 0, code: "1234", x_position: -1234, y_position: -2345, heading: -3456}'
+rostopic pub --once /localizationcontroller/in/line_measurement_message_0403    sick_lidar_localization/LineMeasurementMessage0403    '{telegram_count: 1000005, timestamp: 123456783, source_id: 0, num_lanes: 1, lanes: [1234]}'
+rostopic pub --once /localizationcontroller/in/line_measurement_message_0404    sick_lidar_localization/LineMeasurementMessage0404    '{telegram_count: 1000006, timestamp: 123456784, source_id: 0, lcp1: 12, lcp2: 34, lcp3: 56, cnt_lpc: 78}'
 ```
 
 Example output from `sick_lidar_localization`:
@@ -174,12 +175,13 @@ Example output from `sick_lidar_localization`:
 Use `ros2 topic pub` on ROS-2. Examples to to send UDP input messages (odometry, encoder measurement, code measurement and line measurement message):
 
 ```
-ros2 topic pub --once /localizationcontroller/in/odometry_message_0104            sick_lidar_localization/OdometryMessage0104           '{telegram_count: 1000001, timestamp: 123456789, x_velocity: -1234, y_velocity: -1234, angular_velocity: 1234}'
-ros2 topic pub --once /localizationcontroller/in/odometry_message_0105            sick_lidar_localization/OdometryMessage0105           '{telegram_count: 1000002, timestamp: 123456780, x_position: -1234, y_position: -1234, heading: 1234}'
-ros2 topic pub --once /localizationcontroller/in/encoder_measurement_message_0202 sick_lidar_localization/EncoderMeasurementMessage0202 '{telegram_count: 1000003, timestamp: 123456781, encoder_value: 123456789}'
-ros2 topic pub --once /localizationcontroller/in/code_measurement_message_0303    sick_lidar_localization/CodeMeasurementMessage0303    '{telegram_count: 1000004, timestamp: 123456782, code: 1234}'
-ros2 topic pub --once /localizationcontroller/in/line_measurement_message_0403    sick_lidar_localization/LineMeasurementMessage0403    '{telegram_count: 1000005, timestamp: 123456783, num_lanes: 1, lanes: [1234]}'
-ros2 topic pub --once /localizationcontroller/in/line_measurement_message_0404    sick_lidar_localization/LineMeasurementMessage0404    '{telegram_count: 1000006, timestamp: 123456784, lcp1: 12, lcp2: 34, lcp3: 56, cnt_lpc: 78}'
+ros2 topic pub --once /localizationcontroller/in/odometry_message_0104            sick_lidar_localization/OdometryMessage0104           '{telegram_count: 1000001, timestamp: 123456789, source_id: 0, x_velocity: -1234, y_velocity: -1234, angular_velocity: 1234}'
+ros2 topic pub --once /localizationcontroller/in/odometry_message_0105            sick_lidar_localization/OdometryMessage0105           '{telegram_count: 1000002, timestamp: 123456780, source_id: 0, x_position: -1234, y_position: -1234, heading: 1234}'
+ros2 topic pub --once /localizationcontroller/in/encoder_measurement_message_0202 sick_lidar_localization/EncoderMeasurementMessage0202 '{telegram_count: 1000003, timestamp: 123456781, source_id: 0, encoder_value: 123456789}'
+ros2 topic pub --once /localizationcontroller/in/code_measurement_message_0303    sick_lidar_localization/CodeMeasurementMessage0303    '{telegram_count: 1000004, timestamp: 123456782, source_id: 0, code: 1234}'
+ros2 topic pub --once /localizationcontroller/in/code_measurement_message_0701    sick_lidar_localization/CodeMeasurementMessage0701    '{telegram_count: 1000004, timestamp: 123456782, source_id: 0, code: "1234", x_position: -1234, y_position: -2345, heading: -3456}'
+ros2 topic pub --once /localizationcontroller/in/line_measurement_message_0403    sick_lidar_localization/LineMeasurementMessage0403    '{telegram_count: 1000005, timestamp: 123456783, source_id: 0, num_lanes: 1, lanes: [1234]}'
+ros2 topic pub --once /localizationcontroller/in/line_measurement_message_0404    sick_lidar_localization/LineMeasurementMessage0404    '{telegram_count: 1000006, timestamp: 123456784, source_id: 0, lcp1: 12, lcp2: 34, lcp3: 56, cnt_lpc: 78}'
 ```
 
 ### Configuration of UDP input messages
@@ -188,16 +190,27 @@ Parameters can be configured in the launch file [sick_lidar_localization.launch]
 
 | **parameter name** | **default value** | **parameter type** | **description** |
 |--------------------|-------------------|--------------------|-----------------|
-| udp_ip_sim_input | "192.168.0.1" | string | IP address for input UDP messages, i.e. IP adress of the localization controller or "" for UDP broadcasts |
-| udp_port_sim_input | 5009 | int | UDP port of input messages |
+| udp_ip_lls_input | "192.168.0.1" | string | IP address for input UDP messages, i.e. IP address of the localization controller or "" for UDP broadcasts |
+| udp_port_lls_input | 5009 | int | UDP port of input messages |
 | odom_topic | "/odom" | string | Topic of ros odom messages or "" to deactivate |
-| udp_sim_input_source_id | 21 | int | Source_id of UDP input messages, see notes below |
-| ros_odom_to_udp_msg | 3 | int | Convert ros odom message to upd, see notes below |
+| udp_lls_input_source_id | 21 | int | Source_id of UDP input messages, see notes below |
+| ros_odom_to_udp_msg | 3 | int | Convert ros odom message to udp, see notes below |
 
-Parameter `udp_sim_input_source_id` is an identifier of the odometry sender. This ID has to match the ID in the SIM configuration file. You can get SIM configuration file using Sopas Air: Log in as user service, download the configuration file and get parameter odometer/external/interface/sourceId. Use this sourceId for the parameter `udp_sim_input_source_id`.
+Parameter `udp_lls_input_source_id` is a default identifier of all UDP input messages if source_id is not otherwise specified in the sender. This ID has to match the ID in the LLS configuration file (lidarloc_config.yml). You can get configuration file using SOPASair: Log in as user service, download the configuration file and get parameter odometer/external/interface/sourceId. Use this sourceId for the parameter `udp_lls_input_source_id`.
+Note: In sick_lidar_localization version 5.5 or newer, the ID can be set in 3 different ways:
+* The ID can be specified in each UDP input message by its parameter `source_id`. If the source_id in the message is greater 0, it will be send to the localizer server. We recommend this setting.  
+* If the source_id in the message is equal 0, a default ID from configuration file (launch-file) is used.
+* This default source_id can be configured for different message types and message versions in [sick_lidar_localization.launch](../launch/sick_lidar_localization.launch) by 
+   ```
+   <param name="udp_lls_input_source_id_<msgtype>_<msgversion>" type="int" value="21"/>   <!-- Source_id of UDP input messages type <msgtype> version <msgversion> --> 
+   ```
+   e.g.
+   ```
+   <param name="udp_lls_input_source_id_7_1" type="int" value="21"/>   <!-- Source_id of UDP input messages type 7 version 1 --> 
+   ```
+* If the parameter `udp_lls_input_source_id_<msgtype>_<msgversion>` is not configured, the default source id is given by parameter `udp_lls_input_source_id`.
 
-Parameter `ros_odom_to_udp_msg` converts ros odom message to upd:
-* ros_odom_to_udp_msg = 0: map velocity to OdometryPayload0101 (Type 1, Version 1, LidarLoc 1), 
+Parameter `ros_odom_to_udp_msg` converts ros odom message to udp:
 * ros_odom_to_udp_msg = 1: map velocity to OdometryPayload0104 (Type 1, Version 4, LidarLoc 2),
 * ros_odom_to_udp_msg = 2: map position to OdometryPayload0105 (Type 1, Version 5, LidarLoc 2),
 * ros_odom_to_udp_msg = 3: map velocity to OdometryPayload0104 and position to OdometryPayload0105

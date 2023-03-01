@@ -18,7 +18,7 @@ sleep 3
 # 
 
 pushd ../../build
-./sick_lidar_localization ../launch/sick_lidar_localization.launch hostname:=localhost udp_ip_sim_input:=127.0.0.1 udp_ip_sim_output:=localhost verbose:=1 | tee sick_lidar_localization.log &
+./sick_lidar_localization ../launch/sick_lidar_localization.launch hostname:=localhost udp_ip_lls_input:=127.0.0.1 udp_ip_lls_output:=localhost verbose:=1 | tee sick_lidar_localization.log &
 sleep 3
 popd 
 
@@ -27,7 +27,7 @@ popd
 # 
 
 sleep 7
-python3 ../rest_server/python/sim_udp_sender.py --udp_port=5010 --udp_send_rate=30.0 --udp_output_logfile=../../build/udp_sender.log --max_message_count=1000
+python3 ../rest_server/python/lls_udp_sender.py --udp_port=5010 --udp_send_rate=30.0 --udp_output_logfile=../../build/udp_sender.log --max_message_count=1000
 sleep 15
 grep "WARN" ../../build/sick_lidar_localization.log > ../../build/sick_lidar_localization_error.log
 grep "ERR" ../../build/sick_lidar_localization.log >> ../../build/sick_lidar_localization_error.log

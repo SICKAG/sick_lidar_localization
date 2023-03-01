@@ -110,6 +110,7 @@ namespace sick_lidar_localization
             ros_msg.header.stamp = rosTimeNow();
             ros_msg.telegram_count = message.telegram_count;
             ros_msg.timestamp = message.timestamp;
+            ros_msg.source_id = message.source_id;
             ros_msg.x_velocity = message.x_velocity;
             ros_msg.y_velocity = message.y_velocity;
             ros_msg.angular_velocity = message.angular_velocity;
@@ -127,6 +128,7 @@ namespace sick_lidar_localization
             ros_msg.header.stamp = rosTimeNow();
             ros_msg.telegram_count = message.telegram_count;
             ros_msg.timestamp = message.timestamp;
+            ros_msg.source_id = message.source_id;
             ros_msg.x_position = message.x_position;
             ros_msg.y_position = message.y_position;
             ros_msg.heading = message.heading;
@@ -144,6 +146,7 @@ namespace sick_lidar_localization
             ros_msg.header.stamp = rosTimeNow();
             ros_msg.telegram_count = message.telegram_count;
             ros_msg.timestamp = message.timestamp;
+            ros_msg.source_id = message.source_id;
             ros_msg.code = message.code;
             ros_msg.distance = message.distance;
             ros_msg.sync_timestamp_sec = message.sync_timestamp_sec;
@@ -160,6 +163,7 @@ namespace sick_lidar_localization
             ros_msg.header.stamp = rosTimeNow();
             ros_msg.telegram_count = message.telegram_count;
             ros_msg.timestamp = message.timestamp;
+            ros_msg.source_id = message.source_id;
             ros_msg.num_lanes = message.num_lanes;
             ros_msg.lanes = message.lanes;
             ros_msg.sync_timestamp_sec = message.sync_timestamp_sec;
@@ -176,6 +180,7 @@ namespace sick_lidar_localization
             ros_msg.header.stamp = rosTimeNow();
             ros_msg.telegram_count = message.telegram_count;
             ros_msg.timestamp = message.timestamp;
+            ros_msg.source_id = message.source_id;
             ros_msg.lcp1 = message.lcp1;
             ros_msg.lcp2 = message.lcp2;
             ros_msg.lcp3 = message.lcp3;
@@ -194,6 +199,7 @@ namespace sick_lidar_localization
             ros_msg.header.stamp = rosTimeNow();
             ros_msg.telegram_count = message.telegram_count;
             ros_msg.timestamp = message.timestamp;
+            ros_msg.source_id = message.source_id;
             ros_msg.x = message.x;
             ros_msg.y = message.y;
             ros_msg.heading = message.heading;

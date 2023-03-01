@@ -59,19 +59,19 @@
 #include "sick_lidar_localization/udp_message_parser.h"
 
 #if __ROS_VERSION == 1
-#include "sick_lidar_localization/OdometryMessage0101.h"
 #include "sick_lidar_localization/OdometryMessage0104.h"
 #include "sick_lidar_localization/OdometryMessage0105.h"
 #include "sick_lidar_localization/EncoderMeasurementMessage0202.h"
 #include "sick_lidar_localization/CodeMeasurementMessage0303.h"
+#include "sick_lidar_localization/CodeMeasurementMessage0701.h"
 #include "sick_lidar_localization/LineMeasurementMessage0403.h"
 #include "sick_lidar_localization/LineMeasurementMessage0404.h"
 #elif __ROS_VERSION == 2
-#include "sick_lidar_localization/msg/odometry_message0101.hpp"
 #include "sick_lidar_localization/msg/odometry_message0104.hpp"
 #include "sick_lidar_localization/msg/odometry_message0105.hpp"
 #include "sick_lidar_localization/msg/encoder_measurement_message0202.hpp"
 #include "sick_lidar_localization/msg/code_measurement_message0303.hpp"
+#include "sick_lidar_localization/msg/code_measurement_message0701.hpp"
 #include "sick_lidar_localization/msg/line_measurement_message0403.hpp"
 #include "sick_lidar_localization/msg/line_measurement_message0404.hpp"
 namespace sick_lidar_localization { using namespace msg; }
@@ -85,6 +85,27 @@ namespace sick_lidar_localization
     class UDPSenderImpl;
 
     /*
+    ** @brief class UDPDefaultInputSourceId provides default source ids for UDP input messages.
+    **        If the source id of a UDP input message is not set (source_id = 0, e.g. in case of ROS odometry messages),
+    **        the source id is taken from configuration file (launch file).
+    */
+    class UDPDefaultInputSourceId
+    {
+    public:
+        /** default constructor */
+        UDPDefaultInputSourceId(int default_source_id = 1, const std::map<int,std::map<int,int>>& sourceid_map = std::map<int,std::map<int,int>>())
+            : m_default_source_id(default_source_id), m_msgtype_version_sourceid_map(sourceid_map) {}
+
+        /** returns the default source id from configuration file */
+        virtual int getSourceId(int msgtype, int msgversion);
+
+    protected:
+
+        int m_default_source_id; // default source id, if not otherwise set in a message or by configuration
+        std::map<int,std::map<int,int>> m_msgtype_version_sourceid_map; // msgtype_version_sourceid_map[msgtype][msgversion] := default source_id for UDP input messages of type <msgtype> and version <msgversion>
+    };
+
+    /*
     ** @brief class UDPSender implements a UDP sender for UDP input messages.
     */
     class UDPSender
@@ -94,17 +115,18 @@ namespace sick_lidar_localization
         /*
         ** @brief Default constructor
         ** @param[in] nh ros node handle (always 0 for native linus or windows)
-        ** @param[in] sim_ip_address UDP IP address, or "" for broadcast
-        ** @param[in] udp_port_sim_input UDP port of UDP input messages, default: 5009
-        ** @param[in] udp_sim_input_source_id source_id of UDP input messages, default: 1
+        ** @param[in] lls_ip_address UDP IP address, or "" for broadcast
+        ** @param[in] udp_port_lls_input UDP port of UDP input messages, default: 5009
+        ** @param[in] source_id_cfg source_id map of UDP input messages, default source id: 1
         ** @param[in] verbose print informational messages if verbose > 0, otherwise silent mode (error messages only)
-        ** @param[in] ros_odom_to_udp_msg  Convert ros odom message to upd: 0 = map velocity to OdometryPayload0101 (Type 1, Version 1, LidarLoc 1), 
+        ** @param[in] ros_odom_to_udp_msg  Convert ros odom message to udp:
         **                                 1 = map velocity to OdometryPayload0104 (Type 1, Version 4, LidarLoc 2),
         **                                 2 = map position to OdometryPayload0105 (Type 1, Version 5, LidarLoc 2),
         **                                 3 = map velocity to OdometryPayload0104 and position to OdometryPayload0105
         */
-        UDPSender(rosNodePtr nh = 0, const std::string& sim_ip_address = "192.168.0.1", int udp_port_sim_input = 5009, int udp_sim_input_source_id = 1, int verbose = 0, 
-            const std::string& odom_topic = "/odom", int ros_odom_to_udp_msg = 3);
+        UDPSender(rosNodePtr nh = 0, const std::string& lls_ip_address = "192.168.0.1", int udp_port_lls_input = 5009, 
+            const sick_lidar_localization::UDPDefaultInputSourceId& source_id_cfg = UDPDefaultInputSourceId(1), 
+            int verbose = 0, const std::string& odom_topic = "/odom", int ros_odom_to_udp_msg = 3);
 
         /*
         ** @brief Default destructor, exits running threads
@@ -114,18 +136,18 @@ namespace sick_lidar_localization
         /*
         ** @brief Sends a UDP input message. 
         **        payload can be OdometryPayload0104, OdometryPayload0105, EncoderMeasurementPayload0202, 
-        **        CodeMeasurementPayload0303, LineMeasurementPayload0403 or LineMeasurementPayload0404
+        **        CodeMeasurementPayload0303, CodeMeasurementPayload0701, LineMeasurementPayload0403 or LineMeasurementPayload0404
         ** @param[in] payload UDP message payload data
         ** @return true on success or false on error
         */
-        template<typename T> bool sendUDPPayload(const T& payload, bool encode_header_big_endian, bool encode_payload_big_endian, uint16_t source_id)
+        template<typename T> bool sendUDPPayload(const T& payload, bool encode_header_big_endian, bool encode_payload_big_endian)
         {
-            std::vector<uint8_t> message = sick_lidar_localization::UDPMessage::encodeMessage(payload, encode_header_big_endian, encode_payload_big_endian, source_id);
+            std::vector<uint8_t> message = sick_lidar_localization::UDPMessage::encodeMessage(payload, encode_header_big_endian, encode_payload_big_endian, (uint16_t)(payload.source_id & 0xFFFF));
             bool ok = sendData(message);
             if (!ok)
-                ROS_ERROR_STREAM("## ERROR sick_lidar_localization::UDPSender::sendUDPPayload(" << m_sim_ip_address << ":" << m_udp_port_sim_input << ", payload=" << sick_lidar_localization::UDPMessage::printPayload(payload) << ", header_big_endian=" << encode_header_big_endian << ", payload_big_endian=" << encode_payload_big_endian << ", source_id=" << source_id << ") failed");
+                ROS_ERROR_STREAM("## ERROR sick_lidar_localization::UDPSender::sendUDPPayload(" << m_lls_ip_address << ":" << m_udp_port_lls_input << ", payload=" << sick_lidar_localization::UDPMessage::printPayload(payload) << ", header_big_endian=" << encode_header_big_endian << ", payload_big_endian=" << encode_payload_big_endian << ", source_id=" << payload.source_id << ") failed");
             else if (ok && m_verbose)
-                ROS_INFO_STREAM("sick_lidar_localization::UDPSender: udp payload " << sick_lidar_localization::UDPMessage::printPayload(payload, false) << " sent to " << m_sim_ip_address << ":" << m_udp_port_sim_input);
+                ROS_INFO_STREAM("sick_lidar_localization::UDPSender: udp payload " << sick_lidar_localization::UDPMessage::printPayload(payload, false) << " sent to " << m_lls_ip_address << ":" << m_udp_port_lls_input);
             return ok;
         }
 
@@ -149,20 +171,17 @@ namespace sick_lidar_localization
         */
         bool sendData(const std::vector<uint8_t>& udp_data);
 
-        std::string m_sim_ip_address;        // UDP IP address, or "" for broadcast
-        int m_udp_port_sim_input;            // UDP port of UDP input messages, default: 5009
-        int m_source_id;                     // source_id of UDP input messages, default: 1
+        std::string m_lls_ip_address;        // UDP IP address, or "" for broadcast
+        int m_udp_port_lls_input;            // UDP port of UDP input messages, default: 5009
+        sick_lidar_localization::UDPDefaultInputSourceId m_source_id_cfg; // source_id map of UDP input messages, default source id: 1
         int m_verbose;                       // Print informational messages if verbose > 0, otherwise silent mode (error messages only)
-        int m_ros_odom_to_udp_msg;           // Convert ros odom message to upd
+        int m_ros_odom_to_udp_msg;           // Convert ros odom message to udp
         UDPSenderImpl* m_udp_sender_impl;    // UDP sender implementation hiding the udp socket details
 
         #if __ROS_VERSION > 0
         /** subscriber callback functions for input udp messages */
         void messageCbOdomROS(const ros_nav_msgs::Odometry& msg);
         void messageCbOdomROS2(const std::shared_ptr<ros_nav_msgs::Odometry> msg) { messageCbOdomROS(*msg); }
-
-        void messageCbOdometryMessage0101(const sick_lidar_localization::OdometryMessage0101 & msg);
-        void messageCbOdometryMessage0101ROS2(const std::shared_ptr<sick_lidar_localization::OdometryMessage0101> msg) { messageCbOdometryMessage0101(*msg); }
 
         void messageCbOdometryMessage0104(const sick_lidar_localization::OdometryMessage0104 & msg);
         void messageCbOdometryMessage0104ROS2(const std::shared_ptr<sick_lidar_localization::OdometryMessage0104> msg) { messageCbOdometryMessage0104(*msg); }
@@ -176,6 +195,9 @@ namespace sick_lidar_localization
         void messageCbCodeMeasurementMessage0303(const sick_lidar_localization::CodeMeasurementMessage0303 & msg);
         void messageCbCodeMeasurementMessage0303ROS2(const std::shared_ptr<sick_lidar_localization::CodeMeasurementMessage0303> msg) { messageCbCodeMeasurementMessage0303(*msg); }
 
+        void messageCbCodeMeasurementMessage0701(const sick_lidar_localization::CodeMeasurementMessage0701 & msg);
+        void messageCbCodeMeasurementMessage0701ROS2(const std::shared_ptr<sick_lidar_localization::CodeMeasurementMessage0701> msg) { messageCbCodeMeasurementMessage0701(*msg); }
+
         void messageCbLineMeasurementMessage0403(const sick_lidar_localization::LineMeasurementMessage0403 & msg);
         void messageCbLineMeasurementMessage0403ROS2(const std::shared_ptr<sick_lidar_localization::LineMeasurementMessage0403> msg) { messageCbLineMeasurementMessage0403(*msg); }
 
@@ -184,11 +206,11 @@ namespace sick_lidar_localization
 
         /** subscriber for ros messages, converted to udp messages and send to localization server */
         rosSubscriber<ros_nav_msgs::Odometry> m_subOdomROS;
-        rosSubscriber<sick_lidar_localization::OdometryMessage0101> m_subOdometryMessage0101;
         rosSubscriber<sick_lidar_localization::OdometryMessage0104> m_subOdometryMessage0104;
         rosSubscriber<sick_lidar_localization::OdometryMessage0105> m_subOdometryMessage0105;
         rosSubscriber<sick_lidar_localization::EncoderMeasurementMessage0202> m_subEncoderMeasurementMessage0202;
         rosSubscriber<sick_lidar_localization::CodeMeasurementMessage0303> m_subCodeMeasurementMessage0303;
+        rosSubscriber<sick_lidar_localization::CodeMeasurementMessage0701> m_subCodeMeasurementMessage0701;
         rosSubscriber<sick_lidar_localization::LineMeasurementMessage0403> m_subLineMeasurementMessage0403;
         rosSubscriber<sick_lidar_localization::LineMeasurementMessage0404> m_subLineMeasurementMessage0404;
         #endif

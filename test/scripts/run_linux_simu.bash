@@ -34,7 +34,7 @@ sleep 3
 # 
 
 pushd ../../build
-./sick_lidar_localization ../launch/sick_lidar_localization.launch hostname:=localhost udp_ip_sim_input:=127.0.0.1 udp_ip_sim_output:=localhost verbose:=1 &
+./sick_lidar_localization ../launch/sick_lidar_localization.launch hostname:=localhost udp_ip_lls_input:=127.0.0.1 udp_ip_lls_output:=localhost verbose:=1 &
 sleep 5
 popd 
 
@@ -42,7 +42,7 @@ popd
 # Start pcapng player sending recorded UDP messages
 # 
 
-python3 ../rest_server/python/sim_pcapng_player.py  --pcap_filename ../data/wireshark/20210816_lidarloc2_2.0.0.14R_nonmoving.pcapng
+python3 ../rest_server/python/lls_pcapng_player.py  --pcap_filename ../data/wireshark/20210816_lidarloc2_2.0.0.14R_nonmoving.pcapng
 sleep 5
 
 # 
@@ -53,7 +53,7 @@ sleep 5
 # sleep 30
 echo -e "\nShutdown sick_lidar_localization simu...\n" 
 killall sick_lidar_localization
-pkill -f sim_pcapng_player.py
+pkill -f lls_pcapng_player.py
 sudo pkill -f sick_rest_server.py
 pkill -f roslaunch
 echo -e "\nsick_lidar_localization simu finished.\n" 

@@ -74,6 +74,15 @@ template <typename T> static bool getRequiredParam(rosNodePtr nh, const std::str
     return true;
 }
 
+template <typename T> static bool getOptionalParam(rosNodePtr nh, const std::string& param_name, T& param_value, const T& default_value)
+{
+    bool ret_val = rosGetParam(nh, param_name, param_value);
+    if (!ret_val)
+        param_value = default_value;
+    return ret_val;
+}
+
+
 /*
 ** @brief Parses commandline arguments, reads a launchfile and sets parameters for sick_lidar_localization
 */
@@ -96,12 +105,12 @@ bool sick_lidar_localization::API::getParams(rosNodePtr node, sick_lidar_localiz
     okay = getRequiredParam(node, "hostname", config.hostname) && okay;
     okay = getRequiredParam(node, "serverpath", config.serverpath) && okay;
     okay = getRequiredParam(node, "verbose", config.verbose) && okay;
-    okay = getRequiredParam(node, "udp_ip_sim_output", config.udp_ip_sim_output) && okay;
-    okay = getRequiredParam(node, "udp_ip_sim_input", config.udp_ip_sim_input) && okay;
-    okay = getRequiredParam(node, "udp_port_sim_input", config.udp_port_sim_input) && okay;
-    okay = getRequiredParam(node, "udp_sim_input_source_id", config.udp_sim_input_source_id) && okay;
-    okay = getRequiredParam(node, "udp_port_sim_output", config.udp_port_sim_output) && okay;
-    okay = getRequiredParam(node, "udp_sim_output_logfile", config.udp_sim_output_logfile) && okay;
+    okay = getRequiredParam(node, "udp_ip_lls_output", config.udp_ip_lls_output) && okay;
+    okay = getRequiredParam(node, "udp_ip_lls_input", config.udp_ip_lls_input) && okay;
+    okay = getRequiredParam(node, "udp_port_lls_input", config.udp_port_lls_input) && okay;
+    okay = getRequiredParam(node, "udp_lls_input_source_id", config.udp_lls_input_source_id) && okay;
+    okay = getRequiredParam(node, "udp_port_lls_output", config.udp_port_lls_output) && okay;
+    okay = getRequiredParam(node, "udp_lls_output_logfile", config.udp_lls_output_logfile) && okay;
     okay = getRequiredParam(node, "software_pll_fifo_length", config.software_pll_fifo_length) && okay;
     okay = getRequiredParam(node, "odom_topic", config.odom_topic) && okay;
     okay = getRequiredParam(node, "ros_odom_to_udp_msg", config.ros_odom_to_udp_msg) && okay;
@@ -109,6 +118,32 @@ bool sick_lidar_localization::API::getParams(rosNodePtr node, sick_lidar_localiz
     {
         ROS_ERROR_STREAM("## ERROR sick_lidar_localization: getRequiredParam failed");
     }
+    getOptionalParam(node, "udp_lls_input_source_id_1_1", config.msgtype_version_sourceid_map[1][1], config.udp_lls_input_source_id);
+    getOptionalParam(node, "udp_lls_input_source_id_1_4", config.msgtype_version_sourceid_map[1][4], config.udp_lls_input_source_id);
+    getOptionalParam(node, "udp_lls_input_source_id_1_5", config.msgtype_version_sourceid_map[1][5], config.udp_lls_input_source_id);
+    getOptionalParam(node, "udp_lls_input_source_id_3_3", config.msgtype_version_sourceid_map[3][3], config.udp_lls_input_source_id);
+    getOptionalParam(node, "udp_lls_input_source_id_4_3", config.msgtype_version_sourceid_map[4][3], config.udp_lls_input_source_id);
+    getOptionalParam(node, "udp_lls_input_source_id_4_4", config.msgtype_version_sourceid_map[4][4], config.udp_lls_input_source_id);
+    getOptionalParam(node, "udp_lls_input_source_id_7_1", config.msgtype_version_sourceid_map[7][1], config.udp_lls_input_source_id);
+    ROS_INFO_STREAM("sick_lidar_localization config: hostname                           = " << config.hostname);
+    ROS_INFO_STREAM("sick_lidar_localization config: serverpath                         = " << config.serverpath);
+    ROS_INFO_STREAM("sick_lidar_localization config: verbose                            = " << config.verbose);
+    ROS_INFO_STREAM("sick_lidar_localization config: udp_ip_lls_output                  = " << config.udp_ip_lls_output);
+    ROS_INFO_STREAM("sick_lidar_localization config: udp_ip_lls_input                   = " << config.udp_ip_lls_input);
+    ROS_INFO_STREAM("sick_lidar_localization config: udp_port_lls_input                 = " << config.udp_port_lls_input);
+    ROS_INFO_STREAM("sick_lidar_localization config: udp_lls_input_source_id            = " << config.udp_lls_input_source_id);
+    ROS_INFO_STREAM("sick_lidar_localization config: msgtype_version_sourceid_map[1][1] = " << config.msgtype_version_sourceid_map[1][1]);
+    ROS_INFO_STREAM("sick_lidar_localization config: msgtype_version_sourceid_map[1][4] = " << config.msgtype_version_sourceid_map[1][4]);
+    ROS_INFO_STREAM("sick_lidar_localization config: msgtype_version_sourceid_map[1][5] = " << config.msgtype_version_sourceid_map[1][5]);
+    ROS_INFO_STREAM("sick_lidar_localization config: msgtype_version_sourceid_map[3][3] = " << config.msgtype_version_sourceid_map[3][3]);
+    ROS_INFO_STREAM("sick_lidar_localization config: msgtype_version_sourceid_map[4][3] = " << config.msgtype_version_sourceid_map[4][3]);
+    ROS_INFO_STREAM("sick_lidar_localization config: msgtype_version_sourceid_map[4][4] = " << config.msgtype_version_sourceid_map[4][4]);
+    ROS_INFO_STREAM("sick_lidar_localization config: msgtype_version_sourceid_map[7][1] = " << config.msgtype_version_sourceid_map[7][1]);
+    ROS_INFO_STREAM("sick_lidar_localization config: udp_port_lls_output                = " << config.udp_port_lls_output);
+    ROS_INFO_STREAM("sick_lidar_localization config: udp_lls_output_logfile             = " << config.udp_lls_output_logfile);
+    ROS_INFO_STREAM("sick_lidar_localization config: software_pll_fifo_length           = " << config.software_pll_fifo_length);
+    ROS_INFO_STREAM("sick_lidar_localization config: odom_topic                         = " << config.odom_topic);
+    ROS_INFO_STREAM("sick_lidar_localization config: ros_odom_to_udp_msg                = " << config.ros_odom_to_udp_msg);
     return okay;
 }
 
@@ -148,7 +183,7 @@ bool sick_lidar_localization::API::init(rosNodePtr node, sick_lidar_localization
     m_services = new sick_lidar_localization::SickServices(node, m_config.hostname, m_config.serverpath, m_config.software_pll_fifo_length, m_config.verbose);
 
     // Start UDP receiver thread for UDP output messages
-    m_udp_receiver_thread = new sick_lidar_localization::UDPReceiverThread(m_services, m_config.udp_ip_sim_output, m_config.udp_port_sim_output, m_config.udp_sim_output_logfile);
+    m_udp_receiver_thread = new sick_lidar_localization::UDPReceiverThread(m_services, m_config.udp_ip_lls_output, m_config.udp_port_lls_output, m_config.udp_lls_output_logfile);
     m_udp_receiver_listener = new sick_lidar_localization::UDPMessage::InfoListener();
     if (m_config.verbose)
         m_udp_receiver_thread->registerListener(m_udp_receiver_listener);
@@ -166,8 +201,9 @@ bool sick_lidar_localization::API::init(rosNodePtr node, sick_lidar_localization
     }
 
     // Initialize UDP sender for UDP input messages
-    m_udp_sender = new sick_lidar_localization::UDPSender(node, m_config.udp_ip_sim_input, m_config.udp_port_sim_input, m_config.udp_sim_input_source_id, m_config.verbose, 
-        m_config.odom_topic, m_config.ros_odom_to_udp_msg);
+    m_udp_sender = new sick_lidar_localization::UDPSender(node, m_config.udp_ip_lls_input, m_config.udp_port_lls_input, 
+        sick_lidar_localization::UDPDefaultInputSourceId(m_config.udp_lls_input_source_id, m_config.msgtype_version_sourceid_map),
+        m_config.verbose, m_config.odom_topic, m_config.ros_odom_to_udp_msg);
 
     return true;
 }
@@ -195,7 +231,7 @@ void sick_lidar_localization::API::close()
 }
 
 /*
-** @brief Register a listener for upd messages. The callback functions of the listener will be called after receiving a new udp message.
+** @brief Register a listener for udp messages. The callback functions of the listener will be called after receiving a new udp message.
 ** Overwrite the functions defined in sick_lidar_localization::UDPMessage::Listener with customized code to handle udp messages.
 */
 bool sick_lidar_localization::API::registerListener(sick_lidar_localization::UDPMessage::Listener* listener)
@@ -233,16 +269,16 @@ bool sick_lidar_localization::API::unregisterListener(sick_lidar_localization::U
 /*
 ** @brief Sends a UDP input message.
 **        payload can be OdometryPayload0104, OdometryPayload0105, EncoderMeasurementPayload0202,
-**        CodeMeasurementPayload0303, LineMeasurementPayload0403 or LineMeasurementPayload0404
+**        CodeMeasurementPayload0303, odeMeasurementPayload0701, LineMeasurementPayload0403 or LineMeasurementPayload0404
 ** @param[in] payload UDP message payload data
 ** @return true on success or false on error
 */
-template<typename T> bool sendUDPPayload(sick_lidar_localization::UDPSender* udp_sender, const T& payload, bool encode_header_big_endian, bool encode_payload_big_endian, uint16_t source_id)
+template<typename T> bool sendUDPPayload(sick_lidar_localization::UDPSender* udp_sender, const T& payload, bool encode_header_big_endian, bool encode_payload_big_endian)
 
 {
     if (udp_sender)
     {
-        return udp_sender->sendUDPPayload(payload, encode_header_big_endian, encode_payload_big_endian, source_id);
+        return udp_sender->sendUDPPayload(payload, encode_header_big_endian, encode_payload_big_endian);
     }
     else
     {
@@ -254,27 +290,31 @@ template<typename T> bool sendUDPPayload(sick_lidar_localization::UDPSender* udp
 /*
 ** @brief Send udp messages to the localization controller
 */
-bool sick_lidar_localization::API::sendUDPMessage(const sick_lidar_localization::UDPMessage::OdometryPayload0104& payload, bool encode_header_big_endian, bool encode_payload_big_endian, uint16_t source_id)
+bool sick_lidar_localization::API::sendUDPMessage(const sick_lidar_localization::UDPMessage::OdometryPayload0104& payload, bool encode_header_big_endian, bool encode_payload_big_endian)
 {
-    return sendUDPPayload(m_udp_sender, payload, encode_header_big_endian, encode_payload_big_endian, source_id);
+    return sendUDPPayload(m_udp_sender, payload, encode_header_big_endian, encode_payload_big_endian);
 }
-bool sick_lidar_localization::API::sendUDPMessage(const sick_lidar_localization::UDPMessage::OdometryPayload0105& payload, bool encode_header_big_endian, bool encode_payload_big_endian, uint16_t source_id)
+bool sick_lidar_localization::API::sendUDPMessage(const sick_lidar_localization::UDPMessage::OdometryPayload0105& payload, bool encode_header_big_endian, bool encode_payload_big_endian)
 {
-    return sendUDPPayload(m_udp_sender, payload, encode_header_big_endian, encode_payload_big_endian, source_id);
+    return sendUDPPayload(m_udp_sender, payload, encode_header_big_endian, encode_payload_big_endian);
 }
-bool sick_lidar_localization::API::sendUDPMessage(const sick_lidar_localization::UDPMessage::EncoderMeasurementPayload0202& payload, bool encode_header_big_endian, bool encode_payload_big_endian, uint16_t source_id)
+bool sick_lidar_localization::API::sendUDPMessage(const sick_lidar_localization::UDPMessage::EncoderMeasurementPayload0202& payload, bool encode_header_big_endian, bool encode_payload_big_endian)
 {
-    return sendUDPPayload(m_udp_sender, payload, encode_header_big_endian, encode_payload_big_endian, source_id);
+    return sendUDPPayload(m_udp_sender, payload, encode_header_big_endian, encode_payload_big_endian);
 }
-bool sick_lidar_localization::API::sendUDPMessage(const sick_lidar_localization::UDPMessage::CodeMeasurementPayload0303& payload, bool encode_header_big_endian, bool encode_payload_big_endian, uint16_t source_id)
+bool sick_lidar_localization::API::sendUDPMessage(const sick_lidar_localization::UDPMessage::CodeMeasurementPayload0303& payload, bool encode_header_big_endian, bool encode_payload_big_endian)
 {
-    return sendUDPPayload(m_udp_sender, payload, encode_header_big_endian, encode_payload_big_endian, source_id);
+    return sendUDPPayload(m_udp_sender, payload, encode_header_big_endian, encode_payload_big_endian);
 }
-bool sick_lidar_localization::API::sendUDPMessage(const sick_lidar_localization::UDPMessage::LineMeasurementPayload0403& payload, bool encode_header_big_endian, bool encode_payload_big_endian, uint16_t source_id)
+bool sick_lidar_localization::API::sendUDPMessage(const sick_lidar_localization::UDPMessage::CodeMeasurementPayload0701& payload, bool encode_header_big_endian, bool encode_payload_big_endian)
 {
-    return sendUDPPayload(m_udp_sender, payload, encode_header_big_endian, encode_payload_big_endian, source_id);
+    return sendUDPPayload(m_udp_sender, payload, encode_header_big_endian, encode_payload_big_endian);
 }
-bool sick_lidar_localization::API::sendUDPMessage(const sick_lidar_localization::UDPMessage::LineMeasurementPayload0404& payload, bool encode_header_big_endian, bool encode_payload_big_endian, uint16_t source_id)
+bool sick_lidar_localization::API::sendUDPMessage(const sick_lidar_localization::UDPMessage::LineMeasurementPayload0403& payload, bool encode_header_big_endian, bool encode_payload_big_endian)
 {
-    return sendUDPPayload(m_udp_sender, payload, encode_header_big_endian, encode_payload_big_endian, source_id);
+    return sendUDPPayload(m_udp_sender, payload, encode_header_big_endian, encode_payload_big_endian);
+}
+bool sick_lidar_localization::API::sendUDPMessage(const sick_lidar_localization::UDPMessage::LineMeasurementPayload0404& payload, bool encode_header_big_endian, bool encode_payload_big_endian)
+{
+    return sendUDPPayload(m_udp_sender, payload, encode_header_big_endian, encode_payload_big_endian);
 }

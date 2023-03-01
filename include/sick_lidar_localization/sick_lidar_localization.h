@@ -69,18 +69,19 @@ namespace sick_lidar_localization
     class Config
     {
     public:
-        std::string hostname = "192.168.0.1";          // IP adress of the localization controller
+        std::string hostname = "192.168.0.1";          // IP address of the localization controller
         std::string serverpath = "api";                // Relative path to the rest api, i.e. url of rest requests is "http://<hostname>/<serverpath>/
         int verbose = 0;                               // If verbose>0: print informational messages, otherwise silent except for error messages
-        std::string udp_ip_sim_output = "";            // IP address for output UDP messages, or "" for broadcast (INADDR_ANY), default: "", use IP address of your local machine
-        std::string udp_ip_sim_input = "192.168.0.1";  // IP address for input UDP messages, or "" for broadcast, default: "192.168.0.1", (IP adress of the localization controller)
-        int udp_port_sim_input = 5009;                 // UDP port of input messages
-        int udp_sim_input_source_id = 1;               // Source_id of input messages
-        int udp_port_sim_output = 5010;                // UDP port of output messages 
-        std::string udp_sim_output_logfile = "";       // Optional logfile for human readable UDP output messages, default: "" (no outputlogfile)
+        std::string udp_ip_lls_output = "";            // IP address for output UDP messages, or "" for broadcast (INADDR_ANY), default: "", use IP address of your local machine
+        std::string udp_ip_lls_input = "192.168.0.1";  // IP address for input UDP messages, or "" for broadcast, default: "192.168.0.1", (IP address of the localization controller)
+        int udp_port_lls_input = 5009;                 // UDP port of input messages
+        int udp_lls_input_source_id = 1;               // Default source_id of UDP input messages (used if source_id not set otherwise)
+        std::map<int,std::map<int,int>> msgtype_version_sourceid_map; // msgtype_version_sourceid_map[msgtype][msgversion] := default source_id for UDP input messages of type <msgtype> and version <msgversion>
+        int udp_port_lls_output = 5010;                // UDP port of output messages 
+        std::string udp_lls_output_logfile = "";       // Optional logfile for human readable UDP output messages, default: "" (no outputlogfile)
         int software_pll_fifo_length = 7;              // Length of fifo in SoftwarePLL
         std::string odom_topic = "/odom";              // Topic of ros odom messages
-        int ros_odom_to_udp_msg = 0;                   // Convert ros odom message to upd: 0 = map velocity to OdometryPayload0101 (Type 1, Version 1, LidarLoc 1), 
+        int ros_odom_to_udp_msg = 0;                   // Convert ros odom message to udp:
                                                        // 1 = map velocity to OdometryPayload0104 (Type 1, Version 4, LidarLoc 2),
                                                        // 2 = map position to OdometryPayload0105 (Type 1, Version 5, LidarLoc 2),
                                                        // 3 = map velocity to OdometryPayload0104 and position to OdometryPayload0105
@@ -121,7 +122,7 @@ namespace sick_lidar_localization
         void close();
 
         /*
-        ** @brief Register a listener for upd messages. The callback functions of the listener will be called after receiving a new udp message.
+        ** @brief Register a listener for udp messages. The callback functions of the listener will be called after receiving a new udp message.
         ** Overwrite the functions defined in sick_lidar_localization::UDPMessage::Listener with customized code to handle udp messages.
         */
         bool registerListener(sick_lidar_localization::UDPMessage::Listener* listener);
@@ -134,12 +135,13 @@ namespace sick_lidar_localization
         /*
         ** @brief Send udp messages to the localization controller
         */
-        bool sendUDPMessage(const sick_lidar_localization::UDPMessage::OdometryPayload0104& payload, bool encode_header_big_endian, bool encode_payload_big_endian, uint16_t source_id);
-        bool sendUDPMessage(const sick_lidar_localization::UDPMessage::OdometryPayload0105& payload, bool encode_header_big_endian, bool encode_payload_big_endian, uint16_t source_id);
-        bool sendUDPMessage(const sick_lidar_localization::UDPMessage::EncoderMeasurementPayload0202& payload, bool encode_header_big_endian, bool encode_payload_big_endian, uint16_t source_id);
-        bool sendUDPMessage(const sick_lidar_localization::UDPMessage::CodeMeasurementPayload0303& payload, bool encode_header_big_endian, bool encode_payload_big_endian, uint16_t source_id);
-        bool sendUDPMessage(const sick_lidar_localization::UDPMessage::LineMeasurementPayload0403& payload, bool encode_header_big_endian, bool encode_payload_big_endian, uint16_t source_id);
-        bool sendUDPMessage(const sick_lidar_localization::UDPMessage::LineMeasurementPayload0404& payload, bool encode_header_big_endian, bool encode_payload_big_endian, uint16_t source_id);
+        bool sendUDPMessage(const sick_lidar_localization::UDPMessage::OdometryPayload0104& payload, bool encode_header_big_endian, bool encode_payload_big_endian);
+        bool sendUDPMessage(const sick_lidar_localization::UDPMessage::OdometryPayload0105& payload, bool encode_header_big_endian, bool encode_payload_big_endian);
+        bool sendUDPMessage(const sick_lidar_localization::UDPMessage::EncoderMeasurementPayload0202& payload, bool encode_header_big_endian, bool encode_payload_big_endian);
+        bool sendUDPMessage(const sick_lidar_localization::UDPMessage::CodeMeasurementPayload0303& payload, bool encode_header_big_endian, bool encode_payload_big_endian);
+        bool sendUDPMessage(const sick_lidar_localization::UDPMessage::CodeMeasurementPayload0701& payload, bool encode_header_big_endian, bool encode_payload_big_endian);
+        bool sendUDPMessage(const sick_lidar_localization::UDPMessage::LineMeasurementPayload0403& payload, bool encode_header_big_endian, bool encode_payload_big_endian);
+        bool sendUDPMessage(const sick_lidar_localization::UDPMessage::LineMeasurementPayload0404& payload, bool encode_header_big_endian, bool encode_payload_big_endian);
 
         /*
         ** @brief Parses commandline arguments, reads a launchfile and sets parameters for sick_lidar_localization.

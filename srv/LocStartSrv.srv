@@ -1,7 +1,7 @@
-# Definition of ROS service LocStartLocalizing for sick localization.
+# Definition of ROS service LocStart for sick localization.
 #
-# ROS service LocStartLocalizing starts localization
-# by sending cola command ("sMN LocStartLocalizing").
+# ROS service LocStart starts localization
+# by sending cola command ("sMN LocStart").
 #
 # See Telegram-Listing-v1.1.0.241R.pdf for further details about 
 # Cola telegrams and this command.

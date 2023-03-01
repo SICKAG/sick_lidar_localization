@@ -38,7 +38,7 @@ pushd ../../build
 ./gen_service_call LocSetOdometryActive POST "{active: 1}" --hostname=localhost --verbose=1 --dump=1 --append=linux_unittest_gen_sick_caller.log
 ./gen_service_call LocSetRecordingActive POST "{active: 1}" --hostname=localhost --verbose=1 --dump=1 --append=linux_unittest_gen_sick_caller.log
 ./gen_service_call LocSetRingBufferRecordingActive POST "{active: 1}" --hostname=localhost --verbose=1 --dump=1 --append=linux_unittest_gen_sick_caller.log
-./gen_service_call LocStartLocalizing POST "{}" --hostname=localhost --verbose=1 --dump=1 --append=linux_unittest_gen_sick_caller.log
+./gen_service_call LocStart POST "{}" --hostname=localhost --verbose=1 --dump=1 --append=linux_unittest_gen_sick_caller.log
 ./gen_service_call LocStop POST "{}" --hostname=localhost --verbose=1 --dump=1 --append=linux_unittest_gen_sick_caller.log
 ./gen_service_call LocSwitchMap POST "{subMapName: \"test.vmap\"}" --hostname=localhost --verbose=1 --dump=1 --append=linux_unittest_gen_sick_caller.log
 ./gen_service_call LocGetLocalizationStatus POST "{}" --hostname=localhost --verbose=1 --dump=1 --append=linux_unittest_gen_sick_caller.log

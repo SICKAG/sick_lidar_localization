@@ -1,5 +1,5 @@
 /*
- * @brief sim_loc_fifo implements a threadsafe fifo-buffer ("first in, first out").
+ * @brief lls_loc_fifo implements a threadsafe fifo-buffer ("first in, first out").
  *
  * Copyright (C) 2019 Ing.-Buero Dr. Michael Lehning, Hildesheim
  * Copyright (C) 2019 SICK AG, Waldkirch

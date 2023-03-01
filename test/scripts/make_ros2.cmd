@@ -34,7 +34,6 @@ start "sick_lidar_localization.sln" .\build\sick_lidar_localization\sick_lidar_l
 @echo.
 if not exist .\build\sick_lidar_localization\Release\gen_service_call.exe        ( @echo colcon build gen_service_call.exe failed        & @pause ) else ( @echo Successfully build gen_service_call.exe for ROS-2 Windows )
 if not exist .\build\sick_lidar_localization\Release\sick_lidar_localization.exe ( @echo colcon build sick_lidar_localization.exe failed & @pause ) else ( @echo Successfully build sick_lidar_localization.exe for ROS-2 Windows )
-if not exist .\build\sick_lidar_localization\Release\pointcloud_converter.exe    ( @echo colcon build pointcloud_converter.exe failed    & @pause ) else ( @echo Successfully build pointcloud_converter.exe for ROS-2 Windows )
 
 popd
 popd

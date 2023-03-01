@@ -29,12 +29,12 @@ if __name__ == "__main__":
     cli_args = arg_parser.parse_args()
     udp_port = cli_args.udp_port
 
-    # Init upd receiver
+    # Init udp receiver
     udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP) # UDP socket
     udp_socket.bind(("", udp_port))
     
     # Receive udp datagrams
-    print("sim_udp_receiver listening on port {} ...".format(udp_port))
+    print("lls_udp_receiver listening on port {} ...".format(udp_port))
     while True:
         data, addr = udp_socket.recvfrom(1024) # buffer size is 1024 bytes
         if len(data) >= 16 and data[0:4] == b"\x4d\x4f\x50\x53": # 4 byte Magic 0x4d 0x4f 0x50 0x53 ("MOPS")
@@ -56,7 +56,7 @@ if __name__ == "__main__":
                 header_is_big_endian = False
                 payload_is_big_endian = True
             else:
-                print("## ERROR sim_udp_receiver: unknown message header encoding")
+                print("## ERROR lls_udp_receiver: unknown message header encoding")
                 continue
 
             payloadlen = decode(data[6:8], header_is_big_endian)
@@ -64,15 +64,7 @@ if __name__ == "__main__":
             msgtypeversion = decode(data[12:13], header_is_big_endian) # int(data[13])
             print("{} byte udp message received, msgtype {}, msgtypeversion {}, {} byte payload".format(len(data), msgtype, msgtypeversion, payloadlen))
             
-            if msgtype == 1 and msgtypeversion == 1 and payloadlen == 32:
-                telegram_count = decode(data[16:24], payload_is_big_endian)
-                timestamp = decode(data[24:32], payload_is_big_endian)
-                x_velocity = decode(data[32:36], payload_is_big_endian, True)
-                y_velocity = decode(data[36:40], payload_is_big_endian, True)
-                angular_velocity = decode(data[40:48], payload_is_big_endian, True)
-                print("OdometryMessage0101:{" + "telegram_count:" + str(telegram_count) + ", timestamp:" + str(timestamp) + ", x_velocity:" + str(x_velocity) + ", y_velocity:" + str(y_velocity) + ", angular_velocity:" + str(angular_velocity) + "}")
-                
-            elif msgtype == 1 and msgtypeversion == 4 and payloadlen == 24:
+            if msgtype == 1 and msgtypeversion == 4 and payloadlen == 24:
                 telegram_count = decode(data[16:24], payload_is_big_endian)
                 timestamp = decode(data[24:32], payload_is_big_endian)
                 x_velocity = decode(data[32:34], payload_is_big_endian, True)
@@ -121,8 +113,18 @@ if __name__ == "__main__":
                 cnt_lpc = int(data[38]) # decode(data[38:39], payload_is_big_endian)
                 print("LineMeasurementMessage0404:{" + "telegram_count:" + str(telegram_count) + ", timestamp:" + str(timestamp) + ", lcp1:" + str(lcp1) + ", lcp2:" + str(lcp2) + ", lcp3:" + str(lcp3) + ", cnt_lpc:" + str(cnt_lpc) + "}")
                           
+            elif msgtype == 7 and msgtypeversion == 1 and payloadlen >= 30:
+                telegram_count = decode(data[16:24], payload_is_big_endian)
+                timestamp = decode(data[24:32], payload_is_big_endian)
+                codelength = decode(data[32:34], payload_is_big_endian, True)
+                code = data[34:(34+codelength)].decode("utf-8") 
+                x_position = decode(data[(34+codelength):(34+codelength+4)], payload_is_big_endian, True)
+                y_position = decode(data[(34+codelength+4):(34+codelength+8)], payload_is_big_endian, True)
+                heading = decode(data[(34+codelength+8):(34+codelength+12)], payload_is_big_endian, True)
+                print("CodeMeasurementMessage0701:{" + "telegram_count:" + str(telegram_count) + ", timestamp:" + str(timestamp) + ", code:" + str(code) + ", x_position:" + str(x_position) + ", y_position:" + str(y_position) + ", heading:" + str(heading)  + "}")
+            
             else:
-                print("## ERROR sim_udp_receiver: unknown message type or wrong payload length")
+                print("## ERROR lls_udp_receiver: unknown message type or wrong payload length")
             
 
         

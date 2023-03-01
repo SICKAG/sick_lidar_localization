@@ -194,75 +194,6 @@ std::vector<uint8_t> sick_lidar_localization::UDPMessage::encodeHeader(size_t pa
     }
 }
 
-#define OdometryPayload0101UdpInputMsgLidarLocVersion 1 // Note: odometry message type 1 version 1 (localization controller udp input message) in old lidar loc version 1 message format (NOT in lidar loc version 2)
-
-/** @brief Encodes the header of a OdometryPayload0101 message */
-template<> std::vector<uint8_t> sick_lidar_localization::UDPMessage::encodeHeader(const sick_lidar_localization::UDPMessage::OdometryPayload0101& message_payload, size_t payload_size, bool header_big_endian, bool payload_big_endian, uint16_t source_id)
-{
-    int lidar_loc_version = OdometryPayload0101UdpInputMsgLidarLocVersion; // Note: odometry message type 1 version 1 in old lidar loc version 1 message format (NOT in lidar loc version 2)
-    return sick_lidar_localization::UDPMessage::encodeHeader(payload_size, header_big_endian, payload_big_endian, 1, 1, source_id, lidar_loc_version);
-}
-
-/*
-** @brief Encodes the payload of a OdometryPayload0101 udp message (odometry payload message type 1 version 1
-** @param[in] message_payload payload
-** @param[in] encode_big_endian encode in big or little endiang
-** @param[out] encoded vector of bytes
-*/
-template<> std::vector<uint8_t> sick_lidar_localization::UDPMessage::encodePayload(const sick_lidar_localization::UDPMessage::OdometryPayload0101& message_payload, bool encode_big_endian)
-{
-    int lidar_loc_version = OdometryPayload0101UdpInputMsgLidarLocVersion; // Note: odometry message type 1 version 1 in old lidar loc version 1 message format (NOT in lidar loc version 2)
-    if(lidar_loc_version == 2)
-    {
-        // Encode payload according to lidar localization specification version 2 (default)
-        std::vector<uint8_t> buffer(32);
-        encode((uint64_t)message_payload.telegram_count,   &buffer[0] + 0, 8, encode_big_endian);
-        encode((uint64_t)message_payload.timestamp,        &buffer[0] + 8, 8, encode_big_endian);
-        encode((uint64_t)message_payload.x_velocity,       &buffer[0] + 16, 4, encode_big_endian);
-        encode((uint64_t)message_payload.y_velocity,       &buffer[0] + 20, 4, encode_big_endian);
-        encode((uint64_t)message_payload.angular_velocity, &buffer[0] + 24, 8, encode_big_endian);
-        return buffer;
-    }
-    else if(lidar_loc_version == 1)
-    {
-        // Encode payload according to lidar localization specification version 1 (for backward compatibility only)
-        std::vector<uint8_t> buffer(16);
-        // Payload: 4 byte TelegramCount UInt32
-        encode((uint64_t)message_payload.telegram_count,   &buffer[0] + 0, 4, encode_big_endian);
-        // Payload: 4 byte Timestamp UInt32 in ms
-        encode((uint64_t)message_payload.timestamp,        &buffer[0] + 4, 4, encode_big_endian);
-        // Payload: 2 byte vx Int16 in mm/s
-        encode((uint64_t)message_payload.x_velocity,       &buffer[0] + 8, 2, encode_big_endian);
-        // Payload: 2 byte vy Int16 in mm/s
-        encode((uint64_t)message_payload.y_velocity,       &buffer[0] + 10, 2, encode_big_endian);
-        // Payload: 4 byte omega Int32 in mdeg/s
-        encode((uint64_t)message_payload.angular_velocity, &buffer[0] + 12, 4, encode_big_endian);
-        return buffer;
-    }
-    else
-    {
-        ROS_ERROR_STREAM("## ERROR UDPMessage::encodePayload(OdometryPayload0101): lidar_loc_version = " << lidar_loc_version << " not supported, expected version 2 (default) or version 1 (backward compatibility)");
-        return std::vector<uint8_t>();
-    }
-}
-
-/*
-** @brief Print the payload data. Implementation for odometry payload message type 1 version 1
-** @return payload data as human readable string
-*/
-template<> std::string sick_lidar_localization::UDPMessage::printPayload(const sick_lidar_localization::UDPMessage::OdometryPayload0101& payload, bool print_sync_time)
-{
-    std::stringstream s;
-    s << "OdometryPayload0101:{"
-        << "telegram_count:" << payload.telegram_count
-        << ", timestamp:" << payload.timestamp
-        << ", x_velocity:" << payload.x_velocity
-        << ", y_velocity:" << payload.y_velocity
-        << ", angular_velocity:" << payload.angular_velocity
-        << "}";
-    return s.str();
-}
-
 /*
 ** @brief Decodes the payload of a udp message. Implementation for odometry payload message type 1 version 4 (24 byte payload)
 ** @param[in] udp_buffer payload bytes received by udp
@@ -348,6 +279,7 @@ template<> std::string sick_lidar_localization::UDPMessage::printPayload(const s
     s << "OdometryPayload0104:{"
         << "telegram_count:" << payload.telegram_count
         << ", timestamp:" << payload.timestamp
+        << ", source_id:" << payload.source_id
         << ", x_velocity:" << payload.x_velocity
         << ", y_velocity:" << payload.y_velocity
         << ", angular_velocity:" << payload.angular_velocity
@@ -412,6 +344,7 @@ template<> std::string sick_lidar_localization::UDPMessage::printPayload(const s
     s << "OdometryPayload0105:{"
         << "telegram_count:" << payload.telegram_count
         << ", timestamp:" << payload.timestamp
+        << ", source_id:" << payload.source_id
         << ", x_position:" << payload.x_position
         << ", y_position:" << payload.y_position
         << ", heading:" << payload.heading
@@ -451,6 +384,7 @@ template<> std::string sick_lidar_localization::UDPMessage::printPayload(const s
     s << "EncoderMeasurementPayload0202:{"
         << "telegram_count:" << payload.telegram_count
         << ", timestamp:" << payload.timestamp
+        << ", source_id:" << payload.source_id
         << ", code:" << payload.encoder_value
         << "}";
     return s.str();
@@ -487,7 +421,79 @@ template<> std::string sick_lidar_localization::UDPMessage::printPayload(const s
     s << "CodeMeasurementPayload0303:{"
         << "telegram_count:" << payload.telegram_count
         << ", timestamp:" << payload.timestamp
+        << ", source_id:" << payload.source_id
         << ", code:" << payload.code
+        << "}";
+    return s.str();
+}
+
+/** @brief Encodes the header of a CodeMeasurementPayload0701 message */
+template<> std::vector<uint8_t> sick_lidar_localization::UDPMessage::encodeHeader(const sick_lidar_localization::UDPMessage::CodeMeasurementPayload0701& message_payload, size_t payload_size, bool header_big_endian, bool payload_big_endian, uint16_t source_id)
+{
+    return sick_lidar_localization::UDPMessage::encodeHeader(payload_size, header_big_endian, payload_big_endian, 7, 1, source_id);
+}
+
+/*
+** @brief Encodes the payload of a CodeMeasurementPayload0701 udp message (code measurement payload message type 7 version 1 (variable length payload)
+** @param[in] message_payload payload
+** @param[in] encode_big_endian encode in big or little endiang
+** @param[out] encoded vector of bytes
+*/
+template<> std::vector<uint8_t> sick_lidar_localization::UDPMessage::encodePayload(const sick_lidar_localization::UDPMessage::CodeMeasurementPayload0701& message_payload, bool encode_big_endian)
+{
+    int buffer_length = (int)(sizeof(message_payload.telegram_count) + sizeof(message_payload.timestamp) + 2 + message_payload.code.length() 
+        + sizeof(message_payload.x_position) + sizeof(message_payload.y_position) + sizeof(message_payload.heading));
+    std::vector<uint8_t> buffer(buffer_length);
+
+    uint8_t* p_data = &buffer[0];
+    int len = sizeof(message_payload.telegram_count);
+    encode((uint64_t)message_payload.telegram_count, p_data, len, encode_big_endian);
+    p_data += len;
+
+    len = sizeof(message_payload.timestamp);
+    encode((uint64_t)message_payload.timestamp, p_data, len, encode_big_endian);
+    p_data += len;
+
+    uint16_t codelength = (uint16_t)message_payload.code.length();
+    len = sizeof(codelength);
+    encode((uint16_t)codelength, p_data, len, encode_big_endian);
+    p_data += len;
+
+    for(int n = 0; n < codelength; n++, p_data++)
+    {
+        *p_data = (uint8_t)message_payload.code[n];
+    }
+
+    len = sizeof(message_payload.x_position);
+    encode((uint64_t)message_payload.x_position, p_data, len, encode_big_endian);
+    p_data += len;
+
+    len = sizeof(message_payload.y_position);
+    encode((uint64_t)message_payload.y_position, p_data, len, encode_big_endian);
+    p_data += len;
+
+    len = sizeof(message_payload.heading);
+    encode((uint64_t)message_payload.heading, p_data, len, encode_big_endian);
+    p_data += len;
+
+    return buffer;
+}
+
+/*
+** @brief Print the payload data. Implementation for code measurement payload message type 7 version 1
+** @return payload data as human readable string
+*/
+template<> std::string sick_lidar_localization::UDPMessage::printPayload(const sick_lidar_localization::UDPMessage::CodeMeasurementPayload0701& payload, bool print_sync_time)
+{
+    std::stringstream s;
+    s << "CodeMeasurementPayload0701:{"
+        << "telegram_count:" << payload.telegram_count
+        << ", timestamp:" << payload.timestamp
+        << ", source_id:" << payload.source_id
+        << ", code:" << payload.code
+        << ", x_position:" << payload.x_position
+        << ", y_position:" << payload.y_position
+        << ", heading:" << payload.heading
         << "}";
     return s.str();
 }
@@ -524,6 +530,7 @@ template<> std::string sick_lidar_localization::UDPMessage::printPayload(const s
     s << "CodeMeasurementPayload0304:{"
         << "telegram_count:" << payload.telegram_count
         << ", timestamp:" << payload.timestamp
+        << ", source_id:" << payload.source_id
         << ", code:" << payload.code
         << ", distance:" << payload.distance
         << printSyncTime(payload, print_sync_time)
@@ -599,6 +606,7 @@ template<> std::string sick_lidar_localization::UDPMessage::printPayload(const s
     s << "LineMeasurementPayload0403:{"
         << "telegram_count:" << payload.telegram_count
         << ", timestamp:" << payload.timestamp
+        << ", source_id:" << payload.source_id
         << ", num_lanes:" << (int)payload.num_lanes
         << ", lanes:[";
     for (int n = 0; n < payload.num_lanes; n++)
@@ -673,6 +681,7 @@ template<> std::string sick_lidar_localization::UDPMessage::printPayload(const s
     s << "LineMeasurementPayload0404:{"
         << "telegram_count:" << payload.telegram_count
         << ", timestamp:" << payload.timestamp
+        << ", source_id:" << payload.source_id
         << ", lcp1:" << (int)payload.lcp1
         << ", lcp2:" << (int)payload.lcp2
         << ", lcp3:" << (int)payload.lcp3
@@ -718,6 +727,7 @@ template<> std::string sick_lidar_localization::UDPMessage::printPayload(const s
     s << "LocalizationControllerResultPayload0502:{"
         << "telegram_count:" << payload.telegram_count
         << ", timestamp:" << payload.timestamp
+        << ", source_id:" << payload.source_id
         << ", x:" << payload.x
         << ", y:" << payload.y
         << ", heading:" << payload.heading

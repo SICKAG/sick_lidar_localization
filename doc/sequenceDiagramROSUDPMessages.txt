@@ -1,0 +1,20 @@
+@startuml
+...
+"Lidar" -> "SIM1000FXA": scan data
+"SIM1000FXA" -> "sick_lidar_localization2": UDP output message \ntype 5 version 2 \n(sourceID:160, \nx, y, heading, \nstatus, timestamp)
+"sick_lidar_localization2" -> "ROS": ROS message \nLocalizationControllerResultMessage0502 \n(sourceID:160, \nx, y, heading, status, timestamp)
+"sick_lidar_localization2" -> "ROS": ROS TF message \n(geometry_msgs/Transform, \nparent "base_link", child "lls", \nVector3D translation, Quaternion rotation)
+"ROS" -> "Application": ROS TF message \n(geometry_msgs/Transform \nused e.g. for robot navigation)
+...
+"Left wheel encoder ID:150" -> "Application": Encoder datagram
+"Application" -> "Application": Encoder datagram conversion\nto ROS message \nEncoderMeasurementMessage0202 \n(sourceID:150, timestamp, encoderTics)
+"Application" -> "sick_lidar_localization2": ROS message \nEncoderMeasurementMessage0202 \n(sourceID:150, timestamp, encoderTics)
+"sick_lidar_localization2" -> "SIM1000FXA": UDP input message \ntype 2 version 2 \n(sourceID:150, \ntimestamp, encoderTics)
+...
+...
+"Right wheel encoder ID:151" -> "Application": Encoder datagram
+"Application" -> "Application": Encoder datagram conversion\nto ROS message \nEncoderMeasurementMessage0202 \n(sourceID:151, timestamp, encoderTics)
+"Application" -> "sick_lidar_localization2": ROS message \nEncoderMeasurementMessage0202 \n(sourceID:151, timestamp, encoderTics)
+"sick_lidar_localization2" -> "SIM1000FXA": UDP input message \ntype 2 version 2 \n(sourceID:151, \ntimestamp, encoderTics)
+...
+@enduml

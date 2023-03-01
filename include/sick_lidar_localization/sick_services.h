@@ -83,7 +83,7 @@
 #include "sick_lidar_localization/LocSetOdometryActiveSrv.h"
 #include "sick_lidar_localization/LocSetRecordingActiveSrv.h"
 #include "sick_lidar_localization/LocSetRingBufferRecordingActiveSrv.h"
-#include "sick_lidar_localization/LocStartLocalizingSrv.h"
+#include "sick_lidar_localization/LocStartSrv.h"
 #include "sick_lidar_localization/LocStopSrv.h"
 #include "sick_lidar_localization/LocSwitchMapSrv.h"
 #include "sick_lidar_localization/LocGetLocalizationStatusSrv.h"
@@ -109,7 +109,7 @@
 #include "sick_lidar_localization/srv/loc_set_odometry_active_srv.hpp"
 #include "sick_lidar_localization/srv/loc_set_recording_active_srv.hpp"
 #include "sick_lidar_localization/srv/loc_set_ring_buffer_recording_active_srv.hpp"
-#include "sick_lidar_localization/srv/loc_start_localizing_srv.hpp"
+#include "sick_lidar_localization/srv/loc_start_srv.hpp"
 #include "sick_lidar_localization/srv/loc_stop_srv.hpp"
 #include "sick_lidar_localization/srv/loc_switch_map_srv.hpp"
 #include "sick_lidar_localization/srv/loc_get_localization_status_srv.hpp"
@@ -282,9 +282,9 @@ namespace sick_lidar_localization
         bool serviceCbLocSetRingBufferRecordingActiveSrvROS2(std::shared_ptr<sick_lidar_localization::LocSetRingBufferRecordingActiveSrv::Request> service_request, std::shared_ptr<sick_lidar_localization::LocSetRingBufferRecordingActiveSrv::Response> service_response);
         rosServiceServer<sick_lidar_localization::LocSetRingBufferRecordingActiveSrv> m_srv_server_LocSetRingBufferRecordingActiveSrv;
         
-        bool serviceCbLocStartLocalizingSrvROS1(sick_lidar_localization::LocStartLocalizingSrv::Request &service_request, sick_lidar_localization::LocStartLocalizingSrv::Response &service_response);
-        bool serviceCbLocStartLocalizingSrvROS2(std::shared_ptr<sick_lidar_localization::LocStartLocalizingSrv::Request> service_request, std::shared_ptr<sick_lidar_localization::LocStartLocalizingSrv::Response> service_response);
-        rosServiceServer<sick_lidar_localization::LocStartLocalizingSrv> m_srv_server_LocStartLocalizingSrv;
+        bool serviceCbLocStartSrvROS1(sick_lidar_localization::LocStartSrv::Request &service_request, sick_lidar_localization::LocStartSrv::Response &service_response);
+        bool serviceCbLocStartSrvROS2(std::shared_ptr<sick_lidar_localization::LocStartSrv::Request> service_request, std::shared_ptr<sick_lidar_localization::LocStartSrv::Response> service_response);
+        rosServiceServer<sick_lidar_localization::LocStartSrv> m_srv_server_LocStartSrv;
         
         bool serviceCbLocStopSrvROS1(sick_lidar_localization::LocStopSrv::Request &service_request, sick_lidar_localization::LocStopSrv::Response &service_response);
         bool serviceCbLocStopSrvROS2(std::shared_ptr<sick_lidar_localization::LocStopSrv::Request> service_request, std::shared_ptr<sick_lidar_localization::LocStopSrv::Response> service_response);

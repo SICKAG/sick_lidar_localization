@@ -6,7 +6,7 @@ REM
 REM Start rest server
 REM 
 
-start "rest server" /min .\simu_run_sim_rest_server.cmd
+start "rest server" /min .\simu_run_lls_rest_server.cmd
 @timeout /t 3
 
 REM 
@@ -33,7 +33,7 @@ pushd ..\..\build
 .\Debug\gen_service_call LocSetOdometryActive POST "{\"data\":{\"active\":1}}" --hostname=localhost --verbose=1 --dump=1 --append=win64_unittest_gen_sick_caller.log
 .\Debug\gen_service_call LocSetRecordingActive POST "{\"data\":{\"active\":1}}" --hostname=localhost --verbose=1 --dump=1 --append=win64_unittest_gen_sick_caller.log
 .\Debug\gen_service_call LocSetRingBufferRecordingActive POST "{\"data\":{\"active\":1}}" --hostname=localhost --verbose=1 --dump=1 --append=win64_unittest_gen_sick_caller.log
-.\Debug\gen_service_call LocStartLocalizing POST "{}" --hostname=localhost --verbose=1 --dump=1 --append=win64_unittest_gen_sick_caller.log
+.\Debug\gen_service_call LocStart POST "{}" --hostname=localhost --verbose=1 --dump=1 --append=win64_unittest_gen_sick_caller.log
 .\Debug\gen_service_call LocStop POST "{}" --hostname=localhost --verbose=1 --dump=1 --append=win64_unittest_gen_sick_caller.log
 .\Debug\gen_service_call LocSwitchMap POST "{\"data\":{\"subMapName\":\"test.vmap\"}}" --hostname=localhost --verbose=1 --dump=1 --append=win64_unittest_gen_sick_caller.log
 .\Debug\gen_service_call LocGetLocalizationStatus POST "{}" --hostname=localhost --verbose=1 --dump=1 --append=win64_unittest_gen_sick_caller.log

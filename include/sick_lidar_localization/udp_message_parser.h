@@ -83,24 +83,13 @@ namespace sick_lidar_localization
         };
 
         /*
-        ** @brief Container for the odometry payload message type 1 version 1 (UDP input)
-        */
-        struct OdometryPayload0101
-        {
-            uint64_t telegram_count;     // 8 byte TelegramCount uint64
-            uint64_t timestamp;          // 8 byte Timestamp uint64 [microseconds]
-            int32_t x_velocity;          // 4 byte X - velocity int16 [mm/s]
-            int32_t y_velocity;          // 4 byte Y - velocity int16 [mm/s]
-            int64_t angular_velocity;    // 8 byte angular velocity int32 [mdeg/s]
-        };
-
-        /*
         ** @brief Container for the odometry payload message type 1 version 4 (24 byte payload, UDP input and output)
         */
         struct OdometryPayload0104
         {
             uint64_t telegram_count;     // 8 byte TelegramCount uint64
             uint64_t timestamp;          // 8 byte Timestamp uint64 [microseconds]
+            int32_t source_id;           // 4 byte source id
             int16_t x_velocity;          // 2 byte X - velocity int16 [mm/s]
             int16_t y_velocity;          // 2 byte Y - velocity int16 [mm/s]
             int32_t angular_velocity;    // 4 byte angular velocity int32 [mdeg/s]
@@ -116,6 +105,7 @@ namespace sick_lidar_localization
         {
             uint64_t telegram_count;     // 8 byte TelegramCount uint64
             uint64_t timestamp;          // 8 byte Timestamp uint64 [microseconds]
+            int32_t source_id;           // 4 byte source id
             int64_t x_position;          // 8 byte X-position int64 [mm]
             int64_t y_position;          // 8 byte Y-position int64 [mm]
             int64_t heading;             // 8 byte heading int32 [mdeg]
@@ -131,6 +121,7 @@ namespace sick_lidar_localization
         {
             uint64_t telegram_count;     // 8 byte TelegramCount uint64
             uint64_t timestamp;          // 8 byte Timestamp uint64 [microseconds]
+            int32_t source_id;           // 4 byte source id
             int64_t encoder_value;       // 8 byte EncoderValue int64 in tics
         };
 
@@ -141,7 +132,22 @@ namespace sick_lidar_localization
         {
             uint64_t telegram_count;     // 8 byte TelegramCount uint64
             uint64_t timestamp;          // 8 byte Timestamp uint64 [microseconds]
+            int32_t source_id;           // 4 byte source id
             int64_t code;                // 8 byte Code int32
+        };
+
+        /*
+        ** @brief Container for the code measurement payload message type 7 version 1 (variable length payload, UDP input message)
+        */
+        struct CodeMeasurementPayload0701
+        {
+            uint64_t telegram_count;     // 8 byte TelegramCount uint64
+            uint64_t timestamp;          // 8 byte Timestamp uint64 [microseconds]
+            int32_t source_id;           // 4 byte source id
+            std::string code;            // variable length string => udp message: 2 byte codelength (uint16) + <codelength> byte string
+            int32_t x_position;          // 4 byte relative pose along the x-axis of the sensor frame [mm]
+            int32_t y_position;          // 4 byte relative pose along the y-axis of the sensor frame [mm]
+            int32_t heading;             // 4 byte relative orientation of the code in the sensor frame [mdeg]
         };
 
         /*
@@ -151,6 +157,7 @@ namespace sick_lidar_localization
         {
             uint64_t telegram_count;     // 8 byte TelegramCount uint64
             uint64_t timestamp;          // 8 byte Timestamp uint64 [microseconds]
+            int32_t source_id;           // 4 byte source id
             int32_t code;                // 4 byte Code int32
             int32_t distance;            // 4 byte Distance int32 [mm]
             uint32_t sync_timestamp_sec;   // seconds part of synchronized timestamp in system time calculated by Software-PLL
@@ -165,6 +172,7 @@ namespace sick_lidar_localization
         {
             uint64_t telegram_count;     // 8 byte TelegramCount uint64
             uint64_t timestamp;          // 8 byte Timestamp uint64 [microseconds]
+            int32_t source_id;           // 4 byte source id
             uint8_t num_lanes;           // 1 byte NumOfLanes uint8
             std::vector<int16_t> lanes;  // Lanes: num_lanes * 2 byte, each lane encoded by int16
             uint32_t sync_timestamp_sec;   // seconds part of synchronized timestamp in system time calculated by Software-PLL
@@ -179,6 +187,7 @@ namespace sick_lidar_localization
         {
             uint64_t telegram_count;     // 8 byte TelegramCount uint64
             uint64_t timestamp;          // 8 byte Timestamp uint64 [microseconds]
+            int32_t source_id;           // 4 byte source id
             int16_t lcp1;                // 2 byte lcp1 int16 [mm]
             int16_t lcp2;                // 2 byte lcp2 int16 [mm]
             int16_t lcp3;                // 2 byte lcp3 int16 [mm]
@@ -196,6 +205,7 @@ namespace sick_lidar_localization
         {
             uint64_t telegram_count;     // 8 byte TelegramCount uint64
             uint64_t timestamp;          // 8 byte Timestamp uint64 [microseconds]
+            int32_t source_id;           // 4 byte source id
             int64_t x;                   // 8 byte X int64 [mm]
             int64_t y;                   // 8 byte Y int64 [mm]
             int32_t heading;             // 4 byte Heading int32 [mdeg]
@@ -294,6 +304,10 @@ namespace sick_lidar_localization
             ** @brief Sets the synchronized timestamp calculated by software pll
             */
             virtual void setSyncTimestamp(uint32_t sec, uint32_t nsec) = 0;
+            /*
+            ** @brief Get/set the source id
+            */
+            virtual int32_t& sourceID(void) = 0;
         };
 
         /*
@@ -347,6 +361,13 @@ namespace sick_lidar_localization
                 m_payload_data.sync_timestamp_nsec = nsec;
                 m_payload_data.sync_timestamp_valid = 1;
             }
+            /*
+            ** @brief Get/set the source id
+            */
+            virtual int32_t& sourceID(void)
+            {
+                return m_payload_data.source_id;
+            }
 
         protected:
             /*
@@ -389,7 +410,7 @@ namespace sick_lidar_localization
         /*
         ** @brief Encodes the payload of a udp message
         ** @param[in] message_payload payload of a udp message, can be OdometryPayload0104, OdometryPayload0105, EncoderMeasurementPayload0202, 
-        **            CodeMeasurementPayload0303, LineMeasurementPayload0403 or LineMeasurementPayload0404
+        **            CodeMeasurementPayload0303, CodeMeasurementPayload0701, LineMeasurementPayload0403 or LineMeasurementPayload0404
         ** @param[in] encode_big_endian encode in big or little endiang
         ** @param[out] encoded vector of bytes
         */
@@ -398,7 +419,7 @@ namespace sick_lidar_localization
         /*
         ** @brief Encodes a UDP input message
         ** @param[in] message_payload payload of a udp message, can be OdometryPayload0104, OdometryPayload0105, EncoderMeasurementPayload0202,
-        **            CodeMeasurementPayload0303, LineMeasurementPayload0403 or LineMeasurementPayload0404
+        **            CodeMeasurementPayload0303, CodeMeasurementPayload0701, LineMeasurementPayload0403 or LineMeasurementPayload0404
         ** @param[in] encode_big_endian encode in big or little endiang
         ** @param[out] encoded vector of bytes
         */

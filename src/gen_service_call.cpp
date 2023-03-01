@@ -76,7 +76,7 @@ static void printUsage(void)
 {
     std::cout << "gen_service_call sends requests to the localization server via http REST API and returns its response." << std::endl;
     std::cout << "Usage: gen_service_call <command> <method> <jsondata> [--hostname=<ip-address>] [--verbose=<0|1>] [--output=<outputfile>] [--append=<outputfile>] [-d=<0|1|2>" << std::endl;
-    std::cout << "       <command>: name of command (service request), f.e. LocIsSystemReady or LocStartLocalizing" << std::endl;
+    std::cout << "       <command>: name of command (service request), f.e. LocIsSystemReady or LocStart" << std::endl;
     std::cout << "       <method>: GET or POST" << std::endl;
     std::cout << "       <jsondata>: parameter as json string, f.e. {}" << std::endl;
     std::cout << "       --hostname=<ip-address>: ip address of the localization server, default: 192.168.0.1" << std::endl;
@@ -225,14 +225,14 @@ int main(int argc, char** argv)
     response = sick_curl.send("LocSaveRingBufferRecording", "POST", "{\"data\":{\"reason\":\"YYYY-MM-DD_HH-MM-SS pose quality low\"}}");  // LocSaveRingBufferRecordingSrv.srv // "sMN LocSaveRingBufferRecording" // response: { "header": std_header_ok, "data": { "success": True } }
     response = sick_curl.send("LocSetKinematicVehicleModelActive", "POST", "{\"data\":{\"active\":true}}"); // LocSetKinematicVehicleModelActiveSrv.srv // "sMN LocSetKinematicVehicleModelActive" // response: { "header": std_header_ok, "data": { "success": True } }
     response = sick_curl.send("LocSetLinesForSupportActive", "POST", "{\"data\":{\"active\":true}}");                 // LocSetLinesForSupportActiveSrv.srv // "sMN LocSetLinesForSupportActive" // response: { "header": std_header_ok, "data": { "success": True } }
-    response = sick_curl.send("LocSetMap", "POST", "{\"data\":{\"mappath\":\"test.vmap\"}}");                          // LocSetMapSrv.srv // "sMN LocSetMap" // response: { "header": std_header_ok, "data": { "success": True } }
+    response = sick_curl.send("LocSetMap", "POST", "{\"data\":{\"mappath\":\"test.vmap\"}}");                         // LocSetMapSrv.srv // "sMN LocSetMap" // response: { "header": std_header_ok, "data": { "success": True } }
     response = sick_curl.send("LocSetMappingActive", "POST", "{\"data\":{\"active\":true}}");                         // LocSetMappingActiveSrv.srv // "sMN LocSetMappingActive" // response: { "header": std_header_ok, "data": { "success": True } }
     response = sick_curl.send("LocSetOdometryActive", "POST", "{\"data\":{\"active\":true}}");                        // LocSetOdometryActiveSrv.srv // "sMN LocSetOdometryActive" // response: { "header": std_header_ok, "data": { "success": True } }
     response = sick_curl.send("LocSetRecordingActive", "POST", "{\"data\":{\"active\":true}}");                       // LocSetRecordingActiveSrv.srv // "sMN LocSetRecordingActive" // response: { "header": std_header_ok, "data": { "success": True } }
     response = sick_curl.send("LocSetRingBufferRecordingActive", "POST", "{\"data\":{\"active\":true}}");             // LocSetRingBufferRecordingActiveSrv.srv // "sMN LocSetRingBufferRecordingActive" // response: { "header": std_header_ok, "data": { "success": True } }
-    response = sick_curl.send("LocStartLocalizing", "POST", "{}");                                                    // LocStartLocalizingSrv.srv // "sMN LocStartLocalizing" // json response: { "header": { "status": 0, "message": "Ok" }, "data": { "success": True } }
+    response = sick_curl.send("LocStart", "POST", "{}");                                                              // LocStartSrv.srv // "sMN LocStart" // json response: { "header": { "status": 0, "message": "Ok" }, "data": { "success": True } }
     response = sick_curl.send("LocStop", "POST", "{}");                                                               // LocStopSrv.srv // "sMN LocStop" // json response: { "header": { "status": 0, "message": "Ok" }, "data": { "success": True } }
-    response = sick_curl.send("LocSwitchMap", "POST", "{\"data\":{\"submapname\":\"test.vmap\"}}");                    // LocSwitchMapSrv.srv // "sMN LocSwitchMap" // response: { "header": std_header_ok, "data": { "success": True } }
+    response = sick_curl.send("LocSwitchMap", "POST", "{\"data\":{\"submapname\":\"test.vmap\"}}");                   // LocSwitchMapSrv.srv // "sMN LocSwitchMap" // response: { "header": std_header_ok, "data": { "success": True } }
     */
 
     return EXIT_SUCCESS;

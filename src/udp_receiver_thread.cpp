@@ -86,12 +86,12 @@ static std::string getErrorMessage(void) { return std::to_string(errno) + " (" +
 /*
 ** @brief Default constructor
 ** @param[in] services time sync services
-** @param[in] udp_ip_sim_output IP address for output UDP messages, or "" for broadcast (INADDR_ANY), default: "", use IP address of your local machine
-** @param[in] udp_port_sim_output UDP port of output messages, default: 5010
-** @param[in] udp_sim_output_logfile Optional logfile for human readable output messages, default: "" (no outputlogfile)
+** @param[in] udp_ip_lls_output IP address for output UDP messages, or "" for broadcast (INADDR_ANY), default: "", use IP address of your local machine
+** @param[in] udp_port_lls_output UDP port of output messages, default: 5010
+** @param[in] udp_lls_output_logfile Optional logfile for human readable output messages, default: "" (no outputlogfile)
 */
-sick_lidar_localization::UDPReceiverThread::UDPReceiverThread(sick_lidar_localization::SickServices* services, const std::string& udp_ip_sim_output, int udp_port_sim_output, const std::string& udp_sim_output_logfile)
-    : m_services(services), m_udp_ip_sim_output(udp_ip_sim_output), m_udp_port_sim_output(udp_port_sim_output), m_udp_sim_output_logfile(udp_sim_output_logfile), m_run_receiver_thread(false), m_receiver_thread(0)
+sick_lidar_localization::UDPReceiverThread::UDPReceiverThread(sick_lidar_localization::SickServices* services, const std::string& udp_ip_lls_output, int udp_port_lls_output, const std::string& udp_lls_output_logfile)
+    : m_services(services), m_udp_ip_lls_output(udp_ip_lls_output), m_udp_port_lls_output(udp_port_lls_output), m_udp_lls_output_logfile(udp_lls_output_logfile), m_run_receiver_thread(false), m_receiver_thread(0)
 {
 }
 
@@ -131,7 +131,7 @@ void sick_lidar_localization::UDPReceiverThread::stop()
 }
 
 /*
-** @brief Register a listener for upd messages. The callback functions of the listener will be called after receiving a new udp message.
+** @brief Register a listener for udp messages. The callback functions of the listener will be called after receiving a new udp message.
 ** Overwrite the functions defined in sick_lidar_localization::UDPMessage::Listener with customized code to handle udp messages.
 */
 void sick_lidar_localization::UDPReceiverThread::registerListener(sick_lidar_localization::UDPMessage::Listener* listener)
@@ -165,8 +165,8 @@ void sick_lidar_localization::UDPReceiverThread::sleep(double seconds)
 */
 bool sick_lidar_localization::UDPReceiverThread::runReceiver(void)
 {
-    if (!m_udp_sim_output_logfile.empty())
-        UNLINK(m_udp_sim_output_logfile.c_str());
+    if (!m_udp_lls_output_logfile.empty())
+        UNLINK(m_udp_lls_output_logfile.c_str());
     SOCKET udp_socket = INVALID_SOCKET;
     while (rosOk() && m_run_receiver_thread)
     {
@@ -178,15 +178,15 @@ bool sick_lidar_localization::UDPReceiverThread::runReceiver(void)
         }
         // int broadcast_opt = 1;
         // setsockopt(udp_socket, SOL_SOCKET, SO_BROADCAST, &broadcast_opt, sizeof(broadcast_opt));
-        struct sockaddr_in sim_servaddr = { 0 };
-        if(m_udp_ip_sim_output.empty())
-            sim_servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+        struct sockaddr_in lls_servaddr = { 0 };
+        if(m_udp_ip_lls_output.empty())
+            lls_servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
         else
-            sim_servaddr.sin_addr.s_addr = inet_addr(m_udp_ip_sim_output.c_str()); 
-        sim_servaddr.sin_family = AF_INET;
-        sim_servaddr.sin_port = htons(m_udp_port_sim_output);
-        ROS_INFO_STREAM("sick_lidar_localization::UDPReceiverThread: udp socket created, binding to port " << ntohs(sim_servaddr.sin_port) << " ... ");
-        while (rosOk() && m_run_receiver_thread && udp_socket != INVALID_SOCKET && bind(udp_socket, (SOCKADDR*)&sim_servaddr, sizeof(sim_servaddr)) < 0)
+            lls_servaddr.sin_addr.s_addr = inet_addr(m_udp_ip_lls_output.c_str()); 
+        lls_servaddr.sin_family = AF_INET;
+        lls_servaddr.sin_port = htons(m_udp_port_lls_output);
+        ROS_INFO_STREAM("sick_lidar_localization::UDPReceiverThread: udp socket created, binding to port " << ntohs(lls_servaddr.sin_port) << " ... ");
+        while (rosOk() && m_run_receiver_thread && udp_socket != INVALID_SOCKET && bind(udp_socket, (SOCKADDR*)&lls_servaddr, sizeof(lls_servaddr)) < 0)
         {
             ROS_INFO_STREAM("sick_lidar_localization::UDPReceiverThread: socket bind failed, error " << getErrorMessage() << ", retrying...");
             sleep(1.0); // Retry after 1 second
@@ -205,8 +205,8 @@ bool sick_lidar_localization::UDPReceiverThread::runReceiver(void)
             while (rosOk() && m_run_receiver_thread && udp_socket != INVALID_SOCKET && bytes_received < bytes_required)
             {
                 int n = recv(udp_socket, (char*)&udp_buffer[bytes_received], (int)sizeof(udp_buffer) - bytes_received, 0);
-                // socklen_t sim_servaddr_len = sizeof(sim_servaddr);
-                // int n = recvfrom(udp_socket, (char*)&udp_buffer[bytes_received], (int)sizeof(udp_buffer) - bytes_received, 0, (SOCKADDR*)&sim_servaddr, &sim_servaddr_len);
+                // socklen_t lls_servaddr_len = sizeof(lls_servaddr);
+                // int n = recvfrom(udp_socket, (char*)&udp_buffer[bytes_received], (int)sizeof(udp_buffer) - bytes_received, 0, (SOCKADDR*)&lls_servaddr, &lls_servaddr_len);
                 if (n <= 0)
                 {
                     if (n < 0)
@@ -269,6 +269,7 @@ bool sick_lidar_localization::UDPReceiverThread::runReceiver(void)
             }
             if (payload && payload->decodePayload(udp_payload_buffer, udp_payload_len, payload_is_big_endian))
             {
+                payload->sourceID() = msg_header.sourceid;
                 sick_lidar_localization::SyncTimeStamp sync_time_stamp = sick_lidar_localization::makeSyncTimeStamp(0, 0, false);
                 if(m_services)
                 {
@@ -283,12 +284,12 @@ bool sick_lidar_localization::UDPReceiverThread::runReceiver(void)
                 // Notify listener (and publish UDP output messages on ROS-1 or ROS-2)
                 payload->notifyListener(m_udp_message_listener);
                 // Log output messages
-                FILE* fp_udp_sim_output_logfile = 0;
-                if (!m_udp_sim_output_logfile.empty() && (fp_udp_sim_output_logfile = fopen(m_udp_sim_output_logfile.c_str(), "a")) != 0)
+                FILE* fp_udp_lls_output_logfile = 0;
+                if (!m_udp_lls_output_logfile.empty() && (fp_udp_lls_output_logfile = fopen(m_udp_lls_output_logfile.c_str(), "a")) != 0)
                 {
                     std::string payload_str = payload->toString(false);
-                    fprintf(fp_udp_sim_output_logfile, "%s\n", payload_str.c_str());
-                    fclose(fp_udp_sim_output_logfile);
+                    fprintf(fp_udp_lls_output_logfile, "%s\n", payload_str.c_str());
+                    fclose(fp_udp_lls_output_logfile);
                 }
             }
             else

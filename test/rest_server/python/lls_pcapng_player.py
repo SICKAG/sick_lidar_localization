@@ -37,7 +37,7 @@ if __name__ == "__main__":
     udp_port = cli_args.udp_port
     print("pcapng_player {} initializing, udp port {} ...".format(pcap_filename, udp_port))
     
-    # Init upd sender
+    # Init udp sender
     udp_sender_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP) # UDP socket
     udp_sender_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1) # Enable broadcasting mode
     print("pcapng_player: sending on udp port {}".format(udp_port))

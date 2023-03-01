@@ -38,7 +38,7 @@ def startSendingTelegrams(pub):
         if (telegramCount % 200) == 0:
             delta_heading = -delta_heading
         ts = int(time.time()*1000000)
-        sendOdometryTelegram(pub, 2000, 1000, heading, ts)
+        sendOdometryTelegram(pub, 2000, 1000, int(heading), ts)
         heading = heading + delta_heading
         # Delta between telegram timestamps
         print("Delta ts: ", ts  - prevts, " microsec")

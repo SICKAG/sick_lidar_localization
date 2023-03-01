@@ -16,5 +16,5 @@ REM
 REM Run sim udp sender
 REM
 
-python ../rest_server/python/sim_udp_sender.py
+python ../rest_server/python/lls_udp_sender.py
 @pause
