@@ -90,8 +90,8 @@ static std::string getErrorMessage(void) { return std::to_string(errno) + " (" +
 ** @param[in] udp_port_lls_output UDP port of output messages, default: 5010
 ** @param[in] udp_lls_output_logfile Optional logfile for human readable output messages, default: "" (no outputlogfile)
 */
-sick_lidar_localization::UDPReceiverThread::UDPReceiverThread(sick_lidar_localization::SickServices* services, const std::string& udp_ip_lls_output, int udp_port_lls_output, const std::string& udp_lls_output_logfile)
-    : m_services(services), m_udp_ip_lls_output(udp_ip_lls_output), m_udp_port_lls_output(udp_port_lls_output), m_udp_lls_output_logfile(udp_lls_output_logfile), m_run_receiver_thread(false), m_receiver_thread(0)
+sick_lidar_localization::UDPReceiverThread::UDPReceiverThread(sick_lidar_localization::SickServices* services, const std::string& udp_ip_lls_output, int udp_port_lls_output, const std::string& udp_lls_output_logfile, int verbose) 
+    : m_services(services), m_udp_ip_lls_output(udp_ip_lls_output), m_udp_port_lls_output(udp_port_lls_output), m_udp_lls_output_logfile(udp_lls_output_logfile), m_run_receiver_thread(false), m_receiver_thread(0), m_verbose(verbose)
 {
 }
 
@@ -280,7 +280,9 @@ bool sick_lidar_localization::UDPReceiverThread::runReceiver(void)
                         payload->setSyncTimestamp(sync_time_stamp.sec, sync_time_stamp.nsec);
                     }
                 }
-                ROS_INFO_STREAM("sick_lidar_localization::UDPReceiverThread: udp message received: " << payload->toString(true));
+                if (m_verbose > 0) {
+                    ROS_INFO_STREAM("sick_lidar_localization::UDPReceiverThread: udp message received: " << payload->toString(true));         
+                }                
                 // Notify listener (and publish UDP output messages on ROS-1 or ROS-2)
                 payload->notifyListener(m_udp_message_listener);
                 // Log output messages

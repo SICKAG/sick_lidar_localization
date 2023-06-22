@@ -183,7 +183,7 @@ bool sick_lidar_localization::API::init(rosNodePtr node, sick_lidar_localization
     m_services = new sick_lidar_localization::SickServices(node, m_config.hostname, m_config.serverpath, m_config.software_pll_fifo_length, m_config.verbose);
 
     // Start UDP receiver thread for UDP output messages
-    m_udp_receiver_thread = new sick_lidar_localization::UDPReceiverThread(m_services, m_config.udp_ip_lls_output, m_config.udp_port_lls_output, m_config.udp_lls_output_logfile);
+    m_udp_receiver_thread = new sick_lidar_localization::UDPReceiverThread(m_services, m_config.udp_ip_lls_output, m_config.udp_port_lls_output, m_config.udp_lls_output_logfile, m_config.verbose);
     m_udp_receiver_listener = new sick_lidar_localization::UDPMessage::InfoListener();
     if (m_config.verbose)
         m_udp_receiver_thread->registerListener(m_udp_receiver_listener);

@@ -77,7 +77,7 @@ namespace sick_lidar_localization
         ** @param[in] udp_port_lls_output UDP port of output messages, default: 5010
         ** @param[in] udp_lls_output_logfile Optional logfile for human readable UDP output messages, default: "" (no outputlogfile)
         */
-        UDPReceiverThread(sick_lidar_localization::SickServices* services = 0, const std::string& udp_ip_lls_output = "", int udp_port_lls_output = 5010, const std::string& udp_lls_output_logfile = "");
+        UDPReceiverThread(sick_lidar_localization::SickServices* services = 0, const std::string& udp_ip_lls_output = "", int udp_port_lls_output = 5010, const std::string& udp_lls_output_logfile = "", int verbose = 0);
 
         /*
         ** @brief Default destructor, exits running threads
@@ -133,6 +133,7 @@ namespace sick_lidar_localization
         bool m_run_receiver_thread;           // Flag to start and stop m_receiver_thread
         std::thread* m_receiver_thread;       // Background thread to receive udp data, parsing, conversion and publishing
         std::list<sick_lidar_localization::UDPMessage::Listener*> m_udp_message_listener;
+        int m_verbose;
 
     }; // class UDPReceiverThread
 

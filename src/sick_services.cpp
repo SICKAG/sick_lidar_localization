@@ -279,7 +279,9 @@ sick_lidar_localization::LocRequestTimestampResponse sick_lidar_localization::Si
     software_pll_send_time.UpdatePLL(service_response.send_time_vehicle_sec, service_response.send_time_vehicle_nsec, service_response.timestamp_lidar_microsec);
     software_pll_receive_time.UpdatePLL(service_response.receive_time_vehicle_sec, service_response.receive_time_vehicle_nsec, service_response.timestamp_lidar_microsec);
 
-    ROS_INFO_STREAM("SickServices::requestTimestamp(\"" << command << "\", \"" << method << "\", \"" << json_data << "\"): timestamp=" << std::to_string(lidar_timestamp));
+    if(m_verbose > 0) {
+        ROS_INFO_STREAM("SickServices::requestTimestamp(\"" << command << "\", \"" << method << "\", \"" << json_data << "\"): timestamp=" << std::to_string(lidar_timestamp));
+    }
     return service_response;
 }
 
