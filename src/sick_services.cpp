@@ -260,7 +260,7 @@ sick_lidar_localization::LocRequestTimestampResponse sick_lidar_localization::Si
     // Set timestamps in service_response, https://github.com/SICKAG/sick_lidar_localization/blob/1ce55facdb48eb13ac5ef6813b273ee1eaf00ba4/src/time_sync_service.cpp#L208
     LocRequestTimestampResponse service_response;
     int64_t lidar_timestamp = response_data["/data/timestamp"].toInt();
-    service_response.timestamp_lidar_microsec = (uint32_t)lidar_timestamp;  // Lidar timestamp in microseconds from LocRequestTimestamp response
+    service_response.timestamp_lidar_microsec = (uint64_t)lidar_timestamp;  // Lidar timestamp in microseconds from LocRequestTimestamp response (converted to unsigned uint64)
     service_response.send_time_vehicle_sec = sec(send_timestamp);           // Vehicle timestamp when sending LocRequestTimestamp (seconds part of ros timestamp immediately before tcp send)
     service_response.send_time_vehicle_nsec = nsec(send_timestamp);         // Vehicle timestamp when sending LocRequestTimestamp (nano seconds part of ros timestamp immediately before tcp send)
     service_response.receive_time_vehicle_sec = sec(recv_timestamp);        // Vehicle timestamp when receiving the LocRequestTimestamp response (seconds part of ros timestamp immediately after first response byte received)
