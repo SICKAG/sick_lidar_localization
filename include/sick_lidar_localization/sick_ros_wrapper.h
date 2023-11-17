@@ -77,8 +77,6 @@
 #    undef max
 #    endif
 #endif
-#define MAX std::max
-#define MIN std::min
 
 #ifdef __linux__
 #endif
