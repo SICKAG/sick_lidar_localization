@@ -1,9 +1,9 @@
 # Definition of ROS service LocInitializeAtPose for sick localization
 # Initializes the localization automatically at the given pose by matching against the mapped contours.
 # Example call (ROS1):
-# rosservice call /LocInitializeAtPose "{x: 100, y: -100, yaw: 1000, searchRadius: 1000}"
+# rosservice call /LocInitializeAtPose "{x: 100, y: -100, yaw: 1000, searchradius: 1000}"
 # Example call (ROS2):
-# ros2 service call /LocInitializeAtPose sick_lidar_localization/srv/LocInitializeAtPoseSrv "{x: 100, y: -100, yaw: 1000, searchRadius: 1000}"
+# ros2 service call /LocInitializeAtPose sick_lidar_localization/srv/LocInitializeAtPoseSrv "{x: 100, y: -100, yaw: 1000, searchradius: 1000}"
 # 
 
 # 
