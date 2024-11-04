@@ -1,15 +1,17 @@
 # sick_lidar_localization
 
-ROS driver for SICK localization using REST API
+ROS driver, native C++ library and REST API for SICK LiDAR localization.
 
 ## Introduction
 
-This repository contains a driver for the REST-API control for the LiDAR-LOC version 2. 
+This repository contains drivers and libraries for the API of LiDAR-LOC.
+* Command API (REST)
+* Streaming API (UDP)
 
-The drivers support the following ROS versions in the same source:
+The drivers support the following environments:
 
-* native without ROS for Linux/Windows
-* ROS1 for Linux
+* native **without ROS** for Linux/Windows (REST and C++)
+* ROS1 for Linux 
 * ROS2 for Linux/Windows
 
 ## Specification
@@ -17,7 +19,8 @@ The drivers support the following ROS versions in the same source:
 The customer requirements and the REST API specification for the implementation of the project:
 [specification](doc/specifications/README.md)
 
-## Build on native Linux
+## Installation
+### Build on native Linux (C++ and REST API)
 
 To build and install sick_lidar_localization on Linux without ROS, follow the steps below:
 
@@ -42,7 +45,7 @@ To build and install sick_lidar_localization on Linux without ROS, follow the st
     popd
     ```
 
-## Build on Linux ROS 1
+### Build on Linux ROS 1
 
 To build and install sick_lidar_localization on Linux using ROS 1, follow the steps below:
 
@@ -68,7 +71,7 @@ To build and install sick_lidar_localization on Linux using ROS 1, follow the st
     ```
     For ROS versions other than noetic, please replace source `/opt/ros/noetic/setup.bash` with your ros distribution.
 
-## Build on Linux ROS 2
+### Build on Linux ROS 2
 
 To build and install sick_lidar_localization on Linux using ROS 2, follow the steps below:
 
@@ -94,7 +97,7 @@ To build and install sick_lidar_localization on Linux using ROS 2, follow the st
     ```
     For ROS versions other than eloquent, please replace `source /opt/ros/eloquent/setup.bash` with your ros distribution.
 
-## Build on native Windows
+### Build on native Windows (C++ and REST API)
 
 To build and install sick_lidar_localization on Windows without ROS, follow the steps below:
 
@@ -139,7 +142,7 @@ To build and install sick_lidar_localization on Windows without ROS, follow the 
    ```
    Open file `build\sick_lidar_localization.sln` in Visual Studio and build all targets (shortcut F7).
 
-## Build on Windows ROS2
+### Build on Windows ROS2 (C++ and REST API)
 
 To build and install sick_lidar_localization on Windows with ROS-2, follow the steps below:
 
@@ -215,7 +218,7 @@ Common parameters are:
 
 ## REST API services
 
-LiDAR-LOC can be configured using a JSON REST API. This API is available using ROS services (on ROS-1 and ROS-2) or commandline tool `gen_service_call` (on all target systems). See [REST API services](doc/sick_localization_services.md) for details.
+LiDAR-LOC can be configured using a JSON REST API. This API is available using ROS services (on ROS 1 and ROS 2) or commandline tool `gen_service_call` (on all target systems). See [REST API services](doc/sick_localization_services.md) for details.
 
 ## <a name="cpp_api"></a> C++ API
 
@@ -223,7 +226,7 @@ On native Linux or Windows without ROS, tool `gen_service_call` can be used for 
 
 ## UDP stream messages
 
-LiDAR-LOC receives and sends messages from resp. to the localization controller using UDP. UDP output messages are UDP messages sent from the localization controller to the local PC. UDP input messages are UDP messages sent from the local PC to the localization controller. On ROS-1 and ROS-2, these UDP-messages are converted from resp. to ROS messages. On native Linux and Windows systems, these UDP-messages can be processed using the [C++ API](doc/cpp_api.md).
+LiDAR-LOC receives messages from and sends messages to the localization controller using UDP. UDP output messages are UDP messages sent from the localization device to the local IPC. UDP input messages are UDP messages sent from the local IPC to the localization device. On ROS 1 and ROS 2, these UDP messages are converted from respective to ROS messages. On native Linux and Windows systems, these UDP messages can be processed using the [C++ API](doc/cpp_api.md).
 
 UDP stream output messages are:
 * [Odometry messages type 1 version 4](msg/OdometryMessage0104.msg)
@@ -237,10 +240,10 @@ UDP stream input messages are:
 * [Odometry messages type 1 version 4](msg/OdometryMessage0104.msg)
 * [Odometry messages type 1 version 5](msg/OdometryMessage0105.msg)
 * [Encoder measurement messages type 2 version 2](msg/EncoderMeasurementMessage0202.msg)
-* [Code measurement messages type 3 version 3](msg/CodeMeasurementMessage0303.msg)
-* [Code measurement messages type 7 version 1](msg/CodeMeasurementMessage0701.msg)
+* [1D code measurement messages type 3 version 3](msg/CodeMeasurementMessage0303.msg)
 * [Line measurement messages type 4 version 3](msg/LineMeasurementMessage0403.msg)
 * [Line measurement messages type 4 version 4](msg/LineMeasurementMessage0404.msg)
+* [2D code measurement messages type 7 version 1](msg/CodeMeasurementMessage0701.msg)
 
 See [UDP stream messages](doc/lls_messages.md) for details and examples.
 
