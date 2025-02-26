@@ -4,7 +4,7 @@ LiDAR-LOC can be configured using a JSON REST API. This API is available using R
 
 ## gen_service_call
 
-The tool `gen_service_call` sends requests to the localization server via http REST API and returns its response. It supports Linux and Windows, native and ROS.
+The tool `gen_service_call` sends requests to the localization device via http REST API and returns its response. It supports Linux and Windows, native and ROS.
 
 Usage:
 ```
@@ -15,7 +15,7 @@ with the following commandline options:
 <command>: name of command (service request), f.e. LocIsSystemReady or LocStart
 <method>: GET or POST
 <jsondata>: parameter as json string, f.e. {}
---hostname=<ip-address>: ip address of the localization server, default: 192.168.0.1
+--hostname=<ip-address>: ip address of the localization device, default: 192.168.0.1
 --verbose=0: silent mode, default: 1 (print response)
 --output=<outputfile>: write response to <outputfile>, default: no outputfile
 --append=<outputfile>: append response to <outputfile>, default: no outputfile
@@ -27,14 +27,14 @@ The following table lists supported commands using `gen_service_call` (supported
 | **command** | **example** | **description** |
 |-------------|-------------|-----------------|
 | LocGetErrorLevel | gen_service_call<br/> LocGetErrorLevel POST "\{\}" | Returns the error level of the software |
-| LocIsSystemReady | gen_service_call<br/> LocIsSystemReady POST "\{\}" | Checks if the localization controller is booted and ready to process commands |
+| LocIsSystemReady | gen_service_call<br/> LocIsSystemReady POST "\{\}" | Checks if the LLS device is booted and ready to process commands |
 | LocAutoStartSavePose | gen_service_call<br/> LocAutoStartSavePose POST "\{\}" | Saves the current pose on-request for the automatic start of the application software |
 | LocClearMapCache | gen_service_call<br/> LocClearMapCache POST "\{\}" | Removes the cached maps from the RAM of the device |
 | LocGetMap | gen_service_call<br/> LocGetMap POST "\{\}" | Returns the current map path relative to maps folder or absolute if it is not in maps folder |
 | LocGetSystemState | gen_service_call<br/> LocGetSystemState POST "\{\}" | Get the current system state |
 | LocInitializeAtPose | gen_service_call<br/> LocInitializeAtPose POST <br/>"\{\\"data\\": \{\\"x\\":1000, \\"y\\":1000, \\"yaw\\":1000, \\"searchRadius\\":1000\}\}" | Initializes the localization automatically at the given pose by matching against the mapped contours |
 | LocLoadMapToCache | gen_service_call<br/> LocLoadMapToCache POST <br/>"\{\\"data\\": \{\\"mapPath\\": \\"test.vmap\\"\}\}" | Loads a map to RAM of the device if not already loaded |
-| LocRequestTimestamp | gen_service_call<br/> LocRequestTimestamp POST "\{\}" | Request the current system time of the localization controller and generate a hardware pulse |
+| LocRequestTimestamp | gen_service_call<br/> LocRequestTimestamp POST "\{\}" | Request the current system time of the LLS device and generate a hardware pulse |
 | LocResumeAtPose | gen_service_call<br/> LocResumeAtPose POST <br/>"\{\\"data\\": \{\\"x\\":1000, \\"y\\":1000, \\"yaw\\":1000\}\}" | Resets the pose estimate to the given pose |
 | LocSaveRingBufferRecording | gen_service_call<br/> LocSaveRingBufferRecording POST <br/>"\{\\"data\\": \{\\"reason\\": \\"pose quality low\\"\}\}" | Saves the most recent data from the continuous ring buffer recording |
 | LocSetKinematicVehicle ModelActive | gen_service_call<br/> LocSetKinematicVehicle ModelActive POST "\{\\"data\\": \{\\"active\\":true\}\}" | Activates or deactivates usage of the kinematic model to improve localization |
@@ -61,14 +61,14 @@ The following table lists supported commands in their shortest form:
 | **command** | **example** | **description** |
 |-------------|-------------|-----------------|
 | LocGetErrorLevel | gen_service_call<br/> LocGetErrorLevel | Returns the error level of the software |
-| LocIsSystemReady | gen_service_call<br/> LocIsSystemReady | Checks if the localization controller is booted and ready to process commands |
+| LocIsSystemReady | gen_service_call<br/> LocIsSystemReady | Checks if the LLS device is booted and ready to process commands |
 | LocAutoStartSavePose | gen_service_call<br/> LocAutoStartSavePose | Saves the current pose on-request for the automatic start of the application software |
 | LocClearMapCache | gen_service_call<br/> LocClearMapCache | Removes the cached maps from the RAM of the device |
 | LocGetMap | gen_service_call<br/> LocGetMap | Returns the current map path relative to maps folder or absolute if it is not in maps folder |
 | LocGetSystemState | gen_service_call<br/> LocGetSystemState | Get the current system state |
 | LocInitializeAtPose | gen_service_call<br/> LocInitializeAtPose <br/>"\{x: 1000, y: 1000, yaw: 1000, searchRadius: 1000\}" | Initializes the localization automatically at the given pose by matching against the mapped contours |
 | LocLoadMapToCache | gen_service_call<br/> LocLoadMapToCache <br/>"\{mapPath: \\"test.vmap\\"\}" | Loads a map to RAM of the device if not already loaded |
-| LocRequestTimestamp | gen_service_call<br/> LocRequestTimestamp | Request the current system time of the localization controller and generate a hardware pulse |
+| LocRequestTimestamp | gen_service_call<br/> LocRequestTimestamp | Request the current system time of the LLS device and generate a hardware pulse |
 | LocResumeAtPose | gen_service_call<br/> LocResumeAtPose <br/>"\{x: 1000, y: 1000, yaw: 1000\}" | Resets the pose estimate to the given pose |
 | LocSaveRingBufferRecording | gen_service_call<br/> LocSaveRingBufferRecording <br/>"\{reason: \\"pose quality low\\"\}\}" | Saves the most recent data from the continuous ring buffer recording |
 | LocSetKinematicVehicleModelActive | gen_service_call<br/> LocSetKinematicVehicleModelActive <br/>"\{active: true\}" | Activates or deactivates usage of the kinematic model to improve localization |

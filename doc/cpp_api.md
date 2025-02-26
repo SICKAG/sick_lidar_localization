@@ -2,7 +2,7 @@
 
 On native Linux or Windows without ROS, tool `gen_service_call` can be used for the [REST API services](../doc/sick_localization_services.md). UDP stream messages can be processed using the C++ API.
 
-UDP input messages can be send by calling function `sick_lidar_localization::API::sendUDPMessage()`. UDP output messages can be received by registration of a callback function, which processes the message from the localization controller. The main function in [sick_lidar_localization_main.cpp](../src/sick_lidar_localization_main.cpp) shows how to send and receive UDP stream messages:
+UDP input messages can be send by calling function `sick_lidar_localization::API::sendUDPMessage()`. UDP output messages can be received by registration of a callback function, which processes the message from the localization device. The main function in [sick_lidar_localization_main.cpp](../src/sick_lidar_localization_main.cpp) shows how to send and receive UDP stream messages:
 
 ```
 #include <limits>
@@ -27,7 +27,7 @@ int main(int argc, char** argv)
     sick_lidar_localization::UDPMessage::InfoListener udp_receiver_info_listener;
     lidar_loc_api.registerListener(&udp_receiver_info_listener);
 
-    // Examples to send UDP messages to the localization controller
+    // Examples to send UDP messages to the LLS device
     sick_lidar_localization::UDPMessage::OdometryPayload0104 odometry0104;
     sick_lidar_localization::UDPMessage::OdometryPayload0105 odometry0105;
     sick_lidar_localization::UDPMessage::EncoderMeasurementPayload0202 encoder_measurement0202;
@@ -93,5 +93,6 @@ int main(int argc, char** argv)
 
     // Close sick_lidar_localization API and exit
     lidar_loc_api.close();
+}
 ```
 

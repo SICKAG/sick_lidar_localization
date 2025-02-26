@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<launch>
+
+  <!-- Launch lls transform -->
+  <arg name="tf_parent_frame_id"  default="map"/>         <!-- Default parent frame id for lls transforms --> 
+  <arg name="tf_child_frame_id"   default="lls"/>         <!-- Default child frame id of lls transforms --> 
+  <node name="lls_transform" pkg="sick_lidar_localization_driver" type="lls_transform" output="screen">
+    <param name="tf_parent_frame_id" type="string"  value="$(arg tf_parent_frame_id)"/>  <!-- parent frame id for lls transforms -->
+    <param name="tf_child_frame_id"  type="string"  value="$(arg tf_child_frame_id)"/>   <!-- child frame id for lls transforms -->
+  </node>
+
+</launch>
+ 

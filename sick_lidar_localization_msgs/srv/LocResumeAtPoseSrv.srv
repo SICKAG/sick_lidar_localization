@@ -1,0 +1,23 @@
+# Definition of ROS service LocResumeAtPose for sick localization
+# Resets the pose estimate to the given pose. The covariance is set to the configured resume level.
+# Example call (ROS1):
+# rosservice call LocResumeAtPose "{x: 100, y: -100, yaw: 1000}"
+# Example call (ROS2):
+# ros2 service call LocResumeAtPose sick_lidar_localization/srv/SickLocResumeAtPoseSrv "{x: 100, y: -100, yaw: 1000}"
+# 
+
+# 
+# Request (input)
+# 
+
+int32 x # Vehicle x position relative to map origin. [<min>, <max>] in [mm] 
+int32 y # Vehicle y position relative to map origin. [<min>, <max>] in [mm] 
+int32 yaw # Angle. [-180000, 180000] in [mdeg]
+
+---
+
+# 
+# Response (output)
+# 
+
+bool success # true: success response received from LLS device, false: service failed (timeout or error status from controller)

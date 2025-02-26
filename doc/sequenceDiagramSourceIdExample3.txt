@@ -1,7 +1,7 @@
 @startuml
 ...
 ...
-"Odometry measurement device" -> "sick_lidar_localization2": ROS message OdometryMessage0104 \n(sourceID:0, timestamp, linear and angular velocity)
-"sick_lidar_localization2" -> "SIM1000FXA": UDP input message type 1 version 4 \n(sourceID:155, timestamp, linear and angular velocity)
+"Odometry measurement device" -> "sick_lidar_localization": ROS odometry message type nav_msgs/Odometry\n(timestamp, linear and angular velocity)
+"sick_lidar_localization" -> "SIM1000FXA": UDP input message type 1 version 4 \n(sourceID:1, timestamp, linear and angular velocity)
 ...
 @enduml

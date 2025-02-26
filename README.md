@@ -1,23 +1,18 @@
-# sick_lidar_localization
+# sick_lidar_localization pkg
 
 ROS driver, native C++ library and REST API for SICK LiDAR localization.
 
 ## Introduction
 
-This repository contains drivers and libraries for the API of LiDAR-LOC.
-* Command API (REST)
-* Streaming API (UDP)
+This repository contains a driver for the REST-API control for the LiDAR-LOC software (LLS) version 2. 
+
+The repository is structured in two packages. The `sick_lidar_localization_msgs` contains all relevant messages and services for the driver an can be used individually. The `sick_lidar_localization_driver` package depends on the `sick_lidar_localization_msgs` package and contains the driver supporting the following ROS versions in the same source:
 
 The drivers support the following environments:
 
 * native **without ROS** for Linux/Windows (REST and C++)
 * ROS1 for Linux 
 * ROS2 for Linux/Windows
-
-## Specification
-
-The customer requirements and the REST API specification for the implementation of the project:
-[specification](doc/specifications/README.md)
 
 ## Installation
 ### Build on native Linux (C++ and REST API)
@@ -36,7 +31,7 @@ To build and install sick_lidar_localization on Linux without ROS, follow the st
 
 3. Build project sick_lidar_localization with cmake:
     ```
-    cd sick_lidar_localization
+    cd sick_lidar_localization/sick_lidar_localization_driver
     if [ -d ./build ] ; then rm -rf ./build ; fi
     mkdir -p ./build
     pushd ./build
@@ -62,11 +57,19 @@ To build and install sick_lidar_localization on Linux using ROS 1, follow the st
     popd
     ```
 
-3. Build project sick_lidar_localization:
+3. Build project sick_lidar_localization_msgs:
+    ```
+    cp -f ./src/sick_lidar_localization/sick_lidar_localization_msgs/package_ros1.xml ./src/sick_lidar_localization/sick_lidar_localization_msgs/package.xml 
+    catkin_make --only-pkg-with-deps sick_lidar_localization_msgs install --cmake-args -DROS_VERSION=1
+    source ./install/setup.bash 
+    ```
+    For ROS versions other than noetic, please replace source `/opt/ros/noetic/setup.bash` with your ros distribution.
+
+4. Build project sick_lidar_localization_driver:
     ```
     source /opt/ros/noetic/setup.bash
-    cp -f ./src/sick_lidar_localization/package_ros1.xml ./src/sick_lidar_localization/package.xml 
-    catkin_make install --cmake-args -DROS_VERSION=1
+    cp -f ./src/sick_lidar_localization/sick_lidar_localization_driver/package_ros1.xml ./src/sick_lidar_localization/sick_lidar_localization_driver/package.xml 
+    catkin_make --only-pkg-with-deps sick_lidar_localization_driver install --cmake-args -DROS_VERSION=1
     source ./install/setup.bash 
     ```
     For ROS versions other than noetic, please replace source `/opt/ros/noetic/setup.bash` with your ros distribution.
@@ -88,14 +91,23 @@ To build and install sick_lidar_localization on Linux using ROS 2, follow the st
     popd
     ```
 
-3. Build project sick_lidar_localization:
+3. Build project sick_lidar_localization_msgs:
     ```
-    source /opt/ros/eloquent/setup.bash
-    cp -f ./src/sick_lidar_localization/package_ros2.xml ./src/sick_lidar_localization/package.xml 
-    colcon build --cmake-args " -DROS_VERSION=2" --event-handlers console_direct+
+    source /opt/ros/jazzy/setup.bash
+    cp -f ./src/sick_lidar_localization/sick_lidar_localization_msgs/package_ros2.xml ./src/sick_lidar_localization/sick_lidar_localization_msgs/package.xml  
+    colcon build --packages-select sick_lidar_localization_msgs --cmake-args " -DROS_VERSION=2" --event-handlers console_direct+
     source ./install/setup.bash 
     ```
-    For ROS versions other than eloquent, please replace `source /opt/ros/eloquent/setup.bash` with your ros distribution.
+    For ROS versions other than jazzy, please replace `source /opt/ros/jazzy/setup.bash` with your ros distribution.
+
+4. Build project sick_lidar_localization_driver:
+    ```
+    source /opt/ros/jazzy/setup.bash
+    cp -f ./src/sick_lidar_localization/sick_lidar_localization_driver/package_ros2.xml ./src/sick_lidar_localization/sick_lidar_localization_driver/package.xml 
+    colcon build --packages-select sick_lidar_localization_driver  --cmake-args " -DROS_VERSION=2" --event-handlers console_direct+
+    source ./install/setup.bash 
+    ```
+    For ROS versions other than jazzy, please replace `source /opt/ros/jazzy/setup.bash` with your ros distribution.
 
 ### Build on native Windows (C++ and REST API)
 
@@ -160,10 +172,16 @@ To build and install sick_lidar_localization on Windows with ROS-2, follow the s
     git clone https://github.com/SICKAG/sick_lidar_localization.git
     ```
 
-4. Build project sick_lidar_localization:
+3. Build project sick_lidar_localization_msgs:
     ```
-    copy /b/y .\src\sick_lidar_localization\package_ros2.xml .\src\sick_lidar_localization\package.xml
-    colcon build --cmake-args " -DROS_VERSION=2" --event-handlers console_direct+
+    copy /b/y ./src/sick_lidar_localization/sick_lidar_localization_msgs/package_ros2.xml ./src/sick_lidar_localization/sick_lidar_localization_msgs/package.xml
+    colcon build --packages-select sick_lidar_localization_msgs --cmake-args " -DROS_VERSION=2" --event-handlers console_direct+
+    call .\install\setup.bat
+    ```
+4. Build project sick_lidar_localization_driver:
+    ```
+    copy /b/y ./src/sick_lidar_localization/sick_lidar_localization_driver/package_ros2.xml ./src/sick_lidar_localization/sick_lidar_localization_driver/package.xml 
+    colcon build --packages-select sick_lidar_localization_driver --cmake-args " -DROS_VERSION=2" --event-handlers console_direct+
     call .\install\setup.bat
     ```
 
@@ -176,31 +194,31 @@ The commands to start sick_lidar_localization depends on the target:
 For native Linux:
 ```
 cd ./build
-./sick_lidar_localization ../launch/sick_lidar_localization.launch [options]
+./sick_lidar_localization_driver ../launch/sick_lidar_localization.launch [options]
 ```
 
 For Linux using ROS 1:
 ```
 source ./install/setup.bash 
-roslaunch sick_lidar_localization sick_lidar_localization.launch [options]
+roslaunch sick_lidar_localization_driver sick_lidar_localization.launch [options]
 ```
 
 For Linux using ROS 2:
 ```
 source ./install/setup.bash 
-ros2 run sick_lidar_localization sick_lidar_localization ./src/sick_lidar_localization/launch/sick_lidar_localization.launch --ros-args [options]
+ros2 run sick_lidar_localization_driver sick_lidar_localization_driver ./src/sick_lidar_localization/sick_lidar_localization_driver/launch/sick_lidar_localization.launch --ros-args [options]
 ```
 
 For native Windows:
 ```
 cd .\build
-.\Debug\sick_lidar_localization ../launch/sick_lidar_localization.launch [options]
+.\Debug\sick_lidar_localization_driver ../launch/sick_lidar_localization.launch [options]
 ```
 
 For Windows using ROS 2:
 ```
 call .\install\setup.bat
-ros2 run sick_lidar_localization sick_lidar_localization ./src/sick_lidar_localization/launch/sick_lidar_localization.launch [options]
+ros2 run sick_lidar_localization_driver sick_lidar_localization_driver ./src/sick_lidar_localization/sick_lidar_localization_driver/launch/sick_lidar_localization.launch [options]
 ```
 
 ### Options and configuration
@@ -211,10 +229,9 @@ Common parameters are:
 
 | **parameter name** | **default value** | **parameter type** | **example** | **description** |
 |--------------------|-------------------|--------------------|-------------|-----------------|
-| hostname | 192.168.0.1 | string | hostname:=192.168.0.1 | IP address of the SIM localization controller |
+| lls_device_ip | 192.168.0.1 | string | lls_device_ip:=192.168.0.1 | IP address of the SIM LLS device |
 | verbose  | 0           | int    | verbose:=1            | Print informational messages (verbose>0, otherwise error messages only) |
-| udp_ip_lls_output | "" | string | udp_ip_lls_output:=192.168.0.100 | IP address of your local machine (i.e. the receiver of UDP stream messages) |
-| udp_ip_lls_input | 192.168.0.1 | string | udp_ip_lls_input:=192.168.0.1 | IP address of host to send input UDP messages to, should be identical to hostname (except for unittests) |
+| ros_machine_ip | "" | string | ros_machine_ip:=192.168.0.100 | IP address of your local machine (i.e. the receiver of stream messages) |
 
 ## REST API services
 
@@ -222,11 +239,11 @@ LiDAR-LOC can be configured using a JSON REST API. This API is available using R
 
 ## <a name="cpp_api"></a> C++ API
 
-On native Linux or Windows without ROS, tool `gen_service_call` can be used for the [REST API services](doc/sick_localization_services.md). UDP stream messages can be processed using the [C++ API](doc/cpp_api.md).
+On native Linux or Windows without ROS, tool `gen_service_call` can be used for the [REST API services](doc/sick_localization_services.md). Stream messages can be processed using the [C++ API](doc/cpp_api.md).
 
-## UDP stream messages
+## UDP Stream messages
 
-LiDAR-LOC receives messages from and sends messages to the localization controller using UDP. UDP output messages are UDP messages sent from the localization device to the local IPC. UDP input messages are UDP messages sent from the local IPC to the localization device. On ROS 1 and ROS 2, these UDP messages are converted from respective to ROS messages. On native Linux and Windows systems, these UDP messages can be processed using the [C++ API](doc/cpp_api.md).
+LiDAR-LOC receives and sends messages from resp. to the LLS device using UDP. UDP output messages are UDP messages sent from the LLS device to the local PC. UDP input messages are UDP messages sent from the local PC to the LLS device. On ROS-1 and ROS-2, these UDP-messages are converted from resp. to ROS messages. On native Linux and Windows systems, these UDP-messages can be processed using the [C++ API](doc/cpp_api.md).
 
 UDP stream output messages are:
 * [Odometry messages type 1 version 4](msg/OdometryMessage0104.msg)
@@ -249,7 +266,7 @@ See [UDP stream messages](doc/lls_messages.md) for details and examples.
 
 ## Timestamps and time synchronization
 
-The localization timestamps in UDP output messages are converted to system time using a Software-PLL. See [Time synchronization](doc/timing.md) and [Software-PLL](doc/software_pll.md) for details.
+The localization timestamps in output messages are converted to system time using a Software-PLL. See [Time synchronization](doc/timing.md) and [Software-PLL](doc/software_pll.md) for details.
 
 ## System setup and source Ids
 
@@ -299,39 +316,6 @@ Other frame ids can be e.g. "robot", "vehicle" or "lidar". Choose parameter tf_p
 
 See https://roboticsknowledgebase.com/wiki/state-estimation/ros-navigation/ for further examples.
 
-### Unittests
-
-Folder `sick_lidar_localization/test/scripts` provide scripts for development and unittests on ROS-1, ROS-2 and native Linux or Windows. Run the following scripts for a short unittest in case of problems or use them as examples to run lidar localization:
-
-ROS-1 Linux:
-```
-cd ./src/sick_lidar_localization/test/scripts
-./makeall_ros1.bash
-./run_linux_ros1_simu.bash
-```
-
-ROS-2 Linux:
-```
-cd ./src/sick_lidar_localization/test/scripts
-./makeall_ros2.bash
-./run_linux_ros2_simu.bash
-```
-
-Native Linux:
-```
-cd ./src/sick_lidar_localization/test/scripts
-./makeall_linux.bash
-./run_linux_simu.bash
-```
-
-Native Windows:
-```
-cd .\src\sick_lidar_localization\test\scripts
-.\make_win64.cmd
-Open sick_lidar_localization.sln in build folder and rebuild (debug version)
-.\run_win64_simu.cmd
-```
-
 ## FAQ, troubleshooting
 
 ### Setup
@@ -356,7 +340,7 @@ Find detailed information in the operation manuals published on https://supportp
 
 :question: How can I record and save localization data for offline tests and diagnosis?
 
-:white_check_mark: Use wireshark to save udp-data from the localization server as described in [udp data recording](doc/sick_localization_recording.md)
+:white_check_mark: Use wireshark to save udp-data from the localization device as described in [udp data recording](doc/sick_localization_recording.md)
 
 ### Error messages
 

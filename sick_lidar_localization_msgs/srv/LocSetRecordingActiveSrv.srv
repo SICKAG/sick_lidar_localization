@@ -1,0 +1,21 @@
+# Definition of ROS service LocSetRecordingActiveSrv for sick localization
+# Starts or stops the recording of sensor data.
+# Example call (ROS1):
+# rosservice call LocSetRecordingActiveSrv "{active: 1}"
+# Example call (ROS2):
+# ros2 service call LocSetRecordingActiveSrv sick_lidar_localization/srv/LocSetRecordingActiveSrv "{active: 1}"
+# 
+
+# 
+# Request (input)
+# 
+
+bool active # If true and not already recording, starts recording. If false and not already stopped, stops recording. {0 (false), 1 (true)} 
+
+---
+
+# 
+# Response (output)
+# 
+
+bool success # true: success response received from LLS device, false: service failed (timeout or error status from controller)
