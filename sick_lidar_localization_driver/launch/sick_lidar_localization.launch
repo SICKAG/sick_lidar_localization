@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- Launch file parameter for ROS driver of SICK LiDAR-LOC-software (LLS) within the sick_lidar_localization pkg-->
+  <!-- Network -->
+  <arg name="lls_device_ip"  default="192.168.0.1"/>  <!-- IP address of the localization device running LiDAR-LOC-software --> 
+  <arg name="lls_device_udp_port" default="5009"/>    <!-- UDP port of LLS device. Port on which the UDP data is received from the ros machine, has to match the port in the LLS device configuration (Communication/Smop Udp/Input/Port) -->
+  <arg name="lls_device_webserver_port" default="80"/><!-- Port of the LLS REST API. URL for REST is "http://<lls_device_ip>:<lls_device_webserver_port>/api/". Default port can be kept, except the port was intentionally overwritten in "/opt/sick/SICKAppEngine/userconfig.yml" -->
+
+  <arg name="ros_machine_ip" default=""/>             <!-- IP address of local machine running ROS. Leave "" for accepting broadcast on any interface (INADDR_ANY) --> 
+  <arg name="ros_machine_udp_port" default="5010"/>   <!-- UDP port of local machine. Port on which the UDP data is received from the LLS device, has to match the port in the LLS device configuration (Communication/Smop Udp/Output/Destination Port) --> 
+   
+  <!-- LiDAR-LOC API -->
+  <arg name="src_id_vehicle" default="1"/>      <!-- Source ID of vehicle odometry UDP messages to LLS, has to match the ID in the LLS device configuration (Vehicle/Odometer/External/Interface/Source Id) --> 
+  <arg name="odom_topic" default="/odom"/>      <!-- Topic of ROS odom messages -->
+  <arg name="ros_odom_to_udp_msg" default="3"/> <!-- Convert ROS odom message to UDP: -->
+                                                <!-- 1 = map velocity to OdometryPayload0104 and send UDP message type 1, version 4 -->
+                                                <!-- 2 = map position to OdometryPayload0105 and send UDP message type 1, version 5 -->
+                                                <!-- 3 = map velocity to OdometryPayload0104 and position to OdometryPayload0105 and send both UDP message type 1, version 4 and 5 -->
+  <!-- Time sync -->
+  <arg name="software_pll_fifo_length" default="7"/>  <!-- Length of fifo in SoftwarePLL -->  
+  
+  <!-- Logging -->
+  <arg name="verbose"    default="0"/>        <!-- If verbose>0: print informational messages, otherwise silent except for error messages -->   
+  <arg name="udp_output_logfile" default=""/> <!-- Optional logfile for human readable UDP output messages, default: "" (no outputlogfile) --> 
+                                                          
+
+  <!-- Launch sick_lidar_localization -->
+  <node name="sick_lidar_localization" pkg="sick_lidar_localization_driver" type="sick_lidar_localization_driver" output="screen">
+    <param name="lls_device_ip"               type="string"   value="$(arg lls_device_ip)"/>
+    <param name="lls_device_udp_port"         type="int"      value="$(arg lls_device_udp_port)"/>
+    <param name="lls_device_webserver_port"   type="int"      value="$(arg lls_device_webserver_port)"/>
+    <param name="ros_machine_ip"              type="string"   value="$(arg ros_machine_ip)"/>
+    <param name="ros_machine_udp_port"        type="int"      value="$(arg ros_machine_udp_port)"/>
+    <!-- We recommend to set the source_id in the input message itself instead of using the global setting. Output messages are defined in lidarloc_config.yml in LiDAR-LOC UI -->
+    <param name="src_id_odometry_msg_type_1"  type="int"      value="$(arg src_id_vehicle)"/>
+    <param name="odom_topic"                  type="string"   value="$(arg odom_topic)"/>
+    <param name="ros_odom_to_udp_msg"         type="int"      value="$(arg ros_odom_to_udp_msg)"/>
+    <!-- end source_id global setting -->
+    <param name="verbose"                     type="int"      value="$(arg verbose)"/> 
+    <param name="udp_output_logfile"          type="string"   value="$(arg udp_output_logfile)"/> 
+    <param name="software_pll_fifo_length"    type="int"      value="$(arg software_pll_fifo_length)"/>
+  </node>
+</launch>

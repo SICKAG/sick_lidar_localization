@@ -1,0 +1,19 @@
+# Definition of ROS service LocGetLocalizationStatus for sick localization.
+#
+# ROS service LocGetLocalizationStatus queries the localization status
+# by sending cola command ("sMN LocGetLocalizationStatus").
+#
+
+#
+# Request (input)
+#
+
+---
+
+#
+# Response (output)
+#
+
+uint8 locstatus
+string details
+bool success # true: esponse received from LLS device, false: service failed (timeout or error status from controller)

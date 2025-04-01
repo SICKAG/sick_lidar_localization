@@ -1,0 +1,23 @@
+# Definition of ROS service LocSetKinematicVehicleModelActive for sick localization
+# Activates or deactivates usage of the kinematic model to improve localization.
+# Use this function e. g. to disable the kinematic model before manually moving the vehicle.
+# However when the vehicle drives automatically, the kinematic model should be used because it improves the robustness of the localization.
+# Example call (ROS1):
+# rosservice call LocSetKinematicVehicleModelActive "{active: 1}"
+# Example call (ROS2):
+# ros2 service call LocSetKinematicVehicleModelActive sick_lidar_localization/srv/LocSetKinematicVehicleModelActiveSrv "{active: 1}"
+# 
+
+# 
+# Request (input)
+# 
+
+bool active # True to activate, false to deactivate the usage of the kinematic model. {0 (false), 1 (true)} 
+
+---
+
+# 
+# Response (output)
+# 
+
+bool success # true: success response received from LLS device, false: service failed (timeout or error status from controller)

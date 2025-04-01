@@ -1,0 +1,20 @@
+# Definition of ROS service LocClearMapCache for sick localization.
+#
+# ROS service LocLocClearMapCache queries the error status
+# by sending cola command ("sMN LocClearMapCache").
+#
+# See Telegram-Listing-v1.1.0.241R.pdf for further details about 
+# Cola telegrams and this command.
+
+#
+# Request (input)
+#
+
+---
+
+#
+# Response (output)
+#
+
+bool success # true: system ready response received from LLS device, false: system not ready or service failed (timeout or error status from controller)
+

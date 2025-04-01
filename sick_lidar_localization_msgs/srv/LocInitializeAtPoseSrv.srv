@@ -1,0 +1,24 @@
+# Definition of ROS service LocInitializeAtPose for sick localization
+# Initializes the localization automatically at the given pose by matching against the mapped contours.
+# Example call (ROS1):
+# rosservice call /LocInitializeAtPose "{x: 100, y: -100, yaw: 1000, searchradius: 1000}"
+# Example call (ROS2):
+# ros2 service call /LocInitializeAtPose sick_lidar_localization/srv/LocInitializeAtPoseSrv "{x: 100, y: -100, yaw: 1000, searchradius: 1000}"
+# 
+
+# 
+# Request (input)
+# 
+
+int32 x # Vehicle x position relative to map origin. [<min>, <max>] in [mm] 
+int32 y # Vehicle y position relative to map origin. [<min>, <max>] in [mm] 
+int32 yaw # Angle. [-180000, 180000] in [mdeg]
+uint16 searchradius # Radius of the circle to be searched for the best matching position in millimeters. [300, 2000] in [mm]
+
+---
+
+# 
+# Response (output)
+# 
+
+bool success # true: success response received from LLS device, false: service failed (timeout or error status from controller)

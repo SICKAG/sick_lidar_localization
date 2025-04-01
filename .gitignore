@@ -51,12 +51,4 @@ doc/20210721_rest_api_test.pptx
 doc/20210726_rest_api_test.pptx
 doc/*_lidar_localization2.pptx
 
-test/scripts/wireshark.cmd
-test/rest_server/python/scripts_LLS1-OdometryUDPSender.py
-test/rest_server/python/scripts_LLS2-OdometryUDPSender.py
-
-test/data/wireshark/20210727_*.*
-test/data/wireshark/20210921-*.*
-test/data/wireshark/20210923-*.*
-
 

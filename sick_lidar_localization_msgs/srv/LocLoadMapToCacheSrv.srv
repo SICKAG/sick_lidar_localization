@@ -1,0 +1,22 @@
+# Definition of ROS service LocLoadMapToCache for sick localization.
+#
+# ROS service LocLoadMapToCache queries the error status
+# by sending cola command ("sMN LocLoadMapToCache").
+#
+# See Telegram-Listing-v1.1.0.241R.pdf for further details about 
+# Cola telegrams and this command.
+
+#
+# Request (input)
+#
+
+string mappath # The name of the vmap inside the mapFolder. Max length = 255
+
+---
+
+#
+# Response (output)
+#
+
+bool success # true: system ready response received from LLS device, false: system not ready or service failed (timeout or error status from controller)
+
