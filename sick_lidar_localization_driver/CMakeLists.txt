@@ -5,6 +5,11 @@ project(sick_lidar_localization_driver)
 ## Compile options ##
 #####################
 
+# Set ROS_VERSION from environment variable if not defined
+if(NOT DEFINED ROS_VERSION AND DEFINED ENV{ROS_VERSION})
+    set(ROS_VERSION $ENV{ROS_VERSION})
+endif()
+
 if(ROS_VERSION EQUAL 2)
     set(ROS2_HUMBLE 1)
     if(WIN32 OR EXISTS "/opt/ros/eloquent" OR EXISTS "/opt/ros/foxy" OR EXISTS "/opt/ros/galactic") # rosidl_typesupport for ROS2 eloquent, foxy, galaxy # use $ENV{ROS_DISTRO} instead

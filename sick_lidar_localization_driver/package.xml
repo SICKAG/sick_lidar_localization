@@ -1,4 +1,7 @@
 <?xml version="1.0"?>
+<?xml-model
+  href="http://download.ros.org/schema/package_format3.xsd"
+  schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>sick_lidar_localization_driver</name>
   <version>0.0.0</version>
@@ -20,25 +23,30 @@
   <!-- Authors do not have to be maintainers, but could be -->
   <author email="ros.test@lehning.de">Michael Lehning</author>
 
-  <!-- The *depend tags are used to specify dependencies -->
-  
-  <buildtool_depend>ament_cmake</buildtool_depend>
-  <build_depend>rosidl_default_generators</build_depend>
+  <buildtool_depend condition="$ROS_VERSION == 2">ament_cmake</buildtool_depend>
+  <buildtool_depend condition="$ROS_VERSION == 1">catkin</buildtool_depend>
 
   <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
+  <depend condition="$ROS_VERSION == 1">roscpp</depend>
   <depend>sensor_msgs</depend>
-  <depend>std_msgs</depend>
-  <depend>tf2</depend>
-  <depend>tf2_ros</depend>
-  <depend>visualization_msgs</depend>
   <depend>sick_lidar_localization_msgs</depend>
+  <depend>std_msgs</depend>
+  <depend condition="$ROS_VERSION == 1">tf</depend>
+  <depend condition="$ROS_VERSION == 2">tf2</depend>
+  <depend condition="$ROS_VERSION == 2">tf2_ros</depend>
+  <depend condition="$ROS_VERSION == 2">visualization_msgs</depend>
 
-  <test_depend>ament_lint_auto</test_depend>
-  <test_depend>ament_lint_common</test_depend>
+  <exec_depend condition="$ROS_VERSION == 1">rospy</exec_depend>
+
+  <test_depend condition="$ROS_VERSION == 2">ament_lint_auto</test_depend>
+  <test_depend condition="$ROS_VERSION == 2">ament_lint_common</test_depend>
+  <test_depend condition="$ROS_VERSION == 1">rostest</test_depend>
+  <test_depend condition="$ROS_VERSION == 1">rosunit</test_depend>
 
   <export>
-    <build_type>ament_cmake</build_type>
-  </export>   
+    <build_type condition="$ROS_VERSION == 1">catkin</build_type>
+    <build_type condition="$ROS_VERSION == 2">ament_cmake</build_type>
+  </export>
 
 </package>

@@ -59,8 +59,7 @@ To build and install sick_lidar_localization on Linux using ROS 1, follow the st
 
 3. Build project sick_lidar_localization_msgs:
     ```
-    cp -f ./src/sick_lidar_localization/sick_lidar_localization_msgs/package_ros1.xml ./src/sick_lidar_localization/sick_lidar_localization_msgs/package.xml 
-    catkin_make --only-pkg-with-deps sick_lidar_localization_msgs install --cmake-args -DROS_VERSION=1
+    catkin_make --only-pkg-with-deps sick_lidar_localization_msgs install
     source ./install/setup.bash 
     ```
     For ROS versions other than noetic, please replace source `/opt/ros/noetic/setup.bash` with your ros distribution.
@@ -68,8 +67,7 @@ To build and install sick_lidar_localization on Linux using ROS 1, follow the st
 4. Build project sick_lidar_localization_driver:
     ```
     source /opt/ros/noetic/setup.bash
-    cp -f ./src/sick_lidar_localization/sick_lidar_localization_driver/package_ros1.xml ./src/sick_lidar_localization/sick_lidar_localization_driver/package.xml 
-    catkin_make --only-pkg-with-deps sick_lidar_localization_driver install --cmake-args -DROS_VERSION=1
+    catkin_make --only-pkg-with-deps sick_lidar_localization_driver install
     source ./install/setup.bash 
     ```
     For ROS versions other than noetic, please replace source `/opt/ros/noetic/setup.bash` with your ros distribution.
@@ -94,8 +92,7 @@ To build and install sick_lidar_localization on Linux using ROS 2, follow the st
 3. Build project sick_lidar_localization_msgs:
     ```
     source /opt/ros/jazzy/setup.bash
-    cp -f ./src/sick_lidar_localization/sick_lidar_localization_msgs/package_ros2.xml ./src/sick_lidar_localization/sick_lidar_localization_msgs/package.xml  
-    colcon build --packages-select sick_lidar_localization_msgs --cmake-args " -DROS_VERSION=2" --event-handlers console_direct+
+    colcon build --packages-select sick_lidar_localization_msgs --event-handlers console_direct+
     source ./install/setup.bash 
     ```
     For ROS versions other than jazzy, please replace `source /opt/ros/jazzy/setup.bash` with your ros distribution.
@@ -103,8 +100,7 @@ To build and install sick_lidar_localization on Linux using ROS 2, follow the st
 4. Build project sick_lidar_localization_driver:
     ```
     source /opt/ros/jazzy/setup.bash
-    cp -f ./src/sick_lidar_localization/sick_lidar_localization_driver/package_ros2.xml ./src/sick_lidar_localization/sick_lidar_localization_driver/package.xml 
-    colcon build --packages-select sick_lidar_localization_driver  --cmake-args " -DROS_VERSION=2" --event-handlers console_direct+
+    colcon build --packages-select sick_lidar_localization_driver  --event-handlers console_direct+
     source ./install/setup.bash 
     ```
     For ROS versions other than jazzy, please replace `source /opt/ros/jazzy/setup.bash` with your ros distribution.
@@ -174,14 +170,12 @@ To build and install sick_lidar_localization on Windows with ROS-2, follow the s
 
 3. Build project sick_lidar_localization_msgs:
     ```
-    copy /b/y ./src/sick_lidar_localization/sick_lidar_localization_msgs/package_ros2.xml ./src/sick_lidar_localization/sick_lidar_localization_msgs/package.xml
-    colcon build --packages-select sick_lidar_localization_msgs --cmake-args " -DROS_VERSION=2" --event-handlers console_direct+
+    colcon build --packages-select sick_lidar_localization_msgs --event-handlers console_direct+
     call .\install\setup.bat
     ```
 4. Build project sick_lidar_localization_driver:
     ```
-    copy /b/y ./src/sick_lidar_localization/sick_lidar_localization_driver/package_ros2.xml ./src/sick_lidar_localization/sick_lidar_localization_driver/package.xml 
-    colcon build --packages-select sick_lidar_localization_driver --cmake-args " -DROS_VERSION=2" --event-handlers console_direct+
+    colcon build --packages-select sick_lidar_localization_driver --event-handlers console_direct+
     call .\install\setup.bat
     ```
 
@@ -304,7 +298,7 @@ Poses are published by ROS-transform-messages (TF) of tType geometry_msgs::Trans
 * tf_parent_frame_id: "map" 
 * tf_child_frame_id: "lls"
 
-The default frame ids for transformations should only be used as an example. In a real application, the reference to the robot is usually specified here, as it is, for example, in the ROS Nagivation stack. Here one would then use the reference
+The default frame ids for transformations should only be used as an example. In a real application, the reference to the robot is usually specified here, as it is, for example, in the ROS Navigation stack. Here one would then use the reference
 * tf_parent_frame_id: "base_link"
 * tf_child_frame_id: "lls"
 
