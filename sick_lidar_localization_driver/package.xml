@@ -26,6 +26,9 @@
   <buildtool_depend condition="$ROS_VERSION == 2">ament_cmake</buildtool_depend>
   <buildtool_depend condition="$ROS_VERSION == 1">catkin</buildtool_depend>
 
+  <build_depend>libcurl-dev</build_depend>
+  <build_depend>libjsoncpp-dev</build_depend>
+
   <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
   <depend condition="$ROS_VERSION == 1">roscpp</depend>
