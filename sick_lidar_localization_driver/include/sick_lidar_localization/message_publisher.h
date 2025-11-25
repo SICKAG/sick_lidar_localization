@@ -89,12 +89,12 @@ namespace sick_lidar_localization
             #if __ROS_VERSION > 0
             if(nh != 0)
             {
-                m_pubOdometryMessage0104 = rosAdvertise<sick_lidar_localization_msgs::OdometryMessage0104>(nh, "/localizationcontroller/out/odometry_message_0104");
-                m_pubOdometryMessage0105 = rosAdvertise<sick_lidar_localization_msgs::OdometryMessage0105>(nh, "/localizationcontroller/out/odometry_message_0105");
-                m_pubCodeMeasurementMessage0304 = rosAdvertise<sick_lidar_localization_msgs::CodeMeasurementMessage0304>(nh, "/localizationcontroller/out/code_measurement_message_0304");
-                m_pubLineMeasurementMessage0403 = rosAdvertise<sick_lidar_localization_msgs::LineMeasurementMessage0403>(nh, "/localizationcontroller/out/line_measurement_message_0403");
-                m_pubLineMeasurementMessage0404 = rosAdvertise<sick_lidar_localization_msgs::LineMeasurementMessage0404>(nh, "/localizationcontroller/out/line_measurement_message_0404");
-                m_pubLocalizationControllerResultMessage0502 = rosAdvertise<sick_lidar_localization_msgs::LocalizationControllerResultMessage0502>(nh, "/localizationcontroller/out/localizationcontroller_result_message_0502");
+                m_pubOdometryMessage0104 = rosAdvertise<sick_lidar_localization_msgs::OdometryMessage0104>(nh, "localizationcontroller/out/odometry_message_0104");
+                m_pubOdometryMessage0105 = rosAdvertise<sick_lidar_localization_msgs::OdometryMessage0105>(nh, "localizationcontroller/out/odometry_message_0105");
+                m_pubCodeMeasurementMessage0304 = rosAdvertise<sick_lidar_localization_msgs::CodeMeasurementMessage0304>(nh, "localizationcontroller/out/code_measurement_message_0304");
+                m_pubLineMeasurementMessage0403 = rosAdvertise<sick_lidar_localization_msgs::LineMeasurementMessage0403>(nh, "localizationcontroller/out/line_measurement_message_0403");
+                m_pubLineMeasurementMessage0404 = rosAdvertise<sick_lidar_localization_msgs::LineMeasurementMessage0404>(nh, "localizationcontroller/out/line_measurement_message_0404");
+                m_pubLocalizationControllerResultMessage0502 = rosAdvertise<sick_lidar_localization_msgs::LocalizationControllerResultMessage0502>(nh, "localizationcontroller/out/localizationcontroller_result_message_0502");
             }
             #endif // __ROS_VERSION > 0
         }
