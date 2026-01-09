@@ -4,14 +4,14 @@ ROS driver, native C++ library and REST API for SICK LiDAR localization.
 
 ## Introduction
 
-This repository contains a driver for the REST-API control for the LiDAR-LOC software (LLS) version 2. 
+This repository contains a driver for the REST-API control for the LiDAR-LOC software (LLS) version 2.
 
 The repository is structured in two packages. The `sick_lidar_localization_msgs` contains all relevant messages and services for the driver an can be used individually. The `sick_lidar_localization_driver` package depends on the `sick_lidar_localization_msgs` package and contains the driver supporting the following ROS versions in the same source:
 
 The drivers support the following environments:
 
 * native **without ROS** for Linux/Windows (REST and C++)
-* ROS1 for Linux 
+* ROS1 for Linux
 * ROS2 for Linux/Windows
 
 ## Installation
@@ -60,7 +60,7 @@ To build and install sick_lidar_localization on Linux using ROS 1, follow the st
 3. Build project sick_lidar_localization_msgs:
     ```
     catkin_make --only-pkg-with-deps sick_lidar_localization_msgs install
-    source ./install/setup.bash 
+    source ./install/setup.bash  # this also makes the ROS_VERSION environment variable available
     ```
     For ROS versions other than noetic, please replace source `/opt/ros/noetic/setup.bash` with your ros distribution.
 
@@ -68,7 +68,7 @@ To build and install sick_lidar_localization on Linux using ROS 1, follow the st
     ```
     source /opt/ros/noetic/setup.bash
     catkin_make --only-pkg-with-deps sick_lidar_localization_driver install
-    source ./install/setup.bash 
+    source ./install/setup.bash
     ```
     For ROS versions other than noetic, please replace source `/opt/ros/noetic/setup.bash` with your ros distribution.
 
@@ -91,9 +91,9 @@ To build and install sick_lidar_localization on Linux using ROS 2, follow the st
 
 3. Build project sick_lidar_localization_msgs:
     ```
-    source /opt/ros/jazzy/setup.bash
+    source /opt/ros/jazzy/setup.bash  # this also makes the ROS_VERSION environment variable available
     colcon build --packages-select sick_lidar_localization_msgs --event-handlers console_direct+
-    source ./install/setup.bash 
+    source ./install/setup.bash
     ```
     For ROS versions other than jazzy, please replace `source /opt/ros/jazzy/setup.bash` with your ros distribution.
 
@@ -101,7 +101,7 @@ To build and install sick_lidar_localization on Linux using ROS 2, follow the st
     ```
     source /opt/ros/jazzy/setup.bash
     colcon build --packages-select sick_lidar_localization_driver  --event-handlers console_direct+
-    source ./install/setup.bash 
+    source ./install/setup.bash
     ```
     For ROS versions other than jazzy, please replace `source /opt/ros/jazzy/setup.bash` with your ros distribution.
 
@@ -193,13 +193,13 @@ cd ./build
 
 For Linux using ROS 1:
 ```
-source ./install/setup.bash 
+source ./install/setup.bash
 roslaunch sick_lidar_localization_driver sick_lidar_localization.launch [options]
 ```
 
 For Linux using ROS 2:
 ```
-source ./install/setup.bash 
+source ./install/setup.bash
 ros2 run sick_lidar_localization_driver sick_lidar_localization_driver ./src/sick_lidar_localization/sick_lidar_localization_driver/launch/sick_lidar_localization.launch --ros-args [options]
 ```
 
@@ -217,7 +217,7 @@ ros2 run sick_lidar_localization_driver sick_lidar_localization_driver ./src/sic
 
 ### Options and configuration
 
-Parameter can be configured in the launch file [sick_lidar_localization.launch](launch/sick_lidar_localization.launch) and overwritten by commandline arguments. 
+Parameter can be configured in the launch file [sick_lidar_localization.launch](launch/sick_lidar_localization.launch) and overwritten by commandline arguments.
 
 Common parameters are:
 
@@ -275,7 +275,7 @@ Localization results (i.e. the sensor position and orientation) can be visualize
 ROS-1 usage example:
 
 ```
-source ./install/setup.bash 
+source ./install/setup.bash
 roslaunch sick_lidar_localization sick_lidar_localization.launch &
 sleep 3 ; roslaunch sick_lidar_localization lls_transform.launch &
 sleep 3 ; rosrun rviz rviz -d ./src/sick_lidar_localization/test/config/rviz_sick_lidar_localization_pointcloud.rviz
@@ -284,7 +284,7 @@ sleep 3 ; rosrun rviz rviz -d ./src/sick_lidar_localization/test/config/rviz_sic
 ROS-2 usage example:
 
 ```
-source ./install/setup.bash 
+source ./install/setup.bash
 ros2 run sick_lidar_localization sick_lidar_localization ./src/sick_lidar_localization/launch/sick_lidar_localization.launch &
 sleep 3 ; ros2 run sick_lidar_localization lls_transform ./src/sick_lidar_localization/launch/lls_transform.launch &
 sleep 3 ; rviz2 -d ./src/sick_lidar_localization//test/config/rviz2_sick_lidar_localization_pointcloud.rviz2
@@ -295,7 +295,7 @@ The following screenshot shows an example of the sensor pose:
 ![rviz_pointcloud_converter_screenshot](doc/screenshots/rviz_pointcloud_converter_screenshot2.png)
 
 Poses are published by ROS-transform-messages (TF) of tType geometry_msgs::TransformStamped. Each TF message has a parent and a child coordinate system identified by tf_parent_frame_id resp. tf_child_frame_id. These frame ids are configured in the launchfile, by default:
-* tf_parent_frame_id: "map" 
+* tf_parent_frame_id: "map"
 * tf_child_frame_id: "lls"
 
 The default frame ids for transformations should only be used as an example. In a real application, the reference to the robot is usually specified here, as it is, for example, in the ROS Navigation stack. Here one would then use the reference
@@ -317,8 +317,8 @@ See https://roboticsknowledgebase.com/wiki/state-estimation/ros-navigation/ for 
 :question: How can I setup my sensor using SOPASair?
 
 :white_check_mark: To setup and configure LiDAR-LOC with SOPASair, use of Chrome-browser under Windows is highly recommended.
-See [Quickstart-Setup-SOPASair.md](doc/Quickstart-Setup-SOPASair.md) for a quickstart. 
-Find detailed information in the operation manuals published on https://supportportal.sick.com/products/localization/lidar-localization/lidar-loc/ .  
+See [Quickstart-Setup-SOPASair.md](doc/Quickstart-Setup-SOPASair.md) for a quickstart.
+Find detailed information in the operation manuals published on https://supportportal.sick.com/products/localization/lidar-localization/lidar-loc/ .
 
 ### Source Ids
 
@@ -359,7 +359,7 @@ If you're still getting `ModuleNotFoundError` messages, try `sudo pip install` r
 :question: Error MSB3491 on Windows: "Could not write lines to file. The fully qualified file name must be less than 260 characters"
 
 :white_check_mark: Possible solutions are e.g.:
-* Just clone repository https://github.com/SICKAG/sick_lidar_localization into a short path, f.e. directly to `C:\`: 
+* Just clone repository https://github.com/SICKAG/sick_lidar_localization into a short path, f.e. directly to `C:\`:
     ```
     cd c:\
     git clone https://github.com/SICKAG/sick_lidar_localization.git
@@ -376,7 +376,7 @@ If you're still getting `ModuleNotFoundError` messages, try `sudo pip install` r
 
 :question: `rivz2` does not work on Windows
 
-:white_check_mark: Start rviz2 with 
+:white_check_mark: Start rviz2 with
     ```
     call C:\dev\ros2_foxy\local_setup.bat
     call c:\opt\ros\foxy\x64\setup.bat
