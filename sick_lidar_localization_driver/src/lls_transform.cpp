@@ -85,8 +85,8 @@ int main(int argc, char** argv)
 #endif
 
   ROS_INFO_STREAM("lls_transform started.");
-  
-  std::string result_telegrams_topic = "/localizationcontroller/out/localizationcontroller_result_message_0502"; // default topic to publish result port telegram messages (type LocResultPortTelegramMsg)
+
+  std::string result_telegrams_topic = "localizationcontroller/out/localizationcontroller_result_message_0502"; // default topic to publish result port telegram messages (type LocResultPortTelegramMsg)
   //rosGetParam(nh, "result_telegrams_topic", result_telegrams_topic);
   
   // Init verifier to compare and check lls_loc_driver and lls_loc_test_server messages
@@ -94,14 +94,14 @@ int main(int argc, char** argv)
   
   // Subscribe to lls_loc_driver messages
 #if __ROS_VERSION == 1
-  rosSubscriber<sick_lidar_localization_msgs::LocalizationControllerResultMessage0502> result_telegram_subscriber = rosSubscribe<sick_lidar_localization_msgs::LocalizationControllerResultMessage0502>(nh, 
+  rosSubscriber<sick_lidar_localization_msgs::LocalizationControllerResultMessage0502> result_telegram_subscriber = rosSubscribe<sick_lidar_localization_msgs::LocalizationControllerResultMessage0502>(nh,
       result_telegrams_topic, &sick_lidar_localization::LLSTransformer::messageCbResultPortTelegrams, &lls_transform);
 #elif __ROS_VERSION == 2
 # ifdef _MSC_VER
   auto subscriber = nh->create_subscription<sick_lidar_localization_msgs::LocalizationControllerResultMessage0502>(result_telegrams_topic, 10, std::bind(&sick_lidar_localization::LLSTransformer::messageCbResultPortTelegramsROS2, &lls_transform, std::placeholders::_1));
   rosSubscriber<sick_lidar_localization_msgs::LocalizationControllerResultMessage0502> result_telegram_subscriber = rosSubscriber<sick_lidar_localization_msgs::LocalizationControllerResultMessage0502>(subscriber);
 # else
-  rosSubscriber<sick_lidar_localization_msgs::LocalizationControllerResultMessage0502> result_telegram_subscriber = rosSubscribe<sick_lidar_localization_msgs::LocalizationControllerResultMessage0502>(nh, 
+  rosSubscriber<sick_lidar_localization_msgs::LocalizationControllerResultMessage0502> result_telegram_subscriber = rosSubscribe<sick_lidar_localization_msgs::LocalizationControllerResultMessage0502>(nh,
       result_telegrams_topic, &sick_lidar_localization::LLSTransformer::messageCbResultPortTelegramsROS2, &lls_transform);
 #endif
 #endif
