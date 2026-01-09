@@ -59,8 +59,9 @@ To build and install sick_lidar_localization on Linux using ROS 1, follow the st
 
 3. Build project sick_lidar_localization_msgs:
     ```
+    source /opt/ros/noetic/setup.bash  # this also makes the ROS_VERSION environment variable available
     catkin_make --only-pkg-with-deps sick_lidar_localization_msgs install
-    source ./install/setup.bash  # this also makes the ROS_VERSION environment variable available
+    source ./install/setup.bash
     ```
     For ROS versions other than noetic, please replace source `/opt/ros/noetic/setup.bash` with your ros distribution.
 
