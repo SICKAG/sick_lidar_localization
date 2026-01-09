@@ -69,9 +69,7 @@ void sick_lidar_localization_set_logger(const rclcpp::Logger& logger)
     g_sick_lidar_localization_logger = logger;
 }
 
-#endif // __ROS_VERSION == 2
-
-#if __ROS_VERSION == 0 // native Linux or Windows
+#elif __ROS_VERSION == 0 // native Linux or Windows
 
 template <typename T> class ParamServer
 {
