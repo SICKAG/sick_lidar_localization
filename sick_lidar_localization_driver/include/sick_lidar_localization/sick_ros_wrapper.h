@@ -126,14 +126,14 @@ inline bool rosOk(void) { return true; }
 #elif __ROS_VERSION == 1 // ROS-1 (Linux only)
 
 #include <ros/ros.h>
-#include <geometry_msgs/Point.h> 
-#include <geometry_msgs/TransformStamped.h> 
+#include <geometry_msgs/Point.h>
+#include <geometry_msgs/TransformStamped.h>
 #include <nav_msgs/Odometry.h>
 #include <sensor_msgs/LaserScan.h>
 #include <sensor_msgs/PointCloud.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/Imu.h>
-#include <std_msgs/Header.h> 
+#include <std_msgs/Header.h>
 #include <std_msgs/String.h>
 #include <std_msgs/ColorRGBA.h>
 #include <tf2/LinearMath/Quaternion.h>
@@ -243,17 +243,20 @@ typedef rclcpp::Node::SharedPtr rosNodePtr;
 #define ros_nav_msgs nav_msgs::msg
 #define ros_visualization_msgs visualization_msgs::msg
 
-#define RCLCPP_LOGGER         rclcpp::get_logger("sick_lidar_localization")
-#define ROS_FATAL(msg)        RCLCPP_FATAL(RCLCPP_LOGGER,msg)
-#define ROS_ERROR(msg)        RCLCPP_ERROR(RCLCPP_LOGGER,msg)
-#define ROS_WARN(msg)         RCLCPP_WARN(RCLCPP_LOGGER,msg)
-#define ROS_INFO(msg)         RCLCPP_INFO(RCLCPP_LOGGER,msg)
-#define ROS_DEBUG(msg)        RCLCPP_DEBUG(RCLCPP_LOGGER,msg)
-#define ROS_FATAL_STREAM(msg) RCLCPP_FATAL_STREAM(RCLCPP_LOGGER,msg)
-#define ROS_ERROR_STREAM(msg) RCLCPP_ERROR_STREAM(RCLCPP_LOGGER,msg)
-#define ROS_WARN_STREAM(msg)  RCLCPP_WARN_STREAM(RCLCPP_LOGGER,msg)
-#define ROS_INFO_STREAM(msg)  RCLCPP_INFO_STREAM(RCLCPP_LOGGER,msg)
-#define ROS_DEBUG_STREAM(msg) RCLCPP_DEBUG_STREAM(RCLCPP_LOGGER,msg)
+// Global logger that can be initialized with node's logger for proper /rosout publishing
+const rclcpp::Logger& sick_lidar_localization_logger();
+void sick_lidar_localization_set_logger(const rclcpp::Logger& logger);
+
+#define ROS_FATAL(msg)        RCLCPP_FATAL(sick_lidar_localization_logger(), msg)
+#define ROS_ERROR(msg)        RCLCPP_ERROR(sick_lidar_localization_logger(), msg)
+#define ROS_WARN(msg)         RCLCPP_WARN(sick_lidar_localization_logger(), msg)
+#define ROS_INFO(msg)         RCLCPP_INFO(sick_lidar_localization_logger(), msg)
+#define ROS_DEBUG(msg)        RCLCPP_DEBUG(sick_lidar_localization_logger(), msg)
+#define ROS_FATAL_STREAM(msg) RCLCPP_FATAL_STREAM(sick_lidar_localization_logger(), msg)
+#define ROS_ERROR_STREAM(msg) RCLCPP_ERROR_STREAM(sick_lidar_localization_logger(), msg)
+#define ROS_WARN_STREAM(msg)  RCLCPP_WARN_STREAM(sick_lidar_localization_logger(), msg)
+#define ROS_INFO_STREAM(msg)  RCLCPP_INFO_STREAM(sick_lidar_localization_logger(), msg)
+#define ROS_DEBUG_STREAM(msg) RCLCPP_DEBUG_STREAM(sick_lidar_localization_logger(), msg)
 
 template <typename T> void rosDeclareParam(rosNodePtr nh, const std::string& param_name, const T& param_value) { if(!nh->has_parameter(param_name)) nh->declare_parameter<T>(param_name, param_value); }
 template <typename T> bool rosGetParam(rosNodePtr nh, const std::string& param_name, T& param_value)
