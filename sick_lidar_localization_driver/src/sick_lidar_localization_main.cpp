@@ -139,6 +139,8 @@ int main(int argc, char** argv)
     node_options.allow_undeclared_parameters(true);
     //node_options.automatically_declare_initial_parameters(true);
     rosNodePtr node = rclcpp::Node::make_shared("sick_lidar_localization", "", node_options);
+    // Initialize logger from node to enable publishing to /rosout topic
+    sick_lidar_localization_set_logger(node->get_logger());
     bool launchfile_ok = sick_lidar_localization::API::parseLaunchfileSetParameter(node, argc, argv);
 #else
 #error __ROS_VERSION not defined
@@ -190,7 +192,7 @@ int main(int argc, char** argv)
     getchar();
 #else
     std::this_thread::sleep_for(std::chrono::seconds(std::numeric_limits<int>::max()));
-#endif    
+#endif
 
     // Exit and cleanup
     ROS_INFO_STREAM("sick_lidar_localization finished.");

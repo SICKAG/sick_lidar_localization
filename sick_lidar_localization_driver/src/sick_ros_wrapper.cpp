@@ -55,7 +55,21 @@
  */
 #include "sick_lidar_localization/sick_ros_wrapper.h"
 
-#if __ROS_VERSION == 0 // native Linux or Windows
+#if __ROS_VERSION == 2 // ROS-2: Global logger for publishing to /rosout
+
+static rclcpp::Logger g_sick_lidar_localization_logger = rclcpp::get_logger("sick_lidar_localization");
+
+const rclcpp::Logger& sick_lidar_localization_logger()
+{
+    return g_sick_lidar_localization_logger;
+}
+
+void sick_lidar_localization_set_logger(const rclcpp::Logger& logger)
+{
+    g_sick_lidar_localization_logger = logger;
+}
+
+#elif __ROS_VERSION == 0 // native Linux or Windows
 
 template <typename T> class ParamServer
 {

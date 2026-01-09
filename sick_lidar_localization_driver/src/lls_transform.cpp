@@ -75,6 +75,8 @@ int main(int argc, char** argv)
     node_options.allow_undeclared_parameters(true);
     //node_options.automatically_declare_initial_parameters(true);
     rosNodePtr nh = rclcpp::Node::make_shared("lls_transform", "", node_options);
+    // Initialize logger from node to enable publishing to /rosout topic
+    sick_lidar_localization_set_logger(nh->get_logger());
     if (!LaunchParser::parseLaunchfileSetParameter(nh, argc, argv))
     {
         ROS_ERROR_STREAM("## ERROR sick_lidar_localization: parseLaunchfileSetParameter() failed, aborting... ");
@@ -105,17 +107,15 @@ int main(int argc, char** argv)
       result_telegrams_topic, &sick_lidar_localization::LLSTransformer::messageCbResultPortTelegramsROS2, &lls_transform);
 #endif
 #endif
- 
+
   // Start pointcloud converter thread
   lls_transform.start();
-  
+
   // Run ros event loop
   rosSpin(nh);
-  
-  std::cout << "lls_transform finished." << std::endl;
+
   ROS_INFO_STREAM("lls_transform finished.");
   lls_transform.stop();
-  std::cout << "lls_transform exits." << std::endl;
   ROS_INFO_STREAM("lls_transform exits.");
   return 0;
 }

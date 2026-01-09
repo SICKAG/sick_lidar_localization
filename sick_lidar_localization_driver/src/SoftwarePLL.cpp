@@ -6,6 +6,7 @@ See https://github.com/michael1309/SoftwarePLL/blob/master/README.md for details
 ====================================================================================================
 */
 #include "sick_lidar_localization/SoftwarePLL.h"
+#include "sick_lidar_localization/sick_ros_wrapper.h"
 
 // #include "softwarePLL.h"
 #include <iostream>
@@ -58,7 +59,7 @@ SoftwarePLL::~SoftwarePLL()
 void SoftwarePLL::Reset()
 {
 	TickFifo_ = std::vector<uint64_t>(FifoSize_, 0);
-	ClockFifo_ = std::vector<double>(FifoSize_, 0); 
+	ClockFifo_ = std::vector<double>(FifoSize_, 0);
 	IsInitialized(false);
 	FirstTimeStamp_ = 0;
 	FirstTick_ = 0;
@@ -67,11 +68,11 @@ void SoftwarePLL::Reset()
 
 bool SoftwarePLL::PushIntoFifo(double curTimeStamp, uint64_t curtick)
 // update tick fifo and update clock (timestamp) fifo
-{	
+{
 	if (curtick < TickFifo_[FifoSize_ - 1]) // Time pausability latest time cannot be in the past (device off)
 	{
-		Reset();		
-	}		
+		Reset();
+	}
 
 	for (int i = 0; i < FifoSize_ - 1; i++)
 	{
@@ -97,14 +98,14 @@ double SoftwarePLL::ExtraPolateRelativeTimeStamp(uint64_t tick)
 	const uint64_t firstTick = FirstTick();
 	if (tick < firstTick)
 	{
-		std::cout << "Negative extrapolated time difference. Reset...";
+		ROS_INFO("Negative extrapolated time difference. Reset...");
 		timeDiff = 0.0;
 		Reset();
 	}
 	else {
 		timeDiff = (tick - firstTick) * this->InterpolationSlope();
 	}
-	
+
 	return timeDiff;
 }
 
@@ -118,9 +119,9 @@ void SoftwarePLL::UpdatePLL(uint32_t sec, uint32_t nanoSec, uint64_t curtick)
 		PushIntoFifo(start, curtick);
 		bool bCheck = this->UpdateInterpolationSlope();
 		if (bCheck)
-		{			
+		{
 			IsInitialized(true);
-		} 
+		}
 		else {
 			return;
 		}
@@ -129,7 +130,7 @@ void SoftwarePLL::UpdatePLL(uint32_t sec, uint32_t nanoSec, uint64_t curtick)
     double cmpTimeStamp = start - this->FirstTimeStamp();
 
     bool timeStampVerified = NearSameTimeStamp(relTimeStamp, cmpTimeStamp);
-    if (!timeStampVerified) 
+    if (!timeStampVerified)
     {
       // BEGIN HANDLING Extrapolation divergence
       uint64_t tmp = ExtrapolationDivergenceCounter();
@@ -235,7 +236,7 @@ bool SoftwarePLL::UpdateInterpolationSlope() // fifo already updated
 	return(retVal);
 }
 
-/* 
+/*
 Example CMakeLists.txt to generate test-binary-file for testing this class
 --- CUT ---
 #
