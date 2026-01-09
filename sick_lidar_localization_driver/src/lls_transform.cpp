@@ -114,10 +114,8 @@ int main(int argc, char** argv)
   // Run ros event loop
   rosSpin(nh);
 
-  std::cout << "lls_transform finished." << std::endl;
   ROS_INFO_STREAM("lls_transform finished.");
   lls_transform.stop();
-  std::cout << "lls_transform exits." << std::endl;
   ROS_INFO_STREAM("lls_transform exits.");
   return 0;
 }

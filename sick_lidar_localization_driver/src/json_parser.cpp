@@ -315,6 +315,6 @@ std::string sick_lidar_localization::JsonParser::plainAsciiToJson(const std::str
     std::string jsonstr2 = std::regex_replace(jsonstr1, colon_re, "\"$&"); // replace : by ":
     std::stringstream jsonstr3;
     jsonstr3 << "{\"data\": " << jsonstr2 << "}";
-    std::cout << "plainAsciiToJson(" << jsondata << ")=" << jsonstr3.str() << std::endl;
+    ROS_INFO_STREAM("plainAsciiToJson(" << jsondata << ")=" << jsonstr3.str());
     return jsonstr3.str();
 }
