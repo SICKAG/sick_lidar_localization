@@ -32,7 +32,6 @@
 *.app
 
 build
-package.xml
 
 archive
 
@@ -50,5 +49,3 @@ doc/20210721_Lidarloc_setup.md
 doc/20210721_rest_api_test.pptx
 doc/20210726_rest_api_test.pptx
 doc/*_lidar_localization2.pptx
-
-

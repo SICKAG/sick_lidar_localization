@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.5)
 project(sick_lidar_localization_msgs)
 
+# Set ROS_VERSION from environment variable if not defined
+if(NOT DEFINED ROS_VERSION AND DEFINED ENV{ROS_VERSION})
+    set(ROS_VERSION $ENV{ROS_VERSION})
+endif()
+
 #####################
 ## Compile options ##
 #####################
