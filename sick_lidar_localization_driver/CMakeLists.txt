@@ -48,7 +48,15 @@ endif()
 
 ## ROS 1 resp. ROS2 packages
 if(ROS_VERSION EQUAL 1)
-    find_package(catkin REQUIRED COMPONENTS roscpp rospy geometry_msgs nav_msgs sensor_msgs std_msgs tf sick_lidar_localization_msgs)
+    find_package(catkin REQUIRED COMPONENTS 
+        roscpp
+        geometry_msgs
+        nav_msgs
+        sensor_msgs
+        std_msgs
+        tf
+        sick_lidar_localization_msgs
+    )
 elseif(ROS_VERSION EQUAL 2)
     find_package(ament_cmake REQUIRED)
     find_package(rclcpp REQUIRED)
@@ -72,7 +80,20 @@ find_package(jsoncpp REQUIRED) # install libjsoncpp by running "sudo apt-get ins
 ###########
 
 if(ROS_VERSION EQUAL 1) 
-    catkin_package(INCLUDE_DIRS include LIBRARIES sick_localization_lib CATKIN_DEPENDS roscpp rospy geometry_msgs nav_msgs sensor_msgs std_msgs sick_lidar_localization_msgs)
+    catkin_package(
+        INCLUDE_DIRS 
+            include 
+        LIBRARIES 
+            sick_localization_lib 
+        CATKIN_DEPENDS 
+            roscpp 
+            rospy 
+            geometry_msgs 
+            nav_msgs 
+            sensor_msgs 
+            std_msgs 
+            sick_lidar_localization_msgs
+    )
 endif()
 
 ## include path
@@ -127,7 +148,7 @@ elseif(ROS_VERSION EQUAL 2)
         ${visualization_msgs_TARGETS}
         rclcpp::rclcpp
         sensor_msgs::sensor_msgs_library
-        tf2_ros::static_transform_broadcaster_node
+        tf2::tf2
         tf2_ros::tf2_ros
     )
     target_link_libraries(lls_transform
@@ -139,7 +160,7 @@ elseif(ROS_VERSION EQUAL 2)
         ${visualization_msgs_TARGETS}
         rclcpp::rclcpp
         sensor_msgs::sensor_msgs_library
-        tf2_ros::static_transform_broadcaster_node
+        tf2::tf2
         tf2_ros::tf2_ros
     )
 else()

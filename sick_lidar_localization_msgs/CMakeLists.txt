@@ -48,7 +48,10 @@ endif()
 
 ## ROS 1 resp. ROS2 packages
 if(ROS_VERSION EQUAL 1)
-    find_package(catkin REQUIRED COMPONENTS message_generation message_runtime std_msgs)
+    find_package(catkin REQUIRED COMPONENTS 
+        message_generation
+        std_msgs
+    )
 elseif(ROS_VERSION EQUAL 2)
     find_package(ament_cmake REQUIRED)
     find_package(builtin_interfaces REQUIRED)
