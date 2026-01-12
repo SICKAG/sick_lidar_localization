@@ -218,7 +218,7 @@ ros2 run sick_lidar_localization_driver sick_lidar_localization_driver ./src/sic
 
 ### Options and configuration
 
-Parameter can be configured in the launch file [sick_lidar_localization.launch](launch/sick_lidar_localization.launch) and overwritten by commandline arguments.
+Parameter can be configured in the launch file [sick_lidar_localization.launch](sick_lidar_localization_driver/launch/sick_lidar_localization.launch) and overwritten by commandline arguments.
 
 Common parameters are:
 
@@ -277,18 +277,18 @@ ROS-1 usage example:
 
 ```
 source ./install/setup.bash
-roslaunch sick_lidar_localization sick_lidar_localization.launch &
-sleep 3 ; roslaunch sick_lidar_localization lls_transform.launch &
-sleep 3 ; rosrun rviz rviz -d ./src/sick_lidar_localization/test/config/rviz_sick_lidar_localization_pointcloud.rviz
+roslaunch sick_lidar_localization_driver sick_lidar_localization.launch &
+sleep 3 ; roslaunch sick_lidar_localization_driver lls_transform.launch &
+sleep 3 ; rosrun rviz rviz -d ./sick_lidar_localization_driver/test/config/rviz_sick_lidar_localization_pointcloud.rviz
 ```
 
 ROS-2 usage example:
 
 ```
 source ./install/setup.bash
-ros2 run sick_lidar_localization sick_lidar_localization ./src/sick_lidar_localization/launch/sick_lidar_localization.launch &
-sleep 3 ; ros2 run sick_lidar_localization lls_transform ./src/sick_lidar_localization/launch/lls_transform.launch &
-sleep 3 ; rviz2 -d ./src/sick_lidar_localization//test/config/rviz2_sick_lidar_localization_pointcloud.rviz2
+ros2 run sick_lidar_localization_driver sick_lidar_localization_driver ./sick_lidar_localization_driver/launch/sick_lidar_localization.launch &
+sleep 3 ; ros2 run sick_lidar_localization_driver lls_transform ./sick_lidar_localization_driver/launch/lls_transform.launch &
+sleep 3 ; rviz2 -d ./sick_lidar_localization_driver/test/config/rviz2_sick_lidar_localization_pointcloud.rviz2
 ```
 
 The following screenshot shows an example of the sensor pose:
