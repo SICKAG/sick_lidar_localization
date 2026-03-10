@@ -139,7 +139,7 @@ To build and install sick_lidar_localization on Windows without ROS, follow the 
 
 5. Build project sick_lidar_localization with cmake and Visual Studio 2019:
    ```
-   cd sick_lidar_localization
+   cd sick_lidar_localization/sick_lidar_localization_driver
    set _os=x64
    set _cmake_string=Visual Studio 16 2019
    set _msvc=Visual Studio 2019
