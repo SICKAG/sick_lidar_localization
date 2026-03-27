@@ -88,7 +88,7 @@ int main(int argc, char** argv)
 
   ROS_INFO_STREAM("lls_transform started.");
 
-  std::string result_telegrams_topic = "localizationcontroller/out/localizationcontroller_result_message_0502"; // default topic to publish result port telegram messages (type LocResultPortTelegramMsg)
+  std::string result_telegrams_topic = "/localizationcontroller/out/localizationcontroller_result_message_0502"; // default topic to publish result port telegram messages (type LocResultPortTelegramMsg)
   //rosGetParam(nh, "result_telegrams_topic", result_telegrams_topic);
   
   // Init verifier to compare and check lls_loc_driver and lls_loc_test_server messages
