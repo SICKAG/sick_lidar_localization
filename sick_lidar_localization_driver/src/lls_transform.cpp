@@ -67,7 +67,7 @@ int main(int argc, char** argv)
   // Ros configuration and initialization
 #if __ROS_VERSION == 1
     ros::init(argc, argv, "lls_transform", ros::init_options::NoSigintHandler);
-    ros::NodeHandle node("~");
+    ros::NodeHandle node("");
     rosNodePtr nh = &node;
 #elif __ROS_VERSION ==  2
     rclcpp::init(argc, argv);

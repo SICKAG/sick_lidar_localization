@@ -130,7 +130,7 @@ int main(int argc, char** argv)
     bool launchfile_ok = sick_lidar_localization::API::parseLaunchfileSetParameter(node, argc, argv);
 #elif __ROS_VERSION == 1
     ros::init(argc, argv, "sick_lidar_localization", ros::init_options::NoSigintHandler);
-    ros::NodeHandle nh("~");
+    ros::NodeHandle nh("");
     rosNodePtr node = &nh;
     bool launchfile_ok = true;
 #elif __ROS_VERSION ==  2
