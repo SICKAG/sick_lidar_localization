@@ -149,9 +149,21 @@ typedef ros::NodeHandle* rosNodePtr;
 #define ros_nav_msgs nav_msgs
 #define ros_visualization_msgs visualization_msgs
 
-template <typename T> void rosDeclareParam(rosNodePtr nh, const std::string& param_name, const T& param_value) { }
-template <typename T> bool rosGetParam(rosNodePtr nh, const std::string& param_name, T& param_value) { return nh->getParam(param_name, param_value); }
-template <typename T> void rosSetParam(rosNodePtr nh, const std::string& param_name, const T& param_value) { nh->setParam(param_name, param_value); }
+template <typename T>
+void rosDeclareParam(rosNodePtr nh, const std::string& param_name, const T& param_value)
+{}
+
+template <typename T>
+bool rosGetParam(rosNodePtr nh, const std::string& param_name, T& param_value)
+{
+    return nh->getParam(ros::this_node::getName() + "/" + param_name, param_value);
+}
+
+template <typename T>
+void rosSetParam(rosNodePtr nh, const std::string& param_name, const T& param_value)
+{
+    nh->setParam(ros::this_node::getName() + "/" + param_name, param_value);
+}
 
 typedef ros::Duration rosDuration;
 typedef ros::Time rosTime;
@@ -168,13 +180,7 @@ public:
 };
 template <typename T> rosPublisher<T> rosAdvertise(rosNodePtr nh, const std::string& topic, uint32_t queue_size = 10, int qos = 10)
 {
-    std::string topic2;
-    if(topic.empty() || topic[0] != '/')
-      topic2 = std::string("/") + topic;
-    else
-      topic2 = topic;
-    ROS_INFO_STREAM("Publishing on topic \"" << topic2 << "\"");
-    ros::Publisher publisher = nh->advertise<T>(topic2, queue_size);
+    ros::Publisher publisher = nh->advertise<T>(topic, queue_size);
     return rosPublisher<T>(publisher);
 }
 template <typename T> void rosPublish(rosPublisher<T>& publisher, const T& msg) { publisher.publish(msg); }
@@ -188,8 +194,7 @@ public:
 };
 template <typename T, class M, class U> rosSubscriber<T> rosSubscribe(rosNodePtr nh, const std::string& topic, void(U::*cbfunction)(M), U* cbobject)
 {
-    ROS_INFO_STREAM("Subscribing to topic \"" << topic << "\"");
-    ros::Subscriber subscriber = nh->subscribe(topic,1,cbfunction,cbobject);
+    ros::Subscriber subscriber = nh->subscribe(topic, 1, cbfunction, cbobject);
     return rosSubscriber<T>(subscriber);
 }
 
@@ -301,7 +306,6 @@ public:
 };
 template <class T> rosPublisher<T> rosAdvertise(rosNodePtr nh, const std::string& topic, uint32_t queue_size = 10, rclcpp::QoS qos = rclcpp::SystemDefaultsQoS())
 {
-    ROS_INFO_STREAM("Publishing on topic \"" << topic << "\"");
     auto publisher = nh->create_publisher<T>(topic, qos);
     return rosPublisher<T>(publisher);
 }
@@ -316,8 +320,7 @@ public:
 };
 template <typename T, class M, class U> rosSubscriber<T> rosSubscribe(rosNodePtr nh, const std::string& topic, void(U::*cbfunction)(M), U* cbobject)
 {
-    ROS_INFO_STREAM("Subscribing to topic \"" << topic << "\"");
-    auto subscriber = nh->create_subscription<T>(topic,10,std::bind(cbfunction,cbobject,std::placeholders::_1));
+    auto subscriber = nh->create_subscription<T>(topic, 10, std::bind(cbfunction, cbobject, std::placeholders::_1));
     return rosSubscriber<T>(subscriber);
 }
 
